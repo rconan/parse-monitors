@@ -4,6 +4,9 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "parse-monitors", about = "Parsing Star-CCM+ monitors")]
 struct Opt {
+    /// Path to the monitor file repository
+    #[structopt(long)]
+    path: Option<String>,
     /// Monitors regular expression filter
     #[structopt(short, long)]
     monitor: Option<String>,
@@ -23,6 +26,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //println!("{:?}", opt);
 
     let mut loader = MonitorsLoader::default();
+    if let Some(arg) = opt.path {
+        loader = loader.data_path(arg);
+    }
     if let Some(arg) = opt.monitor {
         loader = loader.header_filter(arg);
     }

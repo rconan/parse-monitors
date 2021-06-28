@@ -1,6 +1,7 @@
 use colorous;
 use plotters::prelude::*;
 use regex::Regex;
+use std::path::Path;
 use std::{collections::BTreeMap, fs::File};
 
 #[derive(Default, Debug)]
@@ -403,6 +404,13 @@ impl Default for MonitorsLoader {
     }
 }
 impl MonitorsLoader {
+    pub fn data_path(self, data_path: String) -> Self {
+        let path = Path::new(&data_path).join("monitors.csv");
+        Self {
+            path: path.to_str().unwrap().to_owned(),
+            ..self
+        }
+    }
     pub fn start_time(self, time: f64) -> Self {
         Self {
             time_range: (time, self.time_range.1),
