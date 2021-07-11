@@ -16,6 +16,9 @@ struct Opt {
     /// Monitors end time
     #[structopt(short, long)]
     end: Option<f64>,
+    /// Save monitors to CSV file
+    #[structopt(long)]
+    csv: Option<String>,
     /// Plot monitors
     #[structopt(short, long)]
     plot: bool,
@@ -45,6 +48,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         monitors.plot_htc();
         monitors.plot_forces();
         monitors.plot_moments();
+    }
+
+    if let Some(filename) = opt.csv {
+        monitors.to_csv(filename)?;
     }
 
     Ok(())

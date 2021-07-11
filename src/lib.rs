@@ -1,16 +1,25 @@
 use colorous;
 use plotters::prelude::*;
 use regex::Regex;
+use std::fmt;
+use std::ops::{Add, Div, Sub};
 use std::path::Path;
 use std::{collections::BTreeMap, fs::File};
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct Vector {
     pub x: Option<f64>,
     pub y: Option<f64>,
     pub z: Option<f64>,
 }
 impl Vector {
+    pub fn zero() -> Self {
+        Self {
+            x: Some(0f64),
+            y: Some(0f64),
+            z: Some(0f64),
+        }
+    }
     pub fn magnitude(&self) -> Result<f64, String> {
         let (x, y, z) = (
             self.x.ok_or("x component missing")?,
@@ -39,8 +48,87 @@ impl Vector {
             ..Default::default()
         }
     }
+    pub fn as_tuple(&self) -> (&f64, &f64, &f64) {
+        match self {
+            Vector {
+                x: Some(a1),
+                y: Some(a2),
+                z: Some(a3),
+            } => Ok((a1, a2, a3)),
+            _ => Err(""),
+        }
+        .unwrap()
+    }
+    pub fn into_tuple(self) -> (f64, f64, f64) {
+        match self {
+            Vector {
+                x: Some(a1),
+                y: Some(a2),
+                z: Some(a3),
+            } => Ok((a1, a2, a3)),
+            _ => Err(""),
+        }
+        .unwrap()
+    }
+    pub fn cross(&self, other: &Vector) -> Vector {
+        let (a1, a2, a3) = self.as_tuple();
+        let (b1, b2, b3) = other.as_tuple();
+        Vector {
+            x: Some(a2 * b3 - a3 * b2),
+            y: Some(a3 * b1 - a1 * b3),
+            z: Some(a1 * b2 - a2 * b1),
+        }
+    }
+    pub fn norm_squared(&self) -> f64 {
+        let (a1, a2, a3) = self.as_tuple();
+        a1 * a1 + a2 * a2 + a3 * a3
+    }
 }
-#[derive(Default, Debug)]
+impl Sub for &Vector {
+    type Output = Vector;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        let (a1, a2, a3) = self.as_tuple();
+        let (b1, b2, b3) = rhs.as_tuple();
+        Vector {
+            x: Some(a1 - b1),
+            y: Some(a2 - b2),
+            z: Some(a3 - b3),
+        }
+    }
+}
+impl Add for &Vector {
+    type Output = Vector;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let (a1, a2, a3) = self.as_tuple();
+        let (b1, b2, b3) = rhs.as_tuple();
+        Vector {
+            x: Some(a1 + b1),
+            y: Some(a2 + b2),
+            z: Some(a3 + b3),
+        }
+    }
+}
+impl Div<f64> for Vector {
+    type Output = Self;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        let (a1, a2, a3) = self.as_tuple();
+        Vector {
+            x: Some(a1 / rhs),
+            y: Some(a2 / rhs),
+            z: Some(a3 / rhs),
+        }
+    }
+}
+impl fmt::Display for Vector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (a1, a2, a3) = self.as_tuple();
+        write!(f, "[{:6.3},{:6.3},{:6.3}]", a1, a2, a3)
+    }
+}
+#[derive(Default, Debug, Clone)]
 pub struct Exertion {
     pub force: Vector,
     pub moment: Vector,
@@ -192,6 +280,49 @@ impl Monitors {
                 }
             });
         }
+    }
+    pub fn to_csv(&self, filename: String) -> Result<Vec<()>, csv::Error> {
+        let mut wtr = csv::Writer::from_path(filename)?;
+        let mut keys = vec![String::from("Time [s]")];
+        keys.extend(
+            self.forces_and_moments
+                .keys()
+                .filter(|&k| k.as_str() != "M1covin2")
+                .flat_map(|k| {
+                    vec![
+                        format!("{} X force [N]", k),
+                        format!("{} Y force [N]", k),
+                        format!("{} Z force [N]", k),
+                        format!("{} X moment [N-m]", k),
+                        format!("{} Y moment [N-m]", k),
+                        format!("{} Z moment [N-m]", k),
+                    ]
+                }),
+        );
+        wtr.write_record(&keys)?;
+        self.time
+            .iter()
+            .enumerate()
+            .map(|(k, t)| {
+                let mut record = vec![format!("{}", t)];
+                record.extend(
+                    self.forces_and_moments
+                        .iter()
+                        .filter(|(k, _)| k.as_str() != "M1covin2")
+                        .flat_map(|(_, v)| {
+                            vec![
+                                format!("{}", v[k].force.x.unwrap()),
+                                format!("{}", v[k].force.y.unwrap()),
+                                format!("{}", v[k].force.z.unwrap()),
+                                format!("{}", v[k].moment.x.unwrap()),
+                                format!("{}", v[k].moment.y.unwrap()),
+                                format!("{}", v[k].moment.z.unwrap()),
+                            ]
+                        }),
+                );
+                wtr.write_record(&record)
+            })
+            .collect::<Result<Vec<()>, csv::Error>>()
     }
     pub fn plot_htc(&self) {
         if self.heat_transfer_coefficients.is_empty() {
@@ -538,3 +669,30 @@ impl MonitorsLoader {
         Ok(monitors)
     }
 }
+
+/*
+#[cfg(test)]
+mod tests {
+    use nalgebra as na;
+
+    #[test]
+    fn test_arm() {
+        let force = [100f64, -33f64, 250f64];
+        let force_v = na::Vector3::from_column_slice(&force);
+        //let arm = na::Vector3::<f64>::new_random() * 2f64 - na::Vector3::repeat(1f64);
+        let arm = na::Vector3::<f64>::from_column_slice(&[1., 1., 1.]);
+        println!("ARM: {:?}", arm);
+        let moment = arm.cross(&force_v);
+        println!("Moment: {:?}", moment);
+        let amat = na::Matrix3::new(
+            0., force[2], -force[1], -force[2], 0., force[0], force[1], -force[0], 0.,
+        );
+        println!("A: {:#?}", amat);
+        println!("Moment: {:?}", amat * arm);
+        let qr = amat.svd(true, true);
+        let x = qr.solve(&moment, 1e-3).unwrap();
+        println!("ARM: {:?}", x);
+        println!("Moment: {:?}", x.cross(&force_v));
+    }
+}
+*/

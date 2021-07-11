@@ -8,6 +8,12 @@ edition = "2018"
 [dependencies]
 colorous = "1.0.5"
 csv = "1.1.6"
+indicatif = "0.16.2"
+nalgebra = { version = "0.27.1", features = ["rand"] }
 plotters = "0.3.1"
 regex = "1.5.4"
+serde = { version = "1.0.126", features = ["derive"] }
 structopt = "0.3.21"
+
+[dev-dependencies]
+rand = "0.8.4"
