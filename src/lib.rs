@@ -1,7 +1,10 @@
+use bzip2::bufread::BzDecoder;
 use colorous;
 use plotters::prelude::*;
 use regex::Regex;
 use std::fmt;
+use std::io::BufReader;
+use std::io::Read;
 use std::ops::{Add, Div, Sub};
 use std::path::Path;
 use std::{collections::BTreeMap, fs::File};
@@ -561,8 +564,13 @@ impl MonitorsLoader {
         }
     }
     pub fn load(self) -> Result<Monitors, Box<dyn std::error::Error>> {
-        let csv_file = File::open(self.path)?;
-        let mut rdr = csv::Reader::from_reader(csv_file);
+        let csv_file = File::open(Path::new(&self.path).with_extension("csv.bz2"))?;
+        let buf = BufReader::new(csv_file);
+        let mut bz2 = BzDecoder::new(buf);
+        let mut contents = String::new();
+        bz2.read_to_string(&mut contents)?;
+        let mut rdr = csv::Reader::from_reader(contents.as_bytes());
+
         let headers: Vec<_> = {
             let headers = rdr.headers()?;
             //headers.iter().take(20).for_each(|h| println!("{}", h));
@@ -600,7 +608,7 @@ impl MonitorsLoader {
                         .heat_transfer_coefficients
                         .entry(key)
                         .or_insert_with(Vec::new)
-                        .push(value);
+                        .push(value.abs());
                 }
                 // FORCE
                 if let Some(capts) = re_force.captures(header) {
