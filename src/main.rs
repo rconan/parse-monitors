@@ -22,6 +22,9 @@ struct Opt {
     /// Plot monitors
     #[structopt(short, long)]
     plot: bool,
+    /// Evaluates the moments at the part location instead of the OSS
+    #[structopt(long)]
+    local: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,7 +45,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         loader = loader.end_time(arg);
     }
 
-    let monitors = loader.load()?;
+    let mut monitors = loader.load()?;
+    if opt.local {
+        monitors.into_local();
+    }
     monitors.summary();
     if opt.plot {
         monitors.plot_htc();

@@ -2,12 +2,46 @@ use bzip2::bufread::BzDecoder;
 use colorous;
 use plotters::prelude::*;
 use regex::Regex;
-use std::fmt;
-use std::io::BufReader;
-use std::io::Read;
-use std::ops::{Add, Div, Sub};
-use std::path::Path;
-use std::{collections::BTreeMap, fs::File};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    fs::File,
+    io::{BufReader, Read},
+    ops::{Add, Deref, DerefMut, Div, Sub},
+    path::Path,
+};
+
+pub struct FemNodes(BTreeMap<String, Vector>);
+impl Deref for FemNodes {
+    type Target = BTreeMap<String, Vector>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl DerefMut for FemNodes {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+impl Default for FemNodes {
+    fn default() -> Self {
+        let mut fem = FemNodes(BTreeMap::new());
+        fem.insert("M1cov1".to_string(), [0., 13.5620, 5.3064].into());
+        fem.insert("M1cov2".to_string(), [11.7451, 6.7810, 5.3064].into());
+        fem.insert("M1cov3".to_string(), [11.7451, -6.7810, 5.3064].into());
+        fem.insert("M1cov4".to_string(), [0., -13.5621, 5.3064].into());
+        fem.insert("M1cov5".to_string(), [-11.7451, -6.7810, 5.3064].into());
+        fem.insert("M1cov6".to_string(), [-11.7451, 6.7810, 5.3064].into());
+        fem.insert("M1covin1".to_string(), [2.1500, 3.7239, 5.2100].into());
+        fem.insert("M1covin2".to_string(), [4.3000, 0., 5.2100].into());
+        fem.insert("M1covin3".to_string(), [2.1500, -3.7239, 5.2100].into());
+        fem.insert("M1covin4".to_string(), [-2.1500, -3.7239, 5.2100].into());
+        fem.insert("M1covin5".to_string(), [-4.3000, 0., 5.2100].into());
+        fem.insert("M1covin6".to_string(), [-2.1500, 3.7239, 5.2100].into());
+        fem
+    }
+}
 
 #[derive(Default, Debug, Clone)]
 pub struct Vector {
@@ -131,6 +165,15 @@ impl fmt::Display for Vector {
         write!(f, "[{:6.3},{:6.3},{:6.3}]", a1, a2, a3)
     }
 }
+impl From<[f64; 3]> for Vector {
+    fn from(v: [f64; 3]) -> Self {
+        Vector {
+            x: Some(v[0]),
+            y: Some(v[1]),
+            z: Some(v[2]),
+        }
+    }
+}
 #[derive(Default, Debug, Clone)]
 pub struct Exertion {
     pub force: Vector,
@@ -187,6 +230,10 @@ impl Exertion {
             ..Default::default()
         }
     }
+    pub fn into_local(&mut self, node: &Vector) -> &mut Self {
+        self.moment = &self.moment - &node.cross(&self.force);
+        self
+    }
 }
 #[derive(Default, Debug)]
 pub struct Monitors {
@@ -197,6 +244,17 @@ pub struct Monitors {
 impl Monitors {
     pub fn len(&self) -> usize {
         self.time.len()
+    }
+    pub fn into_local(&mut self) -> &mut Self {
+        let nodes = FemNodes::default();
+        for (key, value) in self.forces_and_moments.iter_mut() {
+            if let Some(node) = nodes.get(key) {
+                value.iter_mut().for_each(|v| {
+                    (*v).into_local(node);
+                });
+            }
+        }
+        self
     }
     pub fn summary(&self) {
         let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
