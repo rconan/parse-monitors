@@ -25,6 +25,9 @@ struct Opt {
     /// Evaluates the moments at the part location instead of the OSS
     #[structopt(long)]
     local: bool,
+    /// Write M1 mirror covers loads to `windloads.pkl`
+    #[structopt(long = "m1-covers")]
+    m1_covers: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -58,6 +61,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(filename) = opt.csv {
         monitors.to_csv(filename)?;
+    }
+
+    if opt.m1_covers {
+        monitors.m1covers_windloads()?;
     }
 
     Ok(())

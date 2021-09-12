@@ -15,6 +15,9 @@ plotters = "0.3.1"
 regex = "1.5.4"
 serde = { version = "1.0.126", features = ["derive"] }
 structopt = "0.3.21"
+dosio = { path = "/home/rconan/projects/dosio" }
+windloading = { path = "/home/rconan/projects/windloading" }
+serde-pickle = "0.6.3"
 
 [dev-dependencies]
 rand = "0.8.4"

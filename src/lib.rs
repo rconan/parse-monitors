@@ -2,14 +2,17 @@ use bzip2::bufread::BzDecoder;
 use colorous;
 use plotters::prelude::*;
 use regex::Regex;
+use serde_pickle as pkl;
 use std::{
     collections::BTreeMap,
+    error::Error,
     fmt,
     fs::File,
     io::{BufReader, Read},
     ops::{Add, Deref, DerefMut, Div, Sub},
-    path::Path,
+    path::{Path, PathBuf},
 };
+use windloading::{Loads, WindLoads};
 
 pub struct FemNodes(BTreeMap<String, Vector>);
 impl Deref for FemNodes {
@@ -33,12 +36,12 @@ impl Default for FemNodes {
         fem.insert("M1cov4".to_string(), [0., -13.5621, 5.3064].into());
         fem.insert("M1cov5".to_string(), [-11.7451, -6.7810, 5.3064].into());
         fem.insert("M1cov6".to_string(), [-11.7451, 6.7810, 5.3064].into());
-        fem.insert("M1covin1".to_string(), [2.1500, 3.7239, 5.2100].into());
-        fem.insert("M1covin2".to_string(), [4.3000, 0., 5.2100].into());
-        fem.insert("M1covin3".to_string(), [2.1500, -3.7239, 5.2100].into());
-        fem.insert("M1covin4".to_string(), [-2.1500, -3.7239, 5.2100].into());
-        fem.insert("M1covin5".to_string(), [-4.3000, 0., 5.2100].into());
-        fem.insert("M1covin6".to_string(), [-2.1500, 3.7239, 5.2100].into());
+        fem.insert("M1covin1".to_string(), [2.3650, 4.0963, 4.7000].into());
+        fem.insert("M1covin2".to_string(), [4.3000, 0., 4.7000].into());
+        fem.insert("M1covin3".to_string(), [2.3650, -4.0963, 4.7000].into());
+        fem.insert("M1covin4".to_string(), [-2.3650, -4.0963, 4.7000].into());
+        fem.insert("M1covin5".to_string(), [-4.3000, 0., 4.7000].into());
+        fem.insert("M1covin6".to_string(), [-2.3650, 4.0963, 4.7000].into());
         fem
     }
 }
@@ -103,6 +106,17 @@ impl Vector {
                 y: Some(a2),
                 z: Some(a3),
             } => Ok((a1, a2, a3)),
+            _ => Err(""),
+        }
+        .unwrap()
+    }
+    pub fn as_array(&self) -> [&f64; 3] {
+        match self {
+            Vector {
+                x: Some(a1),
+                y: Some(a2),
+                z: Some(a3),
+            } => Ok([a1, a2, a3]),
             _ => Err(""),
         }
         .unwrap()
@@ -384,6 +398,36 @@ impl Monitors {
                 wtr.write_record(&record)
             })
             .collect::<Result<Vec<()>, csv::Error>>()
+    }
+    pub fn m1covers_windloads(&self) -> Result<(), Box<dyn Error>> {
+        let keys = vec![
+            "M1cov1", "M1cov6", "M1cov5", "M1cov4", "M1cov3", "M1cov2", "M1covin2", "M1covin1",
+            "M1covin6", "M1covin5", "M1covin4", "M1covin3",
+        ];
+        let mut loads: Vec<Vec<f64>> = Vec::with_capacity(72 * self.len());
+        for k in 0..self.len() {
+            let mut fm: Vec<f64> = Vec::with_capacity(72);
+            for &key in &keys {
+                let exrt = self.forces_and_moments.get(key).unwrap().get(k).unwrap();
+                fm.append(
+                    &mut exrt
+                        .force
+                        .as_array()
+                        .iter()
+                        .cloned()
+                        .chain(exrt.moment.as_array().iter().cloned())
+                        .cloned()
+                        .collect::<Vec<f64>>(),
+                );
+            }
+            loads.push(fm);
+        }
+        let mut windloads: WindLoads = Default::default();
+        windloads.time = self.time.clone();
+        windloads.loads = vec![Some(Loads::OSSMirrorCovers6F(loads))];
+        let mut file = File::create("windloads.pkl")?;
+        pkl::to_writer(&mut file, &windloads, true)?;
+        Ok(())
     }
     pub fn plot_htc(&self) {
         if self.heat_transfer_coefficients.is_empty() {
