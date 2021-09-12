@@ -307,27 +307,10 @@ dependencies = [
 [[package]]
 name = "dosio"
 version = "0.1.0"
-dependencies = [
- "dosio-proc 0.1.0",
- "serde",
-]
-
-[[package]]
-name = "dosio"
-version = "0.1.0"
 source = "git+https://github.com/rconan/dosio.git?branch=ns-opm-im#f607aef182e5b29e463e5b321cd28b124fc6a0fe"
 dependencies = [
- "dosio-proc 0.1.0 (git+https://github.com/rconan/dosio.git?branch=ns-opm-im)",
+ "dosio-proc",
  "serde",
-]
-
-[[package]]
-name = "dosio-proc"
-version = "0.1.0"
-dependencies = [
- "hdf5",
- "proc-macro2",
- "quote",
 ]
 
 [[package]]
@@ -812,7 +795,6 @@ dependencies = [
  "bzip2",
  "colorous",
  "csv",
- "dosio 0.1.0",
  "indicatif",
  "nalgebra",
  "plotters",
@@ -1428,8 +1410,9 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "windloading"
 version = "0.1.0"
+source = "git+https://github.com/rconan/windloading.git?branch=ns-opm-im#ff3c5492b35bd48ccc0e779461e0fc59bb159a80"
 dependencies = [
- "dosio 0.1.0 (git+https://github.com/rconan/dosio.git?branch=ns-opm-im)",
+ "dosio",
  "serde",
  "serde-pickle",
 ]
