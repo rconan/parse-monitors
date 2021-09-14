@@ -9,8 +9,8 @@ use std::{
     fmt,
     fs::File,
     io::{BufReader, Read},
-    ops::{Add, Deref, DerefMut, Div, Sub},
-    path::{Path, PathBuf},
+    ops::{Add, AddAssign, Deref, DerefMut, Div, Sub},
+    path::Path,
 };
 use windloading::{Loads, WindLoads};
 
@@ -161,6 +161,17 @@ impl Add for &Vector {
         }
     }
 }
+impl AddAssign<&Vector> for &mut Vector {
+    fn add_assign(&mut self, other: &Vector) {
+        let (a1, a2, a3) = self.as_tuple();
+        let (b1, b2, b3) = other.as_tuple();
+        **self = Vector {
+            x: Some(a1 + b1),
+            y: Some(a2 + b2),
+            z: Some(a3 + b3),
+        }
+    }
+}
 impl Div<f64> for Vector {
     type Output = Self;
 
@@ -280,7 +291,6 @@ impl Monitors {
             let std = (x.iter().map(|x| x - mean).fold(0f64, |s, x| s + x * x) / n).sqrt();
             (mean, std)
         };
-
         println!("SUMMARY:");
         println!(" - # of records: {}", self.len());
         println!(
@@ -310,6 +320,26 @@ impl Monitors {
         let n_fm = self.forces_and_moments.len();
         if !self.forces_and_moments.is_empty() {
             println!(" - # of elements with forces & moments: {}", n_fm);
+            let (total_force, total_moment): (Vec<_>, Vec<_>) =
+                self.forces_and_moments.values().fold(
+                    (
+                        vec![Vector::zero(); self.len()],
+                        vec![Vector::zero(); self.len()],
+                    ),
+                    |(mut fa, mut ma), value| {
+                        fa.iter_mut()
+                            .zip(value.iter())
+                            .for_each(|(mut fa, e)| fa += &e.force);
+                        ma.iter_mut()
+                            .zip(value.iter())
+                            .for_each(|(mut ma, e)| ma += &e.moment);
+                        (fa, ma)
+                    },
+                );
+            let total_force_magnitude: Result<Vec<f64>, String> =
+                total_force.into_iter().map(|x| x.magnitude()).collect();
+            let total_moment_magnitude: Result<Vec<f64>, String> =
+                total_moment.into_iter().map(|x| x.magnitude()).collect();
             println!(" - Forces magnitude [N]:");
             println!(
                 "    {:^16}: ({:^12}, {:^12})  ({:^12}, {:^12})",
@@ -318,20 +348,9 @@ impl Monitors {
             self.forces_and_moments.iter().for_each(|(key, value)| {
                 let force_magnitude: Result<Vec<f64>, String> =
                     value.iter().map(|e| e.force.magnitude()).collect();
-                match force_magnitude {
-                    Ok(value) => {
-                        let force_min = min_value(&value);
-                        let force_max = max_value(&value);
-                        println!(
-                            "  - {:16}: {:>12.3?}  {:>12.3?}",
-                            key,
-                            stats(&value),
-                            (force_min, force_max)
-                        );
-                    }
-                    Err(err) => println!("  - {:16}: {}", key, err),
-                }
+                Self::display(key, force_magnitude);
             });
+            Self::display("TOTAL", total_force_magnitude);
             println!(" - Moments magnitude [N-m]:");
             println!(
                 "    {:^16}: ({:^12}, {:^12})  ({:^12}, {:^12})",
@@ -340,20 +359,32 @@ impl Monitors {
             self.forces_and_moments.iter().for_each(|(key, value)| {
                 let moment_magnitude: Result<Vec<f64>, String> =
                     value.iter().map(|e| e.moment.magnitude()).collect();
-                match moment_magnitude {
-                    Ok(value) => {
-                        let moment_min = min_value(&value);
-                        let moment_max = max_value(&value);
-                        println!(
-                            "  - {:16}: {:>12.3?}  {:>12.3?}",
-                            key,
-                            stats(&value),
-                            (moment_min, moment_max)
-                        );
-                    }
-                    Err(err) => println!("  - {:16}: {}", key, err),
-                }
+                Self::display(key, moment_magnitude);
             });
+            Self::display("TOTAL", total_moment_magnitude);
+        }
+    }
+    pub fn display(key: &str, data: Result<Vec<f64>, String>) {
+        let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
+        let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
+        let stats = |x: &[f64]| {
+            let n = x.len() as f64;
+            let mean = x.iter().sum::<f64>() / n;
+            let std = (x.iter().map(|x| x - mean).fold(0f64, |s, x| s + x * x) / n).sqrt();
+            (mean, std)
+        };
+        match data {
+            Ok(value) => {
+                let data_min = min_value(&value);
+                let data_max = max_value(&value);
+                println!(
+                    "  - {:16}: {:>12.3?}  {:>12.3?}",
+                    key,
+                    stats(&value),
+                    (data_min, data_max)
+                );
+            }
+            Err(err) => println!("  - {:16}: {}", key, err),
         }
     }
     pub fn to_csv(&self, filename: String) -> Result<Vec<()>, csv::Error> {
@@ -629,6 +660,7 @@ pub struct MonitorsLoader {
     path: String,
     time_range: (f64, f64),
     header_regex: String,
+    header_exclude_regex: Option<String>,
 }
 impl Default for MonitorsLoader {
     fn default() -> Self {
@@ -636,6 +668,7 @@ impl Default for MonitorsLoader {
             path: String::from("monitors.csv"),
             time_range: (0f64, f64::INFINITY),
             header_regex: String::from(r"\w+"),
+            header_exclude_regex: None,
         }
     }
 }
@@ -665,6 +698,12 @@ impl MonitorsLoader {
             ..self
         }
     }
+    pub fn exclude_filter(self, header_exclude_regex: String) -> Self {
+        Self {
+            header_exclude_regex: Some(header_exclude_regex),
+            ..self
+        }
+    }
     pub fn load(self) -> Result<Monitors, Box<dyn std::error::Error>> {
         let csv_file = File::open(Path::new(&self.path).with_extension("csv.bz2"))?;
         let buf = BufReader::new(csv_file);
@@ -686,6 +725,11 @@ impl MonitorsLoader {
         let re_moment = Regex::new(r"(\w+)Mom_([XYZ]) Monitor: Moment \(N-m\)")?;
 
         let re_header = Regex::new(&self.header_regex)?;
+        let re_x_header = if let Some(re) = self.header_exclude_regex {
+            Some(Regex::new(&re)?)
+        } else {
+            None
+        };
 
         let mut monitors = Monitors::default();
 
@@ -696,12 +740,12 @@ impl MonitorsLoader {
                 continue;
             };
             monitors.time.push(time);
-            for (data, header) in record
-                .iter()
-                .skip(1)
-                .zip(headers.iter().skip(1))
-                .filter(|(_, h)| re_header.is_match(h))
-            {
+            for (data, header) in record.iter().skip(1).zip(headers.iter().skip(1)).filter(
+                |(_, h)| match &re_x_header {
+                    Some(re_x_header) => re_header.is_match(h) && !re_x_header.is_match(h),
+                    None => re_header.is_match(h),
+                },
+            ) {
                 // HTC
                 if let Some(capts) = re_htc.captures(header) {
                     let key = capts.get(1).unwrap().as_str().to_owned();

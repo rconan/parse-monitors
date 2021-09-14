@@ -10,6 +10,9 @@ struct Opt {
     /// Monitors regular expression filter
     #[structopt(short, long)]
     monitor: Option<String>,
+    /// Monitors exclude regular expression filter
+    #[structopt(short = "x", long)]
+    exclude: Option<String>,
     /// Monitors start time
     #[structopt(short, long)]
     start: Option<f64>,
@@ -40,6 +43,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     if let Some(arg) = opt.monitor {
         loader = loader.header_filter(arg);
+    }
+    if let Some(arg) = opt.exclude {
+        loader = loader.exclude_filter(arg);
     }
     if let Some(arg) = opt.start {
         loader = loader.start_time(arg);
