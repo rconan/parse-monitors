@@ -73,7 +73,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         monitors.m1covers_windloads()?;
     }
 
-    plot_monitor(&monitors.time, &monitors.total_forces_and_moments, "Total");
-
     Ok(())
 }

@@ -1,5 +1,6 @@
 use bzip2::bufread::BzDecoder;
 use colorous;
+use log;
 use plotters::prelude::*;
 use regex::Regex;
 use serde_pickle as pkl;
@@ -11,6 +12,7 @@ use std::{
     io::{BufReader, Read},
     ops::{Add, AddAssign, Deref, DerefMut, Div, Sub},
     path::Path,
+    time::Instant,
 };
 use windloading::{Loads, WindLoads};
 
@@ -380,6 +382,29 @@ impl Monitors {
                 .collect();
         }
     }
+    pub fn total_exertion(&mut self) -> &mut Self {
+        let (total_force, total_moment): (Vec<_>, Vec<_>) = self.forces_and_moments.values().fold(
+            (
+                vec![Vector::zero(); self.len()],
+                vec![Vector::zero(); self.len()],
+            ),
+            |(mut fa, mut ma), value| {
+                fa.iter_mut()
+                    .zip(value.iter())
+                    .for_each(|(mut fa, e)| fa += &e.force);
+                ma.iter_mut()
+                    .zip(value.iter())
+                    .for_each(|(mut ma, e)| ma += &e.moment);
+                (fa, ma)
+            },
+        );
+        self.total_forces_and_moments = total_force
+            .into_iter()
+            .zip(total_moment.into_iter())
+            .map(|(force, moment)| Exertion { force, moment })
+            .collect();
+        self
+    }
     pub fn display(key: &str, data: Option<Vec<f64>>) {
         let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
         let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
@@ -702,7 +727,10 @@ impl Default for MonitorsLoader {
     }
 }
 impl MonitorsLoader {
-    pub fn data_path(self, data_path: String) -> Self {
+    pub fn data_path<S: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(
+        self,
+        data_path: S,
+    ) -> Self {
         let path = Path::new(&data_path).join("monitors.csv");
         Self {
             path: path.to_str().unwrap().to_owned(),
@@ -727,14 +755,16 @@ impl MonitorsLoader {
             ..self
         }
     }
-    pub fn exclude_filter(self, header_exclude_regex: String) -> Self {
+    pub fn exclude_filter<S: Into<String>>(self, header_exclude_regex: S) -> Self {
         Self {
-            header_exclude_regex: Some(header_exclude_regex),
+            header_exclude_regex: Some(header_exclude_regex.into()),
             ..self
         }
     }
     pub fn load(self) -> Result<Monitors, Box<dyn std::error::Error>> {
         let csv_file = File::open(Path::new(&self.path).with_extension("csv.bz2"))?;
+        log::info!("Loading {:?}...", csv_file);
+        let now = Instant::now();
         let buf = BufReader::new(csv_file);
         let mut bz2 = BzDecoder::new(buf);
         let mut contents = String::new();
@@ -849,11 +879,17 @@ impl MonitorsLoader {
                 }
             }
         }
+        log::info!("... loaded in {:}s", now.elapsed().as_secs());
         Ok(monitors)
     }
 }
 
-pub fn plot_monitor(time: &[f64], monitor: &[Exertion], key: &str) {
+pub fn plot_monitor<S: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(
+    time: &[f64],
+    monitor: &[Exertion],
+    key: &str,
+    path: S,
+) {
     let max_value = |x: &[f64]| -> f64 {
         x.iter()
             .cloned()
@@ -869,7 +905,14 @@ pub fn plot_monitor(time: &[f64], monitor: &[Exertion], key: &str) {
             .fold(std::f64::INFINITY, f64::min)
     };
 
-    let plot = SVGBackend::new("TOTAL_FORCE.svg", (768, 512)).into_drawing_area();
+    let file_path = Path::new(&path).join("TOTAL_FORCES.png");
+    let filename = if let Some(filename) = file_path.to_str() {
+        filename.to_string()
+    } else {
+        eprintln!("Invalid file path: {:?}", file_path);
+        return;
+    };
+    let plot = BitMapBackend::new(&filename, (768, 512)).into_drawing_area();
     plot.fill(&WHITE).unwrap();
 
     let (min_value, max_value) = {
@@ -894,7 +937,7 @@ pub fn plot_monitor(time: &[f64], monitor: &[Exertion], key: &str) {
     chart
         .configure_mesh()
         .x_desc("Time [s]")
-        .y_desc("Force [N]")
+        .y_desc(format!("{} Force [N]", key))
         .draw()
         .unwrap();
 
