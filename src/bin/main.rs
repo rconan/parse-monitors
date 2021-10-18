@@ -1,4 +1,4 @@
-use parse_monitors::MonitorsLoader;
+use parse_monitors::{plot_monitor, MonitorsLoader};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -72,6 +72,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if opt.m1_covers {
         monitors.m1covers_windloads()?;
     }
+
+    plot_monitor(&monitors.time, &monitors.total_forces_and_moments, "Total");
 
     Ok(())
 }

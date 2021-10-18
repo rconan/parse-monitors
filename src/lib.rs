@@ -60,13 +60,12 @@ impl Vector {
             z: Some(0f64),
         }
     }
-    pub fn magnitude(&self) -> Result<f64, String> {
-        let (x, y, z) = (
-            self.x.ok_or("x component missing")?,
-            self.y.ok_or("y component missing")?,
-            self.z.ok_or("z component missing")?,
-        );
-        Ok((x * x + y * y + z * z).sqrt())
+    pub fn magnitude(&self) -> Option<f64> {
+        if let Some((x, y, z)) = self.as_tuple() {
+            Some((x * x + y * y + z * z).sqrt())
+        } else {
+            None
+        }
     }
 }
 impl Vector {
@@ -88,27 +87,25 @@ impl Vector {
             ..Default::default()
         }
     }
-    pub fn as_tuple(&self) -> (&f64, &f64, &f64) {
+    pub fn as_tuple(&self) -> Option<(&f64, &f64, &f64)> {
         match self {
             Vector {
                 x: Some(a1),
                 y: Some(a2),
                 z: Some(a3),
-            } => Ok((a1, a2, a3)),
-            _ => Err(""),
+            } => Some((a1, a2, a3)),
+            _ => None,
         }
-        .unwrap()
     }
-    pub fn into_tuple(self) -> (f64, f64, f64) {
+    pub fn into_tuple(self) -> Option<(f64, f64, f64)> {
         match self {
             Vector {
                 x: Some(a1),
                 y: Some(a2),
                 z: Some(a3),
-            } => Ok((a1, a2, a3)),
-            _ => Err(""),
+            } => Some((a1, a2, a3)),
+            _ => None,
         }
-        .unwrap()
     }
     pub fn as_array(&self) -> [&f64; 3] {
         match self {
@@ -121,73 +118,84 @@ impl Vector {
         }
         .unwrap()
     }
-    pub fn cross(&self, other: &Vector) -> Vector {
-        let (a1, a2, a3) = self.as_tuple();
-        let (b1, b2, b3) = other.as_tuple();
-        Vector {
-            x: Some(a2 * b3 - a3 * b2),
-            y: Some(a3 * b1 - a1 * b3),
-            z: Some(a1 * b2 - a2 * b1),
+    pub fn cross(&self, other: &Vector) -> Option<Vector> {
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), other.as_tuple()) {
+            Some(Vector {
+                x: Some(a2 * b3 - a3 * b2),
+                y: Some(a3 * b1 - a1 * b3),
+                z: Some(a1 * b2 - a2 * b1),
+            })
+        } else {
+            None
         }
     }
-    pub fn norm_squared(&self) -> f64 {
-        let (a1, a2, a3) = self.as_tuple();
-        a1 * a1 + a2 * a2 + a3 * a3
+    pub fn norm_squared(&self) -> Option<f64> {
+        if let Some((a1, a2, a3)) = self.as_tuple() {
+            Some(a1 * a1 + a2 * a2 + a3 * a3)
+        } else {
+            None
+        }
     }
 }
 impl Sub for &Vector {
-    type Output = Vector;
+    type Output = Option<Vector>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let (a1, a2, a3) = self.as_tuple();
-        let (b1, b2, b3) = rhs.as_tuple();
-        Vector {
-            x: Some(a1 - b1),
-            y: Some(a2 - b2),
-            z: Some(a3 - b3),
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), rhs.as_tuple()) {
+            Some(Vector {
+                x: Some(a1 - b1),
+                y: Some(a2 - b2),
+                z: Some(a3 - b3),
+            })
+        } else {
+            None
         }
     }
 }
 impl Add for &Vector {
-    type Output = Vector;
+    type Output = Option<Vector>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let (a1, a2, a3) = self.as_tuple();
-        let (b1, b2, b3) = rhs.as_tuple();
-        Vector {
-            x: Some(a1 + b1),
-            y: Some(a2 + b2),
-            z: Some(a3 + b3),
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), rhs.as_tuple()) {
+            Some(Vector {
+                x: Some(a1 + b1),
+                y: Some(a2 + b2),
+                z: Some(a3 + b3),
+            })
+        } else {
+            None
         }
     }
 }
 impl AddAssign<&Vector> for &mut Vector {
     fn add_assign(&mut self, other: &Vector) {
-        let (a1, a2, a3) = self.as_tuple();
-        let (b1, b2, b3) = other.as_tuple();
-        **self = Vector {
-            x: Some(a1 + b1),
-            y: Some(a2 + b2),
-            z: Some(a3 + b3),
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), other.as_tuple()) {
+            **self = Vector {
+                x: Some(a1 + b1),
+                y: Some(a2 + b2),
+                z: Some(a3 + b3),
+            }
         }
     }
 }
 impl Div<f64> for Vector {
-    type Output = Self;
+    type Output = Option<Self>;
 
     fn div(self, rhs: f64) -> Self::Output {
-        let (a1, a2, a3) = self.as_tuple();
-        Vector {
-            x: Some(a1 / rhs),
-            y: Some(a2 / rhs),
-            z: Some(a3 / rhs),
+        if let Some((a1, a2, a3)) = self.as_tuple() {
+            Some(Vector {
+                x: Some(a1 / rhs),
+                y: Some(a2 / rhs),
+                z: Some(a3 / rhs),
+            })
+        } else {
+            None
         }
     }
 }
 impl fmt::Display for Vector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (a1, a2, a3) = self.as_tuple();
-        write!(f, "[{:6.3},{:6.3},{:6.3}]", a1, a2, a3)
+        write!(f, "[{:6.3?},{:6.3?},{:6.3?}]", self.x, self.y, self.z)
     }
 }
 impl From<[f64; 3]> for Vector {
@@ -256,7 +264,9 @@ impl Exertion {
         }
     }
     pub fn into_local(&mut self, node: &Vector) -> &mut Self {
-        self.moment = &self.moment - &node.cross(&self.force);
+        if let Some(v) = node.cross(&self.force) {
+            self.moment = (&self.moment - &v).unwrap();
+        }
         self
     }
 }
@@ -265,6 +275,7 @@ pub struct Monitors {
     pub time: Vec<f64>,
     pub heat_transfer_coefficients: BTreeMap<String, Vec<f64>>,
     pub forces_and_moments: BTreeMap<String, Vec<Exertion>>,
+    pub total_forces_and_moments: Vec<Exertion>,
 }
 impl Monitors {
     pub fn len(&self) -> usize {
@@ -281,7 +292,7 @@ impl Monitors {
         }
         self
     }
-    pub fn summary(&self) {
+    pub fn summary(&mut self) {
         let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
         let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
         let minmax = |x| (min_value(x), max_value(x));
@@ -336,17 +347,17 @@ impl Monitors {
                         (fa, ma)
                     },
                 );
-            let total_force_magnitude: Result<Vec<f64>, String> =
-                total_force.into_iter().map(|x| x.magnitude()).collect();
-            let total_moment_magnitude: Result<Vec<f64>, String> =
-                total_moment.into_iter().map(|x| x.magnitude()).collect();
+            let total_force_magnitude: Option<Vec<f64>> =
+                total_force.iter().map(|x| x.magnitude()).collect();
+            let total_moment_magnitude: Option<Vec<f64>> =
+                total_moment.iter().map(|x| x.magnitude()).collect();
             println!(" - Forces magnitude [N]:");
             println!(
                 "    {:^16}: ({:^12}, {:^12})  ({:^12}, {:^12})",
                 "ELEMENT", "MEAN", "STD", "MIN", "MAX"
             );
             self.forces_and_moments.iter().for_each(|(key, value)| {
-                let force_magnitude: Result<Vec<f64>, String> =
+                let force_magnitude: Option<Vec<f64>> =
                     value.iter().map(|e| e.force.magnitude()).collect();
                 Self::display(key, force_magnitude);
             });
@@ -357,14 +368,19 @@ impl Monitors {
                 "ELEMENT", "MEAN", "STD", "MIN", "MAX"
             );
             self.forces_and_moments.iter().for_each(|(key, value)| {
-                let moment_magnitude: Result<Vec<f64>, String> =
+                let moment_magnitude: Option<Vec<f64>> =
                     value.iter().map(|e| e.moment.magnitude()).collect();
                 Self::display(key, moment_magnitude);
             });
             Self::display("TOTAL", total_moment_magnitude);
+            self.total_forces_and_moments = total_force
+                .into_iter()
+                .zip(total_moment.into_iter())
+                .map(|(force, moment)| Exertion { force, moment })
+                .collect();
         }
     }
-    pub fn display(key: &str, data: Result<Vec<f64>, String>) {
+    pub fn display(key: &str, data: Option<Vec<f64>>) {
         let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
         let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
         let stats = |x: &[f64]| {
@@ -374,7 +390,7 @@ impl Monitors {
             (mean, std)
         };
         match data {
-            Ok(value) => {
+            Some(value) => {
                 let data_min = min_value(&value);
                 let data_max = max_value(&value);
                 println!(
@@ -384,7 +400,7 @@ impl Monitors {
                     (data_min, data_max)
                 );
             }
-            Err(err) => println!("  - {:16}: {}", key, err),
+            None => println!("  - {:16}: {:?}", key, None::<f64>),
         }
     }
     pub fn to_csv(&self, filename: String) -> Result<Vec<()>, csv::Error> {
@@ -528,9 +544,20 @@ impl Monitors {
             return;
         }
 
-        let max_value =
-            |x: &[f64]| -> f64 { x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max) };
-        let min_value = |x: &[f64]| -> f64 { x.iter().cloned().fold(std::f64::INFINITY, f64::min) };
+        let max_value = |x: &[f64]| -> f64 {
+            x.iter()
+                .cloned()
+                .rev()
+                .take(400 * 20)
+                .fold(std::f64::NEG_INFINITY, f64::max)
+        };
+        let min_value = |x: &[f64]| -> f64 {
+            x.iter()
+                .cloned()
+                .rev()
+                .take(400 * 20)
+                .fold(std::f64::INFINITY, f64::min)
+        };
 
         let plot = SVGBackend::new("FORCE.svg", (768, 512)).into_drawing_area();
         plot.fill(&WHITE).unwrap();
@@ -539,7 +566,7 @@ impl Monitors {
             .forces_and_moments
             .values()
             .map(|values| {
-                let force_magnitude: Result<Vec<f64>, String> =
+                let force_magnitude: Option<Vec<f64>> =
                     values.iter().map(|e| e.force.magnitude()).collect();
                 (
                     min_value(force_magnitude.as_ref().unwrap()),
@@ -548,13 +575,15 @@ impl Monitors {
             })
             .unzip();
         let xrange = *self.time.last().unwrap() - self.time[0];
+        let minmax_padding = 0.1;
         let mut chart = ChartBuilder::on(&plot)
             .set_label_area_size(LabelAreaPosition::Left, 60)
             .set_label_area_size(LabelAreaPosition::Bottom, 40)
             .margin(10)
             .build_cartesian_2d(
                 -xrange * 1e-2..xrange * (1. + 1e-2),
-                min_value(&min_values)..max_value(&max_values),
+                min_value(&min_values) * (1. - minmax_padding)
+                    ..max_value(&max_values) * (1. + minmax_padding),
             )
             .unwrap();
         chart
@@ -605,7 +634,7 @@ impl Monitors {
             .forces_and_moments
             .values()
             .map(|values| {
-                let force_magnitude: Result<Vec<f64>, String> =
+                let force_magnitude: Option<Vec<f64>> =
                     values.iter().map(|e| e.moment.magnitude()).collect();
                 (
                     min_value(force_magnitude.as_ref().unwrap()),
@@ -822,6 +851,75 @@ impl MonitorsLoader {
         }
         Ok(monitors)
     }
+}
+
+pub fn plot_monitor(time: &[f64], monitor: &[Exertion], key: &str) {
+    let max_value = |x: &[f64]| -> f64 {
+        x.iter()
+            .cloned()
+            .rev()
+            .take(400 * 20)
+            .fold(std::f64::NEG_INFINITY, f64::max)
+    };
+    let min_value = |x: &[f64]| -> f64 {
+        x.iter()
+            .cloned()
+            .rev()
+            .take(400 * 20)
+            .fold(std::f64::INFINITY, f64::min)
+    };
+
+    let plot = SVGBackend::new("TOTAL_FORCE.svg", (768, 512)).into_drawing_area();
+    plot.fill(&WHITE).unwrap();
+
+    let (min_value, max_value) = {
+        let force_magnitude: Option<Vec<f64>> =
+            monitor.iter().map(|e| e.force.magnitude()).collect();
+        (
+            min_value(force_magnitude.as_ref().unwrap()),
+            max_value(force_magnitude.as_ref().unwrap()),
+        )
+    };
+    let xrange = time.last().unwrap() - time[0];
+    let minmax_padding = 0.1;
+    let mut chart = ChartBuilder::on(&plot)
+        .set_label_area_size(LabelAreaPosition::Left, 60)
+        .set_label_area_size(LabelAreaPosition::Bottom, 40)
+        .margin(10)
+        .build_cartesian_2d(
+            -xrange * 1e-2..xrange * (1. + 1e-2),
+            min_value * (1. - minmax_padding)..max_value * (1. + minmax_padding),
+        )
+        .unwrap();
+    chart
+        .configure_mesh()
+        .x_desc("Time [s]")
+        .y_desc("Force [N]")
+        .draw()
+        .unwrap();
+
+    let mut colors = colorous::TABLEAU10.iter().cycle();
+
+    let color = colors.next().unwrap();
+    let rgb = RGBColor(color.r, color.g, color.b);
+    chart
+        .draw_series(LineSeries::new(
+            time.iter()
+                .zip(monitor.iter())
+                .map(|(&x, y)| (x - time[0], y.force.magnitude().unwrap())),
+            &rgb,
+        ))
+        .unwrap()
+        .label(key)
+        .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &rgb));
+
+    chart
+        .configure_series_labels()
+        .border_style(&BLACK)
+        .background_style(&WHITE.mix(0.8))
+        .position(SeriesLabelPosition::UpperRight)
+        .draw()
+        .unwrap();
 }
 
 /*
