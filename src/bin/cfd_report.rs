@@ -1,15 +1,32 @@
 use chrono::Local;
 use std::{error::Error, fmt, fs::File, io::Write, path::Path};
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 use tectonic;
 
-#[derive(Clone)]
+#[derive(EnumIter, Clone)]
 pub enum ZenithAngle {
     Zero,
     Thirty,
     Sixty,
 }
+impl ZenithAngle {
+    pub fn chapter_title(&self) -> String {
+        let z: f64 = self.into();
+        format!("Zenith angle: {} degree", z)
+    }
+}
 impl From<ZenithAngle> for f64 {
     fn from(zen: ZenithAngle) -> Self {
+        match zen {
+            ZenithAngle::Zero => 0f64,
+            ZenithAngle::Thirty => 30f64,
+            ZenithAngle::Sixty => 60f64,
+        }
+    }
+}
+impl From<&ZenithAngle> for f64 {
+    fn from(zen: &ZenithAngle) -> Self {
         match zen {
             ZenithAngle::Zero => 0f64,
             ZenithAngle::Thirty => 30f64,
@@ -26,7 +43,7 @@ impl fmt::Display for ZenithAngle {
         }
     }
 }
-#[derive(Clone)]
+#[derive(EnumIter, Clone)]
 pub enum Azimuth {
     Zero,
     FortyFive,
@@ -58,6 +75,7 @@ impl fmt::Display for Azimuth {
         }
     }
 }
+#[derive(Clone)]
 pub enum Enclosure {
     OpenStowed,
     ClosedDeployed,
@@ -81,6 +99,7 @@ impl fmt::Display for Enclosure {
         }
     }
 }
+#[derive(Clone)]
 pub enum WindSpeed {
     Two,
     Seven,
@@ -142,7 +161,51 @@ impl fmt::Display for CfdCase {
     }
 }
 fn main() -> Result<(), Box<dyn Error>> {
-    //    let data_path = Path::new(data);
+    let mut zenith_chapters = vec![];
+    for zenith_angle in ZenithAngle::iter() {
+        let configs = match zenith_angle {
+            ZenithAngle::Sixty => vec![
+                (WindSpeed::Two, Enclosure::OpenStowed),
+                (WindSpeed::Seven, Enclosure::OpenStowed),
+                (WindSpeed::Seven, Enclosure::ClosedStowed),
+                (WindSpeed::Twelve, Enclosure::ClosedStowed),
+                (WindSpeed::Seventeen, Enclosure::ClosedStowed),
+            ],
+            _ => vec![
+                (WindSpeed::Two, Enclosure::OpenStowed),
+                (WindSpeed::Seven, Enclosure::OpenStowed),
+                (WindSpeed::Seven, Enclosure::ClosedDeployed),
+                (WindSpeed::Twelve, Enclosure::ClosedDeployed),
+                (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
+            ],
+        };
+
+        zenith_chapters.push(format!(
+            r#"
+\chapter{{{}}}
+"#,
+            zenith_angle.chapter_title()
+        ));
+
+        for (wind_speed, enclosure) in configs {
+            for azimuth in Azimuth::iter() {
+                let cfd_case = CfdCase::new(
+                    zenith_angle.clone(),
+                    azimuth,
+                    enclosure.clone(),
+                    wind_speed.clone(),
+                );
+
+                zenith_chapters.push(format!(
+                    r#"
+\clearpage
+\section{{{}}}
+"#,
+                    cfd_case.to_pretty_string()
+                ));
+            }
+        }
+    }
 
     let cfd_case = CfdCase::new(
         ZenithAngle::Thirty,
@@ -167,7 +230,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let latex = format!(
         r#"
-\documentclass{{article}}
+\documentclass{{report}}
 \usepackage{{graphicx}}
 \addtolength{{\textwidth}}{{3cm}}
 \addtolength{{\headheight}}{{5mm}}
@@ -182,9 +245,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 \listoffigures
 \listoftables
 {}
+{}
 \end{{document}}
 "#,
         &Local::now().to_rfc2822(),
+        zenith_chapters.join("\n"),
         total_forces
     );
     println!("{:}", latex);
