@@ -18,7 +18,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|arg| {
             let mut monitors = MonitorsLoader::default()
                 .data_path(arg.clone())
-                .exclude_filter(xmon)
+                .header_filter("M1cov|T|M2".to_string())
+                //.exclude_filter(xmon)
                 .load()
                 .unwrap();
             monitors.total_exertion();

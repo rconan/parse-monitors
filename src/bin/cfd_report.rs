@@ -220,6 +220,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let latex = format!(
         r#"
 \documentclass{{report}}
+\usepackage[colorlinks=true,linkcolor=blue]{{hyperref}}
 \usepackage{{graphicx}}
 \addtolength{{\textwidth}}{{3cm}}
 \addtolength{{\headheight}}{{5mm}}
