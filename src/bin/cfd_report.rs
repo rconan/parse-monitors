@@ -203,30 +203,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 "#,
                     cfd_case.to_pretty_string()
                 ));
+
+                let data_path = Path::new("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/")
+                    .join(&cfd_case.to_string())
+                    .join("TOTAL_FORCES.png");
+                zenith_chapters.push(format!(
+                    r#"
+\includegraphics[width=\textwidth]{{{:?}}}
+"#,
+                    data_path
+                ));
             }
         }
     }
-
-    let cfd_case = CfdCase::new(
-        ZenithAngle::Thirty,
-        Azimuth::Zero,
-        Enclosure::OpenStowed,
-        WindSpeed::Seven,
-    );
-    let data_path = Path::new("data")
-        .join(&cfd_case.to_string())
-        .join("TOTAL_FORCES.png");
-    println!("{:?}", data_path);
-    let total_forces = format!(
-        r#"
-\clearpage
-\section{{{}}}
-\includegraphics[width=\textwidth]{{{:?}}}
-"#,
-        cfd_case.to_pretty_string(),
-        data_path
-    );
-    println!("{:}", total_forces);
 
     let latex = format!(
         r#"
@@ -245,17 +234,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 \listoffigures
 \listoftables
 {}
-{}
 \end{{document}}
 "#,
         &Local::now().to_rfc2822(),
         zenith_chapters.join("\n"),
-        total_forces
     );
-    println!("{:}", latex);
 
     let pdf_data: Vec<u8> = tectonic::latex_to_pdf(latex).expect("processing failed");
-    println!("Output PDF size is {} bytes", pdf_data.len());
     let mut doc = File::create("report/gmto.cfd2021.pdf")?;
     doc.write_all(&pdf_data)?;
 
