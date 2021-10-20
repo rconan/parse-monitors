@@ -1,4 +1,4 @@
-use parse_monitors::{plot_monitor, MonitorsLoader};
+use parse_monitors::MonitorsLoader;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

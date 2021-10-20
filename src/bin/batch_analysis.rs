@@ -1,11 +1,11 @@
 use glob::glob;
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
+use indicatif::{ParallelProgressIterator, ProgressBar};
 use parse_monitors::{plot_monitor, MonitorsLoader};
 use rayon::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    let xmon = "floor|shutter|screen|enclosure";
+    //    let xmon = "floor|shutter|screen|enclosure";
     let data_paths: Vec<String> = glob("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/zen*")?
         .map(|p| p.unwrap().to_str().unwrap().to_string())
         .collect();
