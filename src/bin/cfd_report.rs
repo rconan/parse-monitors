@@ -1,6 +1,6 @@
 use chrono::Local;
 use parse_monitors::cfd::*;
-use std::{error::Error, fs::File, io::Write, iter::once};
+use std::{error::Error, fs::File, io::Write};
 use strum::IntoEnumIterator;
 use tectonic;
 

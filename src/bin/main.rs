@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
     //println!("{:?}", opt);
 
-    let mut loader = MonitorsLoader::default();
+    let mut loader = MonitorsLoader::<2021>::default();
     if let Some(arg) = opt.path {
         loader = loader.data_path(arg);
     }
