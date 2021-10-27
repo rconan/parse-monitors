@@ -329,7 +329,7 @@ impl Monitors {
         windloads.time = self.time.clone();
         windloads.loads = vec![Some(Loads::OSSMirrorCovers6F(loads))];
         let mut file = File::create("windloads.pkl")?;
-        pkl::to_writer(&mut file, &windloads, true)?;
+        pkl::to_writer(&mut file, &windloads, Default::default())?;
         Ok(())
     }
     pub fn plot_htc(&self) {
