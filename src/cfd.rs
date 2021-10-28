@@ -5,7 +5,7 @@ use std::{
 use strum_macros::EnumIter;
 
 /// CFD Telescope zenith pointing angle
-#[derive(EnumIter, Clone)]
+#[derive(EnumIter, Clone, PartialEq, Debug)]
 pub enum ZenithAngle {
     Zero,
     Thirty,
@@ -45,7 +45,7 @@ impl fmt::Display for ZenithAngle {
     }
 }
 /// CFD Telescope azimuth angle (wrt. NNE wind)
-#[derive(EnumIter, Clone)]
+#[derive(EnumIter, Clone, PartialEq, Debug)]
 pub enum Azimuth {
     Zero,
     FortyFive,
@@ -78,7 +78,7 @@ impl fmt::Display for Azimuth {
     }
 }
 /// Enclosure vents and wind screen configuration combinations
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Enclosure {
     OpenStowed,
     ClosedDeployed,
@@ -103,7 +103,7 @@ impl fmt::Display for Enclosure {
     }
 }
 /// CFD wind speed
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum WindSpeed {
     Two,
     Seven,
@@ -124,6 +124,7 @@ impl fmt::Display for WindSpeed {
     }
 }
 /// CFD case for a given year: 2020 or 2021
+#[derive(Clone, Debug)]
 pub struct CfdCase<const YEAR: u32> {
     pub zenith: ZenithAngle,
     pub azimuth: Azimuth,
@@ -184,60 +185,20 @@ pub struct Baseline<const YEAR: u32>(Vec<CfdCase<YEAR>>);
 use strum::IntoEnumIterator;
 impl Default for Baseline<2020> {
     fn default() -> Self {
-        let mut cfd_cases = vec![];
-        for zenith_angle in ZenithAngle::iter() {
-            let configs = vec![
-                (WindSpeed::Two, Enclosure::OpenStowed),
-                (WindSpeed::Seven, Enclosure::OpenStowed),
-                (WindSpeed::Twelve, Enclosure::ClosedDeployed),
-                (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
-            ];
-            for (wind_speed, enclosure) in configs {
-                for azimuth in Azimuth::iter() {
-                    cfd_cases.push(CfdCase::<2020>::new(
-                        zenith_angle.clone(),
-                        azimuth,
-                        enclosure.clone(),
-                        wind_speed.clone(),
-                    ));
-                }
-            }
-        }
-        Self(cfd_cases)
+        Self(
+            ZenithAngle::iter()
+                .flat_map(|zenith_angle| Self::at_zenith(zenith_angle).0)
+                .collect(),
+        )
     }
 }
 impl Default for Baseline<2021> {
     fn default() -> Self {
-        let mut cfd_cases = vec![];
-        for zenith_angle in ZenithAngle::iter() {
-            let configs = match zenith_angle {
-                ZenithAngle::Sixty => vec![
-                    (WindSpeed::Two, Enclosure::OpenStowed),
-                    (WindSpeed::Seven, Enclosure::OpenStowed),
-                    (WindSpeed::Seven, Enclosure::ClosedStowed),
-                    (WindSpeed::Twelve, Enclosure::ClosedStowed),
-                    (WindSpeed::Seventeen, Enclosure::ClosedStowed),
-                ],
-                _ => vec![
-                    (WindSpeed::Two, Enclosure::OpenStowed),
-                    (WindSpeed::Seven, Enclosure::OpenStowed),
-                    (WindSpeed::Seven, Enclosure::ClosedDeployed),
-                    (WindSpeed::Twelve, Enclosure::ClosedDeployed),
-                    (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
-                ],
-            };
-            for (wind_speed, enclosure) in configs {
-                for azimuth in Azimuth::iter() {
-                    cfd_cases.push(CfdCase::<2021>::new(
-                        zenith_angle.clone(),
-                        azimuth,
-                        enclosure.clone(),
-                        wind_speed.clone(),
-                    ));
-                }
-            }
-        }
-        Self(cfd_cases)
+        Self(
+            ZenithAngle::iter()
+                .flat_map(|zenith_angle| Self::at_zenith(zenith_angle).0)
+                .collect(),
+        )
     }
 }
 impl<const YEAR: u32> IntoIterator for Baseline<YEAR> {
@@ -254,13 +215,7 @@ impl Baseline<2020> {
     }
     pub fn at_zenith(zenith_angle: ZenithAngle) -> Self {
         let mut cfd_cases = vec![];
-        let configs = vec![
-            (WindSpeed::Two, Enclosure::OpenStowed),
-            (WindSpeed::Seven, Enclosure::OpenStowed),
-            (WindSpeed::Twelve, Enclosure::ClosedDeployed),
-            (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
-        ];
-        for (wind_speed, enclosure) in configs {
+        for (wind_speed, enclosure) in Self::configuration(zenith_angle.clone()) {
             for azimuth in Azimuth::iter() {
                 cfd_cases.push(CfdCase::<2020>::new(
                     zenith_angle.clone(),
@@ -272,6 +227,23 @@ impl Baseline<2020> {
         }
         Self(cfd_cases)
     }
+    fn configuration(_: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
+        vec![
+            (WindSpeed::Two, Enclosure::OpenStowed),
+            (WindSpeed::Seven, Enclosure::OpenStowed),
+            (WindSpeed::Twelve, Enclosure::ClosedDeployed),
+            (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
+        ]
+    }
+    /// Finds the CFD 2020 case that matches a CFD 2021 case
+    pub fn find(cfd_case_21: CfdCase<2021>) -> Option<CfdCase<2020>> {
+        Self::default().into_iter().find(|cfd_case_20| {
+            cfd_case_20.zenith == cfd_case_21.zenith
+                && cfd_case_20.azimuth == cfd_case_21.azimuth
+                && cfd_case_20.wind_speed == cfd_case_21.wind_speed
+                && cfd_case_20.enclosure == cfd_case_21.enclosure
+        })
+    }
 }
 impl Baseline<2021> {
     pub fn path() -> PathBuf {
@@ -279,7 +251,20 @@ impl Baseline<2021> {
     }
     pub fn at_zenith(zenith_angle: ZenithAngle) -> Self {
         let mut cfd_cases = vec![];
-        let configs = match zenith_angle {
+        for (wind_speed, enclosure) in Self::configuration(zenith_angle.clone()) {
+            for azimuth in Azimuth::iter() {
+                cfd_cases.push(CfdCase::<2021>::new(
+                    zenith_angle.clone(),
+                    azimuth,
+                    enclosure.clone(),
+                    wind_speed.clone(),
+                ));
+            }
+        }
+        Self(cfd_cases)
+    }
+    fn configuration(zenith_angle: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
+        match zenith_angle {
             ZenithAngle::Sixty => vec![
                 (WindSpeed::Two, Enclosure::OpenStowed),
                 (WindSpeed::Seven, Enclosure::OpenStowed),
@@ -294,17 +279,6 @@ impl Baseline<2021> {
                 (WindSpeed::Twelve, Enclosure::ClosedDeployed),
                 (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
             ],
-        };
-        for (wind_speed, enclosure) in configs {
-            for azimuth in Azimuth::iter() {
-                cfd_cases.push(CfdCase::<2021>::new(
-                    zenith_angle.clone(),
-                    azimuth,
-                    enclosure.clone(),
-                    wind_speed.clone(),
-                ));
-            }
         }
-        Self(cfd_cases)
     }
 }

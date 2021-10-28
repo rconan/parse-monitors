@@ -4,7 +4,7 @@ use std::{error::Error, fs::File, io::Write};
 use strum::IntoEnumIterator;
 use tectonic;
 
-const CFD_YEAR: u32 = 2020;
+const CFD_YEAR: u32 = 2021;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut zenith_chapters = vec![];

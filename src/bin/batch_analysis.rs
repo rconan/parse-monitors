@@ -3,11 +3,11 @@ use parse_monitors::{cfd::Baseline, plot_monitor, MonitorsLoader};
 use rayon::prelude::*;
 use std::path::Path;
 
-const CFD_YEAR: u32 = 2020;
+const CFD_YEAR: u32 = 2021;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    //    let xmon = "floor|shutter|screen|enclosure";
+    let xmon = "floor|shutter|screen|enclosure";
     let cfd_root = match CFD_YEAR {
         2020_u32 => Path::new("/fsx/Baseline2020"),
         2021_u32 => Path::new("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES"),
@@ -32,8 +32,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|arg| {
             let mut monitors = MonitorsLoader::<CFD_YEAR>::default()
                 .data_path(arg.clone())
-                .header_filter("M1cov|T|M2".to_string())
-                //.exclude_filter(xmon)
+                //.header_filter("M1cov|T|M2".to_string())
+                .exclude_filter(xmon)
                 .load()
                 .unwrap();
             monitors.total_exertion();
