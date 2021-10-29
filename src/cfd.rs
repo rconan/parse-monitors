@@ -53,8 +53,26 @@ pub enum Azimuth {
     OneThirtyFive,
     OneEighty,
 }
+impl Azimuth {
+    pub fn sin_cos(&self) -> (f64, f64) {
+        let v: f64 = self.into();
+        v.to_radians().sin_cos()
+    }
+}
 impl From<Azimuth> for f64 {
     fn from(azi: Azimuth) -> Self {
+        use Azimuth::*;
+        match azi {
+            Zero => 0f64,
+            FortyFive => 45f64,
+            Ninety => 90f64,
+            OneThirtyFive => 135f64,
+            OneEighty => 180f64,
+        }
+    }
+}
+impl From<&Azimuth> for f64 {
+    fn from(azi: &Azimuth) -> Self {
         use Azimuth::*;
         match azi {
             Zero => 0f64,
@@ -103,7 +121,7 @@ impl fmt::Display for Enclosure {
     }
 }
 /// CFD wind speed
-#[derive(Clone, PartialEq, Debug)]
+#[derive(EnumIter, PartialEq, Clone, Debug)]
 pub enum WindSpeed {
     Two,
     Seven,
@@ -154,6 +172,17 @@ impl<const YEAR: u32> CfdCase<YEAR> {
             a,
             self.enclosure.to_pretty_string(),
             self.wind_speed,
+        )
+    }
+    pub fn to_latex_string(&self) -> String {
+        let z: f64 = self.zenith.clone().into();
+        let a: f64 = self.azimuth.clone().into();
+        format!(
+            "{:3} & {:3} & {} & {:>2}",
+            z,
+            a,
+            self.enclosure.to_string().to_lowercase(),
+            self.wind_speed.to_string(),
         )
     }
 }
@@ -227,7 +256,7 @@ impl Baseline<2020> {
         }
         Self(cfd_cases)
     }
-    fn configuration(_: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
+    pub fn configuration(_: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
         vec![
             (WindSpeed::Two, Enclosure::OpenStowed),
             (WindSpeed::Seven, Enclosure::OpenStowed),
@@ -273,7 +302,7 @@ impl Baseline<2021> {
         }
         Self(cfd_cases)
     }
-    fn configuration(zenith_angle: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
+    pub fn configuration(zenith_angle: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
         match zenith_angle {
             ZenithAngle::Sixty => vec![
                 (WindSpeed::Two, Enclosure::OpenStowed),

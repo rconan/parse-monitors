@@ -53,8 +53,16 @@ impl DomeSeeing {
         let mut file = File::open(Path::new(&path).join("domeseeing_PSSN.rs.pkl"))?;
         Ok(Self(pickle::from_reader(&mut file, Default::default())?))
     }
+    /// Reurns the number of sample
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    /// Returns an iterator over the wavefront error RMS  [m]
+    pub fn wfe_rms(&self) -> impl Iterator<Item = f64> + '_ {
+        self.iter().map(|ds| ds.wfe_rms[0])
+    }
     /// Returns the time vector and the wavefront error RMS [m]
-    pub fn wfe_rms(&self) -> (Vec<f64>, Vec<f64>) {
+    pub fn wfe_rms_series(&self) -> (Vec<f64>, Vec<f64>) {
         self.iter().map(|ds| (ds.time, ds.wfe_rms[0])).unzip()
     }
     pub fn wfe_rms_iter(&self) -> impl IntoIterator<Item = (f64, Vec<f64>)> + '_ {
