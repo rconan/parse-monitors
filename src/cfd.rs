@@ -238,10 +238,20 @@ impl Baseline<2020> {
     /// Finds the CFD 2020 case that matches a CFD 2021 case
     pub fn find(cfd_case_21: CfdCase<2021>) -> Option<CfdCase<2020>> {
         Self::default().into_iter().find(|cfd_case_20| {
-            cfd_case_20.zenith == cfd_case_21.zenith
-                && cfd_case_20.azimuth == cfd_case_21.azimuth
-                && cfd_case_20.wind_speed == cfd_case_21.wind_speed
-                && cfd_case_20.enclosure == cfd_case_21.enclosure
+            match (cfd_case_21.zenith.clone(), cfd_case_21.wind_speed.clone()) {
+                (ZenithAngle::Sixty, WindSpeed::Twelve | WindSpeed::Seventeen) => {
+                    cfd_case_20.zenith == cfd_case_21.zenith
+                        && cfd_case_20.azimuth == cfd_case_21.azimuth
+                        && cfd_case_20.wind_speed == cfd_case_21.wind_speed
+                        && cfd_case_20.enclosure == Enclosure::ClosedDeployed
+                }
+                _ => {
+                    cfd_case_20.zenith == cfd_case_21.zenith
+                        && cfd_case_20.azimuth == cfd_case_21.azimuth
+                        && cfd_case_20.wind_speed == cfd_case_21.wind_speed
+                        && cfd_case_20.enclosure == cfd_case_21.enclosure
+                }
+            }
         })
     }
 }
@@ -280,5 +290,23 @@ impl Baseline<2021> {
                 (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
             ],
         }
+    }
+    pub fn extras(self) -> Self {
+        let mut cases = self.0;
+        cases.append(&mut vec![
+            CfdCase::new(
+                ZenithAngle::Thirty,
+                Azimuth::Zero,
+                Enclosure::ClosedDeployed,
+                WindSpeed::TwentyTwo,
+            ),
+            CfdCase::new(
+                ZenithAngle::Thirty,
+                Azimuth::FortyFive,
+                Enclosure::ClosedDeployed,
+                WindSpeed::TwentyTwo,
+            ),
+        ]);
+        Self(cases)
     }
 }

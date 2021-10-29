@@ -9,7 +9,7 @@ pub enum Band {
     H,
 }
 /// Dome seeing data
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Data {
     #[serde(rename = "Time")]
     pub time: f64,
@@ -57,11 +57,39 @@ impl DomeSeeing {
     pub fn wfe_rms(&self) -> (Vec<f64>, Vec<f64>) {
         self.iter().map(|ds| (ds.time, ds.wfe_rms[0])).unzip()
     }
+    pub fn wfe_rms_iter(&self) -> impl IntoIterator<Item = (f64, Vec<f64>)> + '_ {
+        self.iter()
+            .cloned()
+            .map(|ds| (ds.time, vec![ds.wfe_rms[0]]))
+    }
+    pub fn wfe_rms_iter_10e(
+        &self,
+        exponent: i32,
+    ) -> impl IntoIterator<Item = (f64, Vec<f64>)> + '_ {
+        self.iter()
+            .cloned()
+            .map(move |ds| (ds.time, vec![10f64.powi(-exponent) * ds.wfe_rms[0]]))
+    }
     /// Returns the time vector and the instantenous PSSn vector
     pub fn se_pssn(&self, band: Band) -> (Vec<f64>, Vec<f64>) {
         match band {
             Band::V => self.iter().map(|ds| (ds.time, ds.v_se_pssn)).unzip(),
             Band::H => self.iter().map(|ds| (ds.time, ds.h_se_pssn)).unzip(),
+        }
+    }
+    pub fn se_pssn_iter(&self, band: Band) -> Vec<(f64, Vec<f64>)> {
+        match band {
+            Band::V => self
+                .iter()
+                .cloned()
+                .map(|ds| (ds.time, vec![ds.v_se_pssn]))
+                .collect(),
+
+            Band::H => self
+                .iter()
+                .cloned()
+                .map(|ds| (ds.time, vec![ds.h_se_pssn]))
+                .collect(),
         }
     }
     /// Returns the time vector and the long cumulative exposure PSSn vector
@@ -75,6 +103,20 @@ impl DomeSeeing {
                 .iter()
                 .filter_map(|ds| ds.h_le_pssn.map(|x| (ds.time, x)))
                 .unzip(),
+        }
+    }
+    pub fn le_pssn_iter(&self, band: Band) -> Vec<(f64, Vec<f64>)> {
+        match band {
+            Band::V => self
+                .iter()
+                .cloned()
+                .filter_map(|ds| ds.v_le_pssn.map(|x| (ds.time, vec![x])))
+                .collect(),
+            Band::H => self
+                .iter()
+                .cloned()
+                .filter_map(|ds| ds.h_le_pssn.map(|x| (ds.time, vec![x])))
+                .collect(),
         }
     }
     /// Returns the PSSn

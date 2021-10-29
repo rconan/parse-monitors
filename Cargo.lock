@@ -300,6 +300,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "complot"
+version = "0.3.0"
+dependencies = [
+ "colorous",
+ "num-traits",
+ "plotters",
+]
+
+[[package]]
 name = "console"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1891,6 +1900,7 @@ dependencies = [
  "bzip2",
  "chrono",
  "colorous",
+ "complot",
  "csv",
  "env_logger",
  "glob",
