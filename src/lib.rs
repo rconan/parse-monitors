@@ -15,7 +15,7 @@ pub use monitors::{Exertion, Monitors};
 pub mod cfd;
 pub mod domeseeing;
 pub use domeseeing::{Band, DomeSeeing};
-pub use pressure;
+pub mod pressure;
 
 pub struct MonitorsLoader<const YEAR: u32> {
     path: String,
