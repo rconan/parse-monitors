@@ -40,12 +40,14 @@ impl Default for FemNodes {
         fem
     }
 }
+/// A force ['Vector'] and a moment ['Vector']
 #[derive(Default, Debug, Clone)]
 pub struct Exertion {
     pub force: Vector,
     pub moment: Vector,
 }
 impl Exertion {
+    /// Build from a force ['Vector']
     #[allow(dead_code)]
     pub fn from_force(force: Vector) -> Self {
         Self {
@@ -53,24 +55,28 @@ impl Exertion {
             ..Default::default()
         }
     }
+    /// Build from a force x ['Vector'] component
     pub fn from_force_x(value: f64) -> Self {
         Self {
             force: Vector::from_x(value),
             ..Default::default()
         }
     }
+    /// Build from a force y ['Vector'] component
     pub fn from_force_y(value: f64) -> Self {
         Self {
             force: Vector::from_y(value),
             ..Default::default()
         }
     }
+    /// Build from a force z ['Vector'] component
     pub fn from_force_z(value: f64) -> Self {
         Self {
             force: Vector::from_z(value),
             ..Default::default()
         }
     }
+    /// Build from a moment ['Vector']
     #[allow(dead_code)]
     pub fn from_moment(moment: Vector) -> Self {
         Self {
@@ -78,18 +84,21 @@ impl Exertion {
             ..Default::default()
         }
     }
+    /// Build from a moment x ['Vector'] component
     pub fn from_moment_x(value: f64) -> Self {
         Self {
             moment: Vector::from_x(value),
             ..Default::default()
         }
     }
+    /// Build from a moment y ['Vector'] component
     pub fn from_moment_y(value: f64) -> Self {
         Self {
             moment: Vector::from_y(value),
             ..Default::default()
         }
     }
+    /// Build from a moment z ['Vector'] component
     pub fn from_moment_z(value: f64) -> Self {
         Self {
             moment: Vector::from_z(value),
@@ -103,6 +112,7 @@ impl Exertion {
         self
     }
 }
+/// Gather all the monitors of a CFD run
 #[derive(Default, Debug)]
 pub struct Monitors {
     pub time: Vec<f64>,
@@ -125,6 +135,175 @@ impl Monitors {
         }
         self
     }
+    /// Return a latex table with HTC monitors summary
+    pub fn htc_latex_table(&self, stats_duration: f64) -> Option<String> {
+        let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
+        let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
+        let minmax = |x: &[f64]| (min_value(x), max_value(x));
+        let stats = |x: &[f64]| {
+            let n = x.len() as f64;
+            let mean = x.iter().sum::<f64>() / n;
+            let std = (x.iter().map(|x| x - mean).fold(0f64, |s, x| s + x * x) / n).sqrt();
+            (mean, std)
+        };
+        if self.heat_transfer_coefficients.is_empty() {
+            None
+        } else {
+            let duration = self.time.last().unwrap();
+            let time_filter: Vec<_> = self
+                .time
+                .iter()
+                .map(|t| t - duration + stats_duration >= 0f64)
+                .collect();
+            let data: Vec<_> = self
+                .heat_transfer_coefficients
+                .iter()
+                .map(|(key, value)| {
+                    let time_filtered_value: Vec<_> = value
+                        .iter()
+                        .zip(time_filter.iter())
+                        .filter(|(_, t)| **t)
+                        .map(|(v, _)| *v)
+                        .collect();
+                    let (mean, std) = stats(&time_filtered_value);
+                    let (min, max) = minmax(&time_filtered_value);
+                    format!(
+                        " {:} & {:.3} & {:.3} & {:.3} & {:.3} \\\\",
+                        key, mean, std, min, max
+                    )
+                })
+                .collect();
+            Some(format!(
+                r#"
+\begin{{tabular}}{{crrrr}}\toprule
+ ELEMENT & MEAN & STD & MIN & MAX \\
+{}
+\bottomrule
+\end{{tabular}}
+"#,
+                data.join("\n")
+            ))
+        }
+    }
+    /// Return a latex table with force monitors summary
+    pub fn force_latex_table(&self, stats_duration: f64) -> Option<String> {
+        let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
+        let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
+        let minmax = |x: &[f64]| (min_value(x), max_value(x));
+        let stats = |x: &[f64]| {
+            let n = x.len() as f64;
+            let mean = x.iter().sum::<f64>() / n;
+            let std = (x.iter().map(|x| x - mean).fold(0f64, |s, x| s + x * x) / n).sqrt();
+            (mean, std)
+        };
+        if self.forces_and_moments.is_empty() {
+            None
+        } else {
+            let duration = self.time.last().unwrap();
+            let time_filter: Vec<_> = self
+                .time
+                .iter()
+                .map(|t| t - duration + stats_duration >= 0f64)
+                .collect();
+            let data: Vec<_> = self
+                .forces_and_moments
+                .iter()
+                .map(|(key, value)| {
+                    let force_magnitude: Option<Vec<f64>> = value
+                        .iter()
+                        .zip(time_filter.iter())
+                        .filter(|(_, t)| **t)
+                        .map(|(e, _)| e.force.magnitude())
+                        .collect();
+                    match force_magnitude {
+                        Some(ref value) => {
+                            let (mean, std) = stats(value);
+                            let (min, max) = minmax(value);
+                            format!(
+                                " {:} & {:.3} & {:.3} & {:.3} & {:.3} \\\\",
+                                key.replace("_", " "),
+                                mean,
+                                std,
+                                min,
+                                max
+                            )
+                        }
+                        None => format!(" {:} \\\\", key.replace("_", " ")),
+                    }
+                })
+                .collect();
+            Some(format!(
+                r#"
+\begin{{longtable}}{{crrrr}}\toprule
+ ELEMENT & MEAN & STD & MIN & MAX \\
+{}
+\bottomrule
+\end{{longtable}}
+"#,
+                data.join("\n")
+            ))
+        }
+    }
+    /// Return a latex table with moment monitors summary
+    pub fn moment_latex_table(&self, stats_duration: f64) -> Option<String> {
+        let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
+        let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
+        let minmax = |x: &[f64]| (min_value(x), max_value(x));
+        let stats = |x: &[f64]| {
+            let n = x.len() as f64;
+            let mean = x.iter().sum::<f64>() / n;
+            let std = (x.iter().map(|x| x - mean).fold(0f64, |s, x| s + x * x) / n).sqrt();
+            (mean, std)
+        };
+        if self.forces_and_moments.is_empty() {
+            None
+        } else {
+            let duration = self.time.last().unwrap();
+            let time_filter: Vec<_> = self
+                .time
+                .iter()
+                .map(|t| t - duration + stats_duration >= 0f64)
+                .collect();
+            let data: Vec<_> = self
+                .forces_and_moments
+                .iter()
+                .map(|(key, value)| {
+                    let moment_magnitude: Option<Vec<f64>> = value
+                        .iter()
+                        .zip(time_filter.iter())
+                        .filter(|(_, t)| **t)
+                        .map(|(e, _)| e.moment.magnitude())
+                        .collect();
+                    match moment_magnitude {
+                        Some(ref value) => {
+                            let (mean, std) = stats(value);
+                            let (min, max) = minmax(value);
+                            format!(
+                                " {:} & {:.3} & {:.3} & {:.3} & {:.3} \\\\",
+                                key.replace("_", " "),
+                                mean,
+                                std,
+                                min,
+                                max
+                            )
+                        }
+                        None => format!(" {:} \\\\", key.replace("_", " ")),
+                    }
+                })
+                .collect();
+            Some(format!(
+                r#"
+\begin{{longtable}}{{crrrr}}\toprule
+ ELEMENT & MEAN & STD & MIN & MAX \\
+{}
+\bottomrule
+\end{{longtable}}
+"#,
+                data.join("\n")
+            ))
+        }
+    }
+    /// Print out a monitors summary
     pub fn summary(&mut self) {
         let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
         let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);

@@ -1,3 +1,5 @@
+use std::f64::consts;
+
 use colorous;
 use parse_monitors::{cfd, Band, DomeSeeing};
 use plotters::prelude::*;
@@ -51,13 +53,24 @@ fn main() {
         .set_label_area_size(LabelAreaPosition::Left, 50)
         .set_label_area_size(LabelAreaPosition::Bottom, 50)
         .margin(10)
-        .build_cartesian_2d(-2000f64..2000f64, 0f64..2000f64)
+        .build_cartesian_2d(-2000f64..2000f64, -100f64..2000f64)
         .unwrap();
     chart
         .configure_mesh()
         .x_desc("WFE RMS [nm]")
         .draw()
         .unwrap();
+
+    let max_radius = 1800f64;
+    for k in 0..5 {
+        let (s, c) = (k as f64 * consts::FRAC_PI_4).sin_cos();
+        chart
+            .draw_series(LineSeries::new(
+                (0..2).map(|x| (x as f64 * max_radius * c, x as f64 * max_radius * s)),
+                &BLACK,
+            ))
+            .unwrap();
+    }
 
     let mut colors = colorous::TABLEAU10.iter().cycle();
     for (k, (this_data, label)) in data.into_iter().zip(labels.into_iter()).enumerate() {

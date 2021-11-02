@@ -16,6 +16,7 @@ pub mod cfd;
 pub mod domeseeing;
 pub use domeseeing::{Band, DomeSeeing};
 pub mod pressure;
+pub mod report;
 
 pub struct MonitorsLoader<const YEAR: u32> {
     path: String,
