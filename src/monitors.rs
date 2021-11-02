@@ -638,6 +638,7 @@ impl Monitors {
                     self.time
                         .iter()
                         .zip(values.iter())
+                        .skip(10 * 20)
                         .map(|(&x, y)| (x - self.time[0], y.force.magnitude().unwrap())),
                     &rgb,
                 ))
