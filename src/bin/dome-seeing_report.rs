@@ -43,7 +43,7 @@ fn main() {
             })
             .collect();
         data.push(wind_data);
-        labels.push(format!("{:?} {:?}", enclosure, wind));
+        labels.push(format!("{:?} {:?} m/s", enclosure, wind));
     }
 
     let filename = "wfe_rms_wind-rose.png";
@@ -67,6 +67,21 @@ fn main() {
         chart
             .draw_series(LineSeries::new(
                 (0..2).map(|x| (x as f64 * max_radius * c, x as f64 * max_radius * s)),
+                &BLACK,
+            ))
+            .unwrap();
+    }
+    let dd = 20f64;
+    let dr = 500f64;
+    for k in 0..4 {
+        let radius = k as f64 * dr;
+        let n = (consts::PI * radius / dd).round() as usize;
+        chart
+            .draw_series(LineSeries::new(
+                (0..n).map(|k| {
+                    let (s, c) = (k as f64 * consts::PI / (n - 1) as f64).sin_cos();
+                    (radius * c, radius * s)
+                }),
                 &BLACK,
             ))
             .unwrap();

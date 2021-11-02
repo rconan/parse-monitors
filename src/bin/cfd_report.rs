@@ -1,5 +1,5 @@
 use chrono::Local;
-use parse_monitors::report;
+use parse_monitors::{report, report::Report};
 use std::time::Instant;
 use std::{error::Error, fs::File, io::Write};
 use tectonic;
@@ -11,8 +11,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Building the different parts of the report ...");
     //    report::dome_seeing::part()?;
     println!(" -->> HTC ...");
-    report::htc::part()?;
-    report::windloads::part()?;
+    report::HTC::new(3, 400f64).part()?;
+    println!(" -->> wind loads ...");
+    report::WindLoads::new(2, 400f64).part()?;
     println!(" ... report parts build in {}s", now.elapsed().as_secs());
 
     let latex = format!(

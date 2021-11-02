@@ -176,7 +176,7 @@ impl Monitors {
             Some(format!(
                 r#"
 \begin{{tabular}}{{crrrr}}\toprule
- ELEMENT & MEAN & STD & MIN & MAX \\
+ ELEMENT & MEAN & STD & MIN & MAX \\\hline
 {}
 \bottomrule
 \end{{tabular}}
@@ -235,7 +235,7 @@ impl Monitors {
             Some(format!(
                 r#"
 \begin{{longtable}}{{crrrr}}\toprule
- ELEMENT & MEAN & STD & MIN & MAX \\
+ ELEMENT & MEAN & STD & MIN & MAX \\\hline
 {}
 \bottomrule
 \end{{longtable}}
@@ -294,7 +294,7 @@ impl Monitors {
             Some(format!(
                 r#"
 \begin{{longtable}}{{crrrr}}\toprule
- ELEMENT & MEAN & STD & MIN & MAX \\
+ ELEMENT & MEAN & STD & MIN & MAX \\\hline
 {}
 \bottomrule
 \end{{longtable}}
