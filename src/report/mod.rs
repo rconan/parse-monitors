@@ -16,6 +16,7 @@ pub trait Report<const CFD_YEAR: u32> {
     fn chapter(&self, zenith_angle: cfd::ZenithAngle) -> Result<(), Box<dyn Error>>;
     fn part(&self) -> Result<(), Box<dyn Error>> {
         for zenith_angle in cfd::ZenithAngle::iter() {
+            println!("   - {:?}", zenith_angle);
             self.chapter(zenith_angle)?;
         }
         Ok(())

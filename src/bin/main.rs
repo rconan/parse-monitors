@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     monitors.summary();
     if opt.plot {
         monitors.plot_htc();
-        monitors.plot_forces();
+        monitors.plot_forces(None);
         monitors.plot_moments();
     }
 

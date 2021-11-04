@@ -2,18 +2,39 @@ use chrono::Local;
 use parse_monitors::{report, report::Report};
 use std::time::Instant;
 use std::{error::Error, fs::File, io::Write};
+use structopt::StructOpt;
 use tectonic;
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "CFD 2021 Census", about = "Building 2021 CFD census report")]
+struct Opt {
+    #[structopt(long)]
+    domeseeing: bool,
+    #[structopt(long)]
+    windloads: bool,
+    #[structopt(long)]
+    htc: bool,
+}
 
 const CFD_YEAR: u32 = 2021;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let opt = Opt::from_args();
+
     let now = Instant::now();
     println!("Building the different parts of the report ...");
-    //    report::dome_seeing::part()?;
-    println!(" -->> HTC ...");
-    report::HTC::new(3, 400f64).part()?;
-    println!(" -->> wind loads ...");
-    report::WindLoads::new(2, 400f64).part()?;
+    if opt.domeseeing {
+        println!(" -->> Dome seeing ...");
+        report::DomeSeeingPart::new(1, 0f64).part()?;
+    }
+    if opt.htc {
+        println!(" -->> HTC ...");
+        report::HTC::new(3, 400f64).part()?;
+    }
+    if opt.windloads {
+        println!(" -->> wind loads ...");
+        report::WindLoads::new(2, 400f64).part()?;
+    }
     println!(" ... report parts build in {}s", now.elapsed().as_secs());
 
     let latex = format!(
@@ -28,7 +49,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 \addtolength{{\evensidemargin}}{{-2cm}}
 \addtolength{{\oddsidemargin}}{{-1cm}}
 
-\title{{GMT {} Computational Fluid Dynamics Census}}
+\setcounter{{tocdepth}}{{3}}
+
+\title{{GMT Observatory {} Computational Fluid Dynamics Census}}
 \author{{R. Conan, K. Vogiatzis, H. Fitzpatrick}}
 \date{{{:?}}}
 

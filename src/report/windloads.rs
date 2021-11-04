@@ -1,4 +1,5 @@
 use crate::{cfd, MonitorsLoader};
+use glob::glob;
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
 
@@ -18,23 +19,75 @@ impl super::Report<2021> for WindLoads {
     /// Chapter section
     fn chapter_section(&self, cfd_case: cfd::CfdCase<2021>) -> Result<String, Box<dyn Error>> {
         let path_to_case = cfd::Baseline::<2021>::path().join(&cfd_case.to_string());
+        let pattern = path_to_case
+            .join("scenes")
+            .join("vort_tel_vort_tel*.png")
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let paths = glob(&pattern).expect("Failed to read glob pattern");
+        let vort_pic = paths.last().unwrap()?;
         let monitors = MonitorsLoader::<2021>::default()
-            .data_path(path_to_case)
+            .data_path(path_to_case.clone())
             .load()?;
         Ok(format!(
             r#"
 \section{{{}}}
+
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+
 \subsection{{Forces [N]}}
 {}
-\subsection{{Moments [N.M]}}
+\subsubsection{{C-Rings}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{M1 Cell}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{Lower trusses}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{Upper trusses}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{Top-end}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{M2 segments}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{M1 \& M2 baffles}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{M1 outer covers}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{M1 inner covers}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{GIR}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{Prime focus assembly arms}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{Laser launch assemblies}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+\subsubsection{{Platforms \& cable wraps}}
+\includegraphics[width=0.8\textwidth]{{{:?}}}
+
+\subsubsection{{Moments [N.M]}}
 {}
 "#,
             &cfd_case.to_pretty_string(),
+            vort_pic,
             if let Some(data) = monitors.force_latex_table(self.stats_time_range) {
                 data
             } else {
                 String::new()
             },
+            path_to_case.join("c-ring_parts.png"),
+            path_to_case.join("m1-cell.png"),
+            path_to_case.join("lower-truss.png"),
+            path_to_case.join("upper-truss.png"),
+            path_to_case.join("top-end.png"),
+            path_to_case.join("m2-segments.png"),
+            path_to_case.join("m12-baffles.png"),
+            path_to_case.join("m1-outer-covers.png"),
+            path_to_case.join("m1-inner-covers.png"),
+            path_to_case.join("gir.png"),
+            path_to_case.join("pfa-arms.png"),
+            path_to_case.join("lgs.png"),
+            path_to_case.join("platforms-cables.png"),
             if let Some(data) = monitors.moment_latex_table(self.stats_time_range) {
                 data
             } else {

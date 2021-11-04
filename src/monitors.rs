@@ -574,7 +574,7 @@ impl Monitors {
             .draw()
             .unwrap();
     }
-    pub fn plot_forces(&self) {
+    pub fn plot_forces(&self, filename: Option<&str>) {
         if self.forces_and_moments.is_empty() {
             return;
         }
@@ -594,7 +594,8 @@ impl Monitors {
                 .fold(std::f64::INFINITY, f64::min)
         };
 
-        let plot = SVGBackend::new("FORCE.svg", (768, 512)).into_drawing_area();
+        let plot =
+            BitMapBackend::new(filename.unwrap_or("FORCE.png"), (768, 512)).into_drawing_area();
         plot.fill(&WHITE).unwrap();
 
         let (min_values, max_values): (Vec<_>, Vec<_>) = self

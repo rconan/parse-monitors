@@ -27,7 +27,8 @@ strum = "0.22.0"
 strum_macros = "0.22.0"
 serde-pickle = "1.1.0"
 complot = { path = "../complot", features = ["png"]}
-geotrans = "0.1.0"
+geotrans = { path = "../geotrans" }
+#geotrans = "0.1.0"
 
 [dev-dependencies]
 rand = "0.8.4"

@@ -2,6 +2,7 @@ use crate::{
     cfd::{self, Baseline, CfdCase},
     Band, DomeSeeing,
 };
+use glob::glob;
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
 
@@ -107,10 +108,20 @@ impl super::Report<2021> for DomeSeeingPart {
     /// Chapter section
     fn chapter_section(&self, cfd_case: CfdCase<2021>) -> Result<String, Box<dyn Error>> {
         let path_to_case = Baseline::<2021>::path().join(&cfd_case.to_string());
+        let pattern = path_to_case
+            .join("scenes")
+            .join("RI_tel_RI_tel*.png")
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let paths = glob(&pattern).expect("Failed to read glob pattern");
+        let ri_pic = paths.last().unwrap()?;
         Ok(format!(
             r#"
 \clearpage
 \section{{{}}}
+
+\includegraphics[width=0.8\textwidth]{{{:?}}}
 
 \subsection{{Wavefront error RMS}}
 \includegraphics[width=0.8\textwidth]{{{:?}}}
@@ -122,6 +133,7 @@ impl super::Report<2021> for DomeSeeingPart {
 \includegraphics[width=0.8\textwidth]{{{:?}}}
 "#,
             &cfd_case.to_pretty_string(),
+            ri_pic,
             path_to_case.join("dome-seeing_wfe-rms.png"),
             path_to_case.join("dome-seeing_v-pssn.png"),
             path_to_case.join("dome-seeing_h-pssn.png"),
