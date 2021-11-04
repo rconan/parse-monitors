@@ -6,8 +6,11 @@ use std::error::Error;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::init();
+
     let paths = glob("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/zen30az000_OS7/pressures/M1p_M1p_*.csv.bz2")?;
     let files: Vec<_> = paths
+        .skip(8000)
         .take(1)
         .map(|p| p.unwrap().to_str().unwrap().to_string())
         .collect();
@@ -27,9 +30,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     */
     let now = Instant::now();
     let mut pressures = Pressure::load(&files[0]).unwrap();
+
     let segments_force = pressures.segments_force();
     println!("Elapsed time: {}ms", now.elapsed().as_millis());
+    println!("Segments force: {:?}", segments_force);
 
+    /*
     println!("x range: {:?}", pressures.x_range());
     println!("y range: {:?}", pressures.y_range());
     println!("z range: {:?}", pressures.z_range());
@@ -37,6 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Segments force: {:?}", segments_force);
     println!("Total force: {:?}", segments_force.into_iter().sum::<f64>());
     println!("Total force: {:?}", pressures.total_force());
+     */
     /*
         &pressures
             .to_local(7)
