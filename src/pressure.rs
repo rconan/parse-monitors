@@ -2,8 +2,7 @@ use std::{
     error::Error,
     fs::File,
     io::{BufReader, Read},
-    path::Path,
-    time::Instant,
+    path::PathBuf,
 };
 
 use bzip2::bufread::BzDecoder;
@@ -26,14 +25,8 @@ struct Record {
     #[serde(rename = "Z (m)")]
     z: f64,
 }
-impl Record {
-    fn xyz(&self) -> [f64; 3] {
-        [self.x, self.y, self.z]
-    }
-}
 impl PartialOrd for Record {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        //norm(&self.xyz()).partial_cmp(&norm(&other.xyz()))
         self.area.partial_cmp(&other.area)
     }
 }
@@ -53,16 +46,12 @@ struct GeometryRecord {
     z: f64,
 }
 impl GeometryRecord {
-    fn xyz(&self) -> [f64; 3] {
-        [self.x, self.y, self.z]
-    }
     fn area_ijk(&self) -> [f64; 3] {
         [self.area_i, self.area_j, self.area_k]
     }
 }
 impl PartialOrd for GeometryRecord {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        //        norm(&self.xyz()).partial_cmp(&norm(&other.xyz()))
         norm(&self.area_ijk()).partial_cmp(&norm(&other.area_ijk()))
     }
 }
@@ -80,16 +69,15 @@ pub struct Pressure {
 }
 impl Pressure {
     /// Loads the pressure data
-    pub fn load<S: Into<String> + Clone>(path: S) -> Result<Self, Box<dyn Error>> {
-        let this_pa = Self::load_pressure(path.clone())?;
-        let this_aijk = Self::load_geometry(path)?;
+    pub fn load(csv_pressure: String, csv_geometry: String) -> Result<Self, Box<dyn Error>> {
+        let this_pa = Self::load_pressure(csv_pressure)?;
+        let this_aijk = Self::load_geometry(csv_geometry)?;
         let max_diff_area = this_pa
             .area
             .iter()
             .zip(this_aijk.area_ijk.iter().map(|x| norm(x)))
             .map(|(a0, a1)| (*a0 - a1).abs())
             .fold(std::f64::NEG_INFINITY, f64::max);
-        dbg!(&max_diff_area);
         assert!(
             max_diff_area < 1e-14,
             "Area magnitude do no match area vector: {}",
@@ -102,15 +90,16 @@ impl Pressure {
             xyz: this_aijk.xyz,
         })
     }
-    /// Loads the pressure from a csv bz2-compressed file
-    pub fn load_pressure<S: Into<String>>(path: S) -> Result<Self, Box<dyn Error>> {
-        let csv_file = File::open(Path::new(&path.into()))?;
-        log::info!("Loading {:?}...", csv_file);
-        let now = Instant::now();
+    pub fn decompress(path: PathBuf) -> Result<String, Box<dyn Error>> {
+        let csv_file = File::open(path)?;
         let buf = BufReader::new(csv_file);
         let mut bz2 = BzDecoder::new(buf);
         let mut contents = String::new();
         bz2.read_to_string(&mut contents)?;
+        Ok(contents)
+    }
+    /// Loads the pressure from a csv bz2-compressed file
+    pub fn load_pressure(contents: String) -> Result<Self, Box<dyn Error>> {
         let mut this = Pressure::default();
         let mut rdr = csv::Reader::from_reader(contents.as_bytes());
         let mut rows = Vec::<Record>::new();
@@ -122,16 +111,12 @@ impl Pressure {
             this.area.push(row.area);
             this.pressure.push(row.pressure);
         });
-        log::info!("... loaded in {:}s", now.elapsed().as_secs());
         Ok(this)
     }
     /// Loads the areas and coordinates vector from a csv file
-    pub fn load_geometry<S: Into<String>>(path: S) -> Result<Self, Box<dyn Error>> {
-        let csv_file = File::open(Path::new(&path.into()).with_file_name("M1p.csv"))?;
-        log::info!("Loading {:?}...", csv_file);
-        let now = Instant::now();
+    pub fn load_geometry(contents: String) -> Result<Self, Box<dyn Error>> {
         let mut this = Pressure::default();
-        let mut rdr = csv::Reader::from_reader(csv_file);
+        let mut rdr = csv::Reader::from_reader(contents.as_bytes());
         let mut rows = Vec::<GeometryRecord>::new();
         for result in rdr.deserialize() {
             rows.push(result?);
@@ -141,11 +126,7 @@ impl Pressure {
             this.area_ijk.push([row.area_i, row.area_j, row.area_k]);
             this.xyz.push([row.x, row.y, row.z]);
         });
-        log::info!("... loaded in {:}s", now.elapsed().as_secs());
         Ok(this)
-    }
-    fn norm(v: &[f64]) -> f64 {
-        v.iter().map(|&x| x * x).sum::<f64>().sqrt()
     }
     /// Iterator over the x coordinate
     fn xyz_iter(&self, axis: usize) -> impl Iterator<Item = f64> + '_ {
@@ -223,7 +204,7 @@ impl Pressure {
             .paijk_iter()
             .zip(xy)
             .filter(|(_, (x, y))| x.hypot(*y) < 4.5_f64)
-            .map(|((p, a), _)| [-p * a[0], -p * a[1], -p * a[2]])
+            .map(|((p, a), _)| [p * a[0], p * a[1], p * a[2]])
             .collect()
     }
     /// Returns the sum of the z forces of a given segment
