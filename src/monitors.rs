@@ -1,13 +1,9 @@
 use crate::Vector;
 use plotters::prelude::*;
-use serde_pickle as pkl;
 use std::{
     collections::BTreeMap,
-    error::Error,
-    fs::File,
     ops::{Deref, DerefMut},
 };
-use windloading::{Loads, WindLoads};
 
 pub struct FemNodes(BTreeMap<String, Vector>);
 impl Deref for FemNodes {
@@ -481,7 +477,9 @@ impl Monitors {
             })
             .collect::<Result<Vec<()>, csv::Error>>()
     }
+    #[cfg(feature = "windloading")]
     pub fn m1covers_windloads(&self) -> Result<(), Box<dyn Error>> {
+        use windloading::{Loads, WindLoads};
         let keys = vec![
             "M1cov1", "M1cov6", "M1cov5", "M1cov4", "M1cov3", "M1cov2", "M1covin2", "M1covin1",
             "M1covin6", "M1covin5", "M1covin4", "M1covin3",
