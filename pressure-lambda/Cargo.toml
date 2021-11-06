@@ -1,0 +1,22 @@
+[package]
+name = "pressure-lambda"
+version = "0.1.0"
+edition = "2018"
+default-run = "main"
+
+[dependencies]
+lambda_runtime = "0.4.1"
+log = "0.4.14"
+serde_json = "1.0.68"
+simple_logger = "1.13.0"
+tokio = { version = "1.13.0", features = ["full"] }
+lambda = {git = "https://github.com/awslabs/aws-sdk-rust", version = "0.0.23-alpha", package = "aws-sdk-lambda"}
+s3 = {git = "https://github.com/awslabs/aws-sdk-rust", version = "0.0.23-alpha", package = "aws-sdk-s3"}
+aws-config = {git = "https://github.com/awslabs/aws-sdk-rust", version = "0.0.23-alpha", package = "aws-config"}
+bytes = "1.1.0"
+bzip2 = "0.4.3"
+serde = { version = "1.0.130", features = ["derive"] }
+geotrans = { path = "../../geotrans" }
+csv = "1.1.6"
+glob = "0.3.0"
+parse-monitors = { path = "/home/ubuntu/projects/parse-monitors" }

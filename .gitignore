@@ -1,4 +1,4 @@
-/target
+*target
 *.svg
 *.png
 *.csv
@@ -7,4 +7,7 @@
 *.pkl
 *.gif
 *.txt
+*.zip
+*.bz2
+*.json
 /report
