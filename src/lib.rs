@@ -2,6 +2,7 @@ use bzip2::bufread::BzDecoder;
 use plotters::prelude::*;
 use regex::Regex;
 use std::{
+    collections::{BTreeMap, VecDeque},
     fs::File,
     io::{BufReader, Read},
     path::Path,
@@ -67,6 +68,122 @@ impl<const YEAR: u32> MonitorsLoader<YEAR> {
         Self {
             header_exclude_regex: Some(header_exclude_regex.into()),
             ..self
+        }
+    }
+}
+/// Mirror type
+#[derive(Debug)]
+pub enum Mirror {
+    M1 {
+        time: VecDeque<f64>,
+        force: BTreeMap<String, VecDeque<Exertion>>,
+    },
+    M2 {
+        time: VecDeque<f64>,
+        force: BTreeMap<String, VecDeque<Exertion>>,
+    },
+}
+impl Mirror {
+    pub fn m1() -> Self {
+        let mut force: BTreeMap<String, VecDeque<Exertion>> = BTreeMap::new();
+        (1..=7).for_each(|k| {
+            force.entry(format!("S{}", k)).or_default();
+        });
+        Mirror::M1 {
+            time: VecDeque::new(),
+            force,
+        }
+    }
+    pub fn m2() -> Self {
+        let mut force: BTreeMap<String, VecDeque<Exertion>> = BTreeMap::new();
+        (1..=7).for_each(|k| {
+            force.entry(format!("S{}", k)).or_default();
+        });
+        Mirror::M2 {
+            time: VecDeque::new(),
+            force,
+        }
+    }
+    pub fn load<P: AsRef<Path>>(
+        &mut self,
+        path: P,
+    ) -> Result<&mut Self, Box<dyn std::error::Error>> {
+        let (filename, time, force) = match self {
+            Mirror::M1 { time, force } => ("M1_segments_force.csv", time, force),
+            Mirror::M2 { time, force } => ("M2_segments_force.csv", time, force),
+        };
+        let path = Path::new(path.as_ref()).join(filename);
+        if let Ok(csv_file) = File::open(&path) {
+            let mut rdr = csv::Reader::from_reader(csv_file);
+            for result in rdr.records() {
+                let record = result?;
+                let mut record_iter = record.iter();
+                let t = record_iter.next().unwrap().parse::<f64>()?;
+                if let Some(t_b) = time.back() {
+                    if t >= *t_b {
+                        time.push_back(t);
+                        for fm in force.values_mut() {
+                            let f: Vector = [
+                                record_iter.next().unwrap().parse::<f64>()?,
+                                record_iter.next().unwrap().parse::<f64>()?,
+                                record_iter.next().unwrap().parse::<f64>()?,
+                            ]
+                            .into();
+                            fm.push_back(Exertion::from_force(f))
+                        }
+                    } else {
+                        if let Some(index) = time.iter().rposition(|&x| x < t) {
+                            time.insert(index + 1, t);
+                            for fm in force.values_mut() {
+                                let f: Vector = [
+                                    record_iter.next().unwrap().parse::<f64>()?,
+                                    record_iter.next().unwrap().parse::<f64>()?,
+                                    record_iter.next().unwrap().parse::<f64>()?,
+                                ]
+                                .into();
+                                fm.insert(index + 1, Exertion::from_force(f))
+                            }
+                        } else {
+                            time.push_front(t);
+                            for fm in force.values_mut() {
+                                let f: Vector = [
+                                    record_iter.next().unwrap().parse::<f64>()?,
+                                    record_iter.next().unwrap().parse::<f64>()?,
+                                    record_iter.next().unwrap().parse::<f64>()?,
+                                ]
+                                .into();
+                                fm.push_front(Exertion::from_force(f))
+                            }
+                        }
+                    }
+                } else {
+                    time.push_back(t);
+                    for fm in force.values_mut() {
+                        let f: Vector = [
+                            record_iter.next().unwrap().parse::<f64>()?,
+                            record_iter.next().unwrap().parse::<f64>()?,
+                            record_iter.next().unwrap().parse::<f64>()?,
+                        ]
+                        .into();
+                        fm.push_back(Exertion::from_force(f))
+                    }
+                }
+            }
+            Ok(self)
+        } else {
+            Err(format!("Cannot open {:?}", &path).into())
+        }
+    }
+    pub fn time(&self) -> &VecDeque<f64> {
+        match self {
+            Mirror::M1 { time, .. } => time,
+            Mirror::M2 { time, .. } => time,
+        }
+    }
+    pub fn force(&self) -> impl Iterator<Item = &VecDeque<Exertion>> {
+        match self {
+            Mirror::M1 { force, .. } => force.values(),
+            Mirror::M2 { force, .. } => force.values(),
         }
     }
 }
@@ -433,5 +550,23 @@ mod tests {
             "Total force entries #: {}",
             monitors.total_forces_and_moments.len()
         );
+    }
+    #[test]
+    fn load_mirror_table() {
+        let mut m1 = Mirror::m1();
+        m1.load("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/zen00az180_OS2")
+            .unwrap();
+        let t = m1.time().front().unwrap();
+        let f: Vec<_> = m1
+            .force()
+            .filter_map(|f| f.front().map(|v| v.force.clone()))
+            .collect();
+        println!("{}: {:?}", t, f);
+        let t = m1.time().back().unwrap();
+        let f: Vec<_> = m1
+            .force()
+            .filter_map(|f| f.back().map(|v| v.force.clone()))
+            .collect();
+        println!("{}: {:?}", t, f);
     }
 }

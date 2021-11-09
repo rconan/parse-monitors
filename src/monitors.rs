@@ -115,6 +115,7 @@ pub struct Monitors {
     pub heat_transfer_coefficients: BTreeMap<String, Vec<f64>>,
     pub forces_and_moments: BTreeMap<String, Vec<Exertion>>,
     pub total_forces_and_moments: Vec<Exertion>,
+    //    pub segments_integrated_forces: Option<Vec<Mirror>>,
 }
 impl Monitors {
     pub fn len(&self) -> usize {
@@ -478,7 +479,7 @@ impl Monitors {
             .collect::<Result<Vec<()>, csv::Error>>()
     }
     #[cfg(feature = "windloading")]
-    pub fn m1covers_windloads(&self) -> Result<(), Box<dyn Error>> {
+    pub fn m1covers_windloads(&self) -> Result<(), Box<dyn std::error::Error>> {
         use windloading::{Loads, WindLoads};
         let keys = vec![
             "M1cov1", "M1cov6", "M1cov5", "M1cov4", "M1cov3", "M1cov2", "M1covin2", "M1covin1",
@@ -505,8 +506,8 @@ impl Monitors {
         let mut windloads: WindLoads = Default::default();
         windloads.time = self.time.clone();
         windloads.loads = vec![Some(Loads::OSSMirrorCovers6F(loads))];
-        let mut file = File::create("windloads.pkl")?;
-        pkl::to_writer(&mut file, &windloads, Default::default())?;
+        let mut file = std::fs::File::create("windloads.pkl")?;
+        serde_pickle::to_writer(&mut file, &windloads, Default::default())?;
         Ok(())
     }
     pub fn plot_htc(&self) {
