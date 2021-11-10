@@ -104,16 +104,39 @@ impl Mirror {
             force,
         }
     }
+    pub fn summary(&self) {
+        let (mirror, time, force) = match self {
+            Mirror::M1 { time, force } => ("M1", time, force),
+            Mirror::M2 { time, force } => ("M2", time, force),
+        };
+        println!("{} SUMMARY:", mirror);
+        println!(" - # of records: {}", time.len());
+        println!(
+            " - time range: [{:8.3}-{:8.3}]s",
+            time.front().unwrap(),
+            time.back().unwrap()
+        );
+        println!(
+            "    {:^16}: ({:^12}, {:^12})  ({:^12}, {:^12})",
+            "ELEMENT", "MEAN", "STD", "MIN", "MAX"
+        );
+        for (key, value) in force.iter() {
+            let force_magnitude: Option<Vec<f64>> =
+                value.iter().map(|e| e.force.magnitude()).collect();
+            Monitors::display(key, force_magnitude);
+        }
+    }
     pub fn load<P: AsRef<Path>>(
         &mut self,
         path: P,
+        net_force: bool,
     ) -> Result<&mut Self, Box<dyn std::error::Error>> {
         let (filename, time, force) = match self {
             Mirror::M1 { time, force } => ("M1_segments_force.csv", time, force),
             Mirror::M2 { time, force } => ("M2_segments_force.csv", time, force),
         };
-        let path = Path::new(path.as_ref()).join(filename);
-        if let Ok(csv_file) = File::open(&path) {
+        let path = Path::new(path.as_ref());
+        if let Ok(csv_file) = File::open(&path.join(filename)) {
             let mut rdr = csv::Reader::from_reader(csv_file);
             for result in rdr.records() {
                 let record = result?;
@@ -166,6 +189,33 @@ impl Mirror {
                         ]
                         .into();
                         fm.push_back(Exertion::from_force(f))
+                    }
+                }
+            }
+            if net_force {
+                if let Mirror::M1 { time, force } = self {
+                    let ts = *time.front().unwrap();
+                    let te = *time.back().unwrap();
+                    let monitors = MonitorsLoader::<2021>::default()
+                        .data_path(path)
+                        .header_filter("M1cell".to_string())
+                        .start_time(ts)
+                        .end_time(te)
+                        .load()?;
+                    let m1_cell_force: Vec<_> = monitors.forces_and_moments["M1cell"]
+                        .iter()
+                        .map(|x| x.force.clone())
+                        .collect();
+                    assert_eq!(
+                        time.len(),
+                        m1_cell_force.len(),
+                        "M1 segments and M1 cell # of sample do not match"
+                    );
+                    for v in force.values_mut() {
+                        for (e, cell) in v.iter_mut().zip(&m1_cell_force) {
+                            let mut f = &mut e.force;
+                            f += &(cell / 7f64).unwrap();
+                        }
                     }
                 }
             }

@@ -1,12 +1,11 @@
-use parse_monitors::MonitorsLoader;
+use parse_monitors::{Mirror, MonitorsLoader};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "parse-monitors", about = "Parsing Star-CCM+ monitors")]
 struct Opt {
     /// Path to the monitor file repository
-    #[structopt(long)]
-    path: Option<String>,
+    path: String,
     /// Monitors regular expression filter
     #[structopt(short, long)]
     monitor: Option<String>,
@@ -31,6 +30,12 @@ struct Opt {
     /// Write M1 mirror covers loads to `windloads.pkl`
     #[structopt(long = "m1-covers")]
     m1_covers: bool,
+    /// Display M1 force table summary
+    #[structopt(long)]
+    m1_table: bool,
+    /// Display M1 net force table summary
+    #[structopt(long)]
+    m1_table_net: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,9 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //println!("{:?}", opt);
 
     let mut loader = MonitorsLoader::<2021>::default();
-    if let Some(arg) = opt.path {
-        loader = loader.data_path(arg);
-    }
+    loader = loader.data_path(&opt.path);
     if let Some(arg) = opt.monitor {
         loader = loader.header_filter(arg);
     }
@@ -71,6 +74,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if opt.m1_covers {
         monitors.m1covers_windloads()?;
+    }
+
+    if opt.m1_table {
+        let mut m1 = Mirror::m1();
+        m1.load(&opt.path, false)?.summary();
+    }
+    if opt.m1_table_net {
+        let mut m1 = Mirror::m1();
+        m1.load(&opt.path, true)?.summary();
     }
 
     Ok(())

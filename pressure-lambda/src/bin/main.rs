@@ -54,4 +54,5 @@ async fn func(event: Value, _: Context) -> Result<Value, Error> {
     Ok(json!({
         "segments integrated force": segments_integrated_force
     }))
+
 }

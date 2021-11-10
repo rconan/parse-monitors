@@ -150,6 +150,21 @@ impl Div<f64> for Vector {
         }
     }
 }
+impl Div<f64> for &Vector {
+    type Output = Option<Vector>;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        if let Some((a1, a2, a3)) = self.as_tuple() {
+            Some(Vector {
+                x: Some(a1 / rhs),
+                y: Some(a2 / rhs),
+                z: Some(a3 / rhs),
+            })
+        } else {
+            None
+        }
+    }
+}
 impl fmt::Display for Vector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{:6.3?},{:6.3?},{:6.3?}]", self.x, self.y, self.z)

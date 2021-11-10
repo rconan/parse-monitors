@@ -200,7 +200,7 @@ impl Monitors {
             let time_filter: Vec<_> = self
                 .time
                 .iter()
-                .map(|t| t - duration + stats_duration >= 0f64)
+                .map(|t| t - duration + stats_duration > 0f64)
                 .collect();
             let data: Vec<_> = self
                 .forces_and_moments

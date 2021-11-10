@@ -65,7 +65,7 @@ impl super::Report<2021> for WindLoads {
 \subsubsection{{Platforms \& cable wraps}}
 \includegraphics[width=0.8\textwidth]{{{:?}}}
 
-\subsubsection{{Moments [N.M]}}
+\subsection{{Moments [N.M]}}
 {}
 "#,
             &cfd_case.to_pretty_string(),

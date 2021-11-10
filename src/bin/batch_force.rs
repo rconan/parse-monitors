@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n_cases = data_paths.len();
     println!("Found {} CFD cases", n_cases);
 
-    //let (name, filter) = ("c-ring_parts", "Cring");
+    let (name, filter) = ("c-ring_parts", "Cring");
     //let (name, filter) = ("m1-cell", "M1cell");
     //let (name, filter) = ("upper-truss", "Tu");
     //let (name, filter) = ("lower-truss", "Tb");
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let (name, filter) = ("gir", "GIR");
     //let (name, filter) = ("pfa-arms", "arm");
     //let (name, filter) = ("lgs", "LGS");
-    let (name, filter) = ("platforms-cables", "cable|plat|level");
+    //let (name, filter) = ("platforms-cables", "cable|plat|level");
 
     let pb = ProgressBar::new(n_cases as u64);
     let _: Vec<_> = data_paths

@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for cfd_case in cfd::Baseline::<2021>::default()
         .extras()
         .into_iter()
-        .skip(2)
+        .skip(76)
     {
         /*
                 let function_name = "m1_pressure".to_string();
@@ -91,30 +91,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let time = &stem[8..].parse::<f64>();
                             let s = std::str::from_utf8(blob.as_ref()).expect("invalid utf-8");
                             let v: serde_json::Value = serde_json::from_str(s).unwrap();
-                            let f: Vec<f64> = time
-                                .iter()
-                                .chain(
-                                    v["segments integrated force"]
-                                        .as_array()
-                                        .unwrap()
-                                        .iter()
-                                        .flat_map(|x| {
-                                            x.as_array()
-                                                .unwrap()
-                                                .iter()
-                                                .filter_map(|x| x.as_f64())
-                                                .collect::<Vec<f64>>()
-                                        })
-                                        .collect::<Vec<f64>>()
-                                        .iter(),
-                                )
-                                .cloned()
-                                .collect();
-                            Some(f)
+                            v["segments integrated force"].as_array().map(|x| {
+                                time.iter()
+                                    .chain(
+                                        x.iter()
+                                            .cloned()
+                                            .flat_map(|x| {
+                                                x.as_array()
+                                                    .unwrap()
+                                                    .iter()
+                                                    .filter_map(|x| x.as_f64())
+                                                    .collect::<Vec<f64>>()
+                                            })
+                                            .collect::<Vec<f64>>()
+                                            .iter(),
+                                    )
+                                    .cloned()
+                                    .collect::<Vec<f64>>()
+                            })
                         }
                         _ => None,
                     }
-                }))
+                }));
             }
             println!(
                 " - {} lambdas invoked in {}ms",
