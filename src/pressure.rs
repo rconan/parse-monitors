@@ -194,8 +194,17 @@ impl Pressure {
     pub fn pa_iter(&self) -> impl Iterator<Item = (&f64, &f64)> {
         self.pressure.iter().zip(self.area.iter())
     }
+    /// Iterator over the pressures and area vectors
     pub fn paijk_iter(&self) -> impl Iterator<Item = (&f64, &[f64; 3])> {
         self.pressure.iter().zip(self.area_ijk.iter())
+    }
+    /// Iterator over the pressures, area vectors and coordinates
+    pub fn p_aijk_xyz(&self) -> impl Iterator<Item = (&f64, &[f64; 3], &[f64; 3])> {
+        self.pressure
+            .iter()
+            .zip(self.area_ijk.iter())
+            .zip(self.xyz.iter())
+            .map(|((a, b), c)| (a, b, c))
     }
     /// Returns the z forces of a given segment
     pub fn forces(&mut self, sid: usize) -> Vec<[f64; 3]> {
@@ -206,6 +215,25 @@ impl Pressure {
             .filter(|(_, (x, y))| x.hypot(*y) < 4.5_f64)
             .map(|((p, a), _)| [p * a[0], p * a[1], p * a[2]])
             .collect()
+    }
+    /// Returns the center of pressure of a given segment
+    pub fn center_of_pressure(&mut self, sid: usize) -> [f64; 3] {
+        let xy: Vec<_> = self.to_local(sid).xy_iter().map(|(x, y)| (x, y)).collect();
+        let (mut cs, s) = self
+            .from_local(sid)
+            .p_aijk_xyz()
+            .zip(xy)
+            .filter(|(_, (x, y))| x.hypot(*y) < 4.5_f64)
+            .fold(([0f64; 3], [0f64; 3]), |(mut cs, mut s), ((p, a, c), _)| {
+                for k in 0..3 {
+                    let df = p * a[k];
+                    cs[k] *= df * c[k];
+                    s[k] *= df;
+                }
+                (cs, s)
+            });
+        cs.iter_mut().zip(s).for_each(|(cs, s)| *cs /= s);
+        cs
     }
     /// Returns the sum of the z forces of a given segment
     pub fn segment_force(&mut self, sid: usize) -> [f64; 3] {
