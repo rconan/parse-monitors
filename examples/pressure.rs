@@ -37,18 +37,38 @@ fn main() -> Result<(), Box<dyn Error>> {
     let segments_force = pressures.segments_force();
     println!("Elapsed time: {}ms", now.elapsed().as_millis());
     println!("M1 Segments force: {:?}", segments_force);
+    (1..=7).for_each(|sid| {
+        println!(
+            " #{} {:>6.3?}",
+            sid,
+            pressures.segment_pressure_integral(sid),
+        )
+    });
+    let (cop, fm): (Vec<_>, Vec<_>) = (1..=7)
+        .map(|sid| pressures.segment_pressure_integral(sid))
+        .unzip();
+    let (f, m): (Vec<_>, Vec<_>) = fm.into_iter().unzip();
+    println!("Sum forces : {:6.3?}", pressures.segments_force());
+    println!("Sum forces : {:6.3?}", pressures.sum_vectors(f.iter()));
+    println!("Sum moments: {:6.3?}", pressures.sum_vectors(m.iter()));
+
+    println!("q {}", cop[4][1] * f[4][2] - cop[4][2] * f[4][1]);
 
     let monitors = MonitorsLoader::<2021>::default()
         .data_path("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/zen30az000_OS7")
         .header_filter("M1cell".to_string())
         .load()?;
+    let pos = monitors
+        .time
+        .iter()
+        .position(|&t| (t - 700f64).abs() < 20f64.recip())
+        .unwrap();
+    println!("Time (last pressure): {:}", monitors.time[pos]);
     let keys: Vec<_> = monitors.forces_and_moments.keys().cloned().collect();
-    let m1_cell_force = monitors.forces_and_moments["M1cell"]
-        .last()
-        .unwrap()
-        .force
-        .clone();
+    let m1_cell_force = monitors.forces_and_moments["M1cell"][pos].force.clone();
     println!("M1 cell force: {:}", m1_cell_force);
+    let m1_cell_moment = monitors.forces_and_moments["M1cell"][pos].moment.clone();
+    println!("M1 cell moment: {:}", m1_cell_moment);
     let v: Vector = segments_force.into();
     println!("M1 total force: {:}", (&m1_cell_force + &v).unwrap());
 

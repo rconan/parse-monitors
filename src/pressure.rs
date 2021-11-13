@@ -227,22 +227,33 @@ impl Pressure {
             .fold(([0f64; 3], [0f64; 3]), |(mut cs, mut s), ((p, a, c), _)| {
                 for k in 0..3 {
                     let df = p * a[k];
-                    cs[k] *= df * c[k];
-                    s[k] *= df;
+                    cs[k] += df * c[k];
+                    s[k] += df;
                 }
                 (cs, s)
             });
         cs.iter_mut().zip(s).for_each(|(cs, s)| *cs /= s);
         cs
     }
-    /// Returns the sum of the z forces of a given segment
+    /// Returns the sum of the forces of a given segment
     pub fn segment_force(&mut self, sid: usize) -> [f64; 3] {
         self.forces(sid).into_iter().fold([0f64; 3], |mut s, a| {
             s.iter_mut().zip(a).for_each(|(s, a)| *s += a);
             s
         })
     }
-    /// Returns the sum of the z forces of a all the segments
+    /// Returns the center of pressure and the force and moment applied at this location for a given segment
+    pub fn segment_pressure_integral(&mut self, sid: usize) -> ([f64; 3], ([f64; 3], [f64; 3])) {
+        let force = self.segment_force(sid);
+        let cop = self.center_of_pressure(sid);
+        let moment = [
+            cop[1] * force[2] - cop[2] * force[1],
+            cop[2] * force[0] - cop[0] * force[2],
+            cop[0] * force[1] - cop[1] * force[0],
+        ];
+        (cop, (force, moment))
+    }
+    /// Returns the sum of the forces of a all the segments
     pub fn segments_force(&mut self) -> [f64; 3] {
         (1..=7)
             .map(|sid| self.segment_force(sid))
@@ -250,5 +261,12 @@ impl Pressure {
                 s.iter_mut().zip(a).for_each(|(s, a)| *s += a);
                 s
             })
+    }
+    /// Returns the sum of the vectors in [`Iterator`]
+    pub fn sum_vectors<'a>(&'a mut self, vec: impl Iterator<Item = &'a [f64; 3]>) -> [f64; 3] {
+        vec.fold([0f64; 3], |mut s, a| {
+            s.iter_mut().zip(a).for_each(|(s, a)| *s += a);
+            s
+        })
     }
 }
