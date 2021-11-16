@@ -1,7 +1,8 @@
 use bytes::Bytes;
 use bzip2::read::BzDecoder;
 use lambda_runtime::{handler_fn, Context, Error};
-use pressure_lambda::Pressure;
+//use pressure_lambda::Pressure;
+use parse_monitors::pressure::Pressure;
 use s3::Client;
 use serde_json::{json, Value};
 use std::{io::Read, path::Path};
@@ -11,9 +12,10 @@ async fn main() -> Result<(), Error> {
     let func = handler_fn(func);
     lambda_runtime::run(func).await?;
     /*
-        let value = json!({"key": "Baseline2021/Baseline2021/Baseline2021/CASES/zen30az000_OS7/pressures/M1p_M1p_7.000000e+02.csv.bz2"});
-        let response = func(value, Context::default()).await?;
-        println!("{}", response);
+    let now = std::time::Instant::now();
+    let value = json!({"key": "Baseline2021/Baseline2021/Baseline2021/CASES/zen30az000_OS7/pressures/M1p_M1p_7.000000e+02.csv.bz2"});
+    let response = func(value, Context::default()).await?;
+    println!("{:#} in {}s", response, now.elapsed().as_secs());
     */
     Ok(())
 }
@@ -49,10 +51,10 @@ async fn func(event: Value, _: Context) -> Result<Value, Error> {
         BzDecoder::new(data.as_ref()).read_to_string(&mut csv_geometry)?;
     }
     let mut pressures = Pressure::load(csv_pressure, csv_geometry).unwrap();
-    let segments_integrated_force: Vec<_> =
-        (1..=7).map(|sid| pressures.segment_force(sid)).collect();
-    Ok(json!({
-        "segments integrated force": segments_integrated_force
-    }))
-
+    /*let segments_integrated_force: Vec<_> =
+    (1..=7).map(|sid| pressures.segment_force(sid)).collect();*/
+    let cop_fm: Vec<_> = (1..=7)
+        .map(|sid| pressures.segment_pressure_integral(sid))
+        .collect();
+    Ok(json!({ "cop_fm": cop_fm }))
 }
