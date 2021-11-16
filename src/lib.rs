@@ -1,8 +1,6 @@
 use bzip2::bufread::BzDecoder;
-use plotters::prelude::*;
 use regex::Regex;
 use std::{
-    collections::{BTreeMap, VecDeque},
     fs::File,
     io::{BufReader, Read},
     path::Path,
@@ -16,8 +14,10 @@ pub use monitors::{Exertion, Monitors};
 pub mod cfd;
 pub mod domeseeing;
 pub use domeseeing::{Band, DomeSeeing};
+pub mod mirror;
 pub mod pressure;
 pub mod report;
+pub use mirror::Mirror;
 
 pub struct MonitorsLoader<const YEAR: u32> {
     path: String,
@@ -68,172 +68,6 @@ impl<const YEAR: u32> MonitorsLoader<YEAR> {
         Self {
             header_exclude_regex: Some(header_exclude_regex.into()),
             ..self
-        }
-    }
-}
-/// Mirror type
-#[derive(Debug)]
-pub enum Mirror {
-    M1 {
-        time: VecDeque<f64>,
-        force: BTreeMap<String, VecDeque<Exertion>>,
-    },
-    M2 {
-        time: VecDeque<f64>,
-        force: BTreeMap<String, VecDeque<Exertion>>,
-    },
-}
-impl Mirror {
-    pub fn m1() -> Self {
-        let mut force: BTreeMap<String, VecDeque<Exertion>> = BTreeMap::new();
-        (1..=7).for_each(|k| {
-            force.entry(format!("S{}", k)).or_default();
-        });
-        Mirror::M1 {
-            time: VecDeque::new(),
-            force,
-        }
-    }
-    pub fn m2() -> Self {
-        let mut force: BTreeMap<String, VecDeque<Exertion>> = BTreeMap::new();
-        (1..=7).for_each(|k| {
-            force.entry(format!("S{}", k)).or_default();
-        });
-        Mirror::M2 {
-            time: VecDeque::new(),
-            force,
-        }
-    }
-    pub fn summary(&self) {
-        let (mirror, time, force) = match self {
-            Mirror::M1 { time, force } => ("M1", time, force),
-            Mirror::M2 { time, force } => ("M2", time, force),
-        };
-        println!("{} SUMMARY:", mirror);
-        println!(" - # of records: {}", time.len());
-        println!(
-            " - time range: [{:8.3}-{:8.3}]s",
-            time.front().unwrap(),
-            time.back().unwrap()
-        );
-        println!(
-            "    {:^16}: ({:^12}, {:^12})  ({:^12}, {:^12})",
-            "ELEMENT", "MEAN", "STD", "MIN", "MAX"
-        );
-        for (key, value) in force.iter() {
-            let force_magnitude: Option<Vec<f64>> =
-                value.iter().map(|e| e.force.magnitude()).collect();
-            Monitors::display(key, force_magnitude);
-        }
-    }
-    pub fn load<P: AsRef<Path>>(
-        &mut self,
-        path: P,
-        net_force: bool,
-    ) -> Result<&mut Self, Box<dyn std::error::Error>> {
-        let (filename, time, force) = match self {
-            Mirror::M1 { time, force } => ("M1_segments_force.csv", time, force),
-            Mirror::M2 { time, force } => ("M2_segments_force.csv", time, force),
-        };
-        let path = Path::new(path.as_ref());
-        if let Ok(csv_file) = File::open(&path.join(filename)) {
-            let mut rdr = csv::Reader::from_reader(csv_file);
-            for result in rdr.records() {
-                let record = result?;
-                let mut record_iter = record.iter();
-                let t = record_iter.next().unwrap().parse::<f64>()?;
-                if let Some(t_b) = time.back() {
-                    if t >= *t_b {
-                        time.push_back(t);
-                        for fm in force.values_mut() {
-                            let f: Vector = [
-                                record_iter.next().unwrap().parse::<f64>()?,
-                                record_iter.next().unwrap().parse::<f64>()?,
-                                record_iter.next().unwrap().parse::<f64>()?,
-                            ]
-                            .into();
-                            fm.push_back(Exertion::from_force(f))
-                        }
-                    } else {
-                        if let Some(index) = time.iter().rposition(|&x| x < t) {
-                            time.insert(index + 1, t);
-                            for fm in force.values_mut() {
-                                let f: Vector = [
-                                    record_iter.next().unwrap().parse::<f64>()?,
-                                    record_iter.next().unwrap().parse::<f64>()?,
-                                    record_iter.next().unwrap().parse::<f64>()?,
-                                ]
-                                .into();
-                                fm.insert(index + 1, Exertion::from_force(f))
-                            }
-                        } else {
-                            time.push_front(t);
-                            for fm in force.values_mut() {
-                                let f: Vector = [
-                                    record_iter.next().unwrap().parse::<f64>()?,
-                                    record_iter.next().unwrap().parse::<f64>()?,
-                                    record_iter.next().unwrap().parse::<f64>()?,
-                                ]
-                                .into();
-                                fm.push_front(Exertion::from_force(f))
-                            }
-                        }
-                    }
-                } else {
-                    time.push_back(t);
-                    for fm in force.values_mut() {
-                        let f: Vector = [
-                            record_iter.next().unwrap().parse::<f64>()?,
-                            record_iter.next().unwrap().parse::<f64>()?,
-                            record_iter.next().unwrap().parse::<f64>()?,
-                        ]
-                        .into();
-                        fm.push_back(Exertion::from_force(f))
-                    }
-                }
-            }
-            if net_force {
-                if let Mirror::M1 { time, force } = self {
-                    let ts = *time.front().unwrap();
-                    let te = *time.back().unwrap();
-                    let monitors = MonitorsLoader::<2021>::default()
-                        .data_path(path)
-                        .header_filter("M1cell".to_string())
-                        .start_time(ts)
-                        .end_time(te)
-                        .load()?;
-                    let m1_cell_force: Vec<_> = monitors.forces_and_moments["M1cell"]
-                        .iter()
-                        .map(|x| x.force.clone())
-                        .collect();
-                    assert_eq!(
-                        time.len(),
-                        m1_cell_force.len(),
-                        "M1 segments and M1 cell # of sample do not match"
-                    );
-                    for v in force.values_mut() {
-                        for (e, cell) in v.iter_mut().zip(&m1_cell_force) {
-                            let mut f = &mut e.force;
-                            f += &(cell / 7f64).unwrap();
-                        }
-                    }
-                }
-            }
-            Ok(self)
-        } else {
-            Err(format!("Cannot open {:?}", &path).into())
-        }
-    }
-    pub fn time(&self) -> &VecDeque<f64> {
-        match self {
-            Mirror::M1 { time, .. } => time,
-            Mirror::M2 { time, .. } => time,
-        }
-    }
-    pub fn force(&self) -> impl Iterator<Item = &VecDeque<Exertion>> {
-        match self {
-            Mirror::M1 { force, .. } => force.values(),
-            Mirror::M2 { force, .. } => force.values(),
         }
     }
 }
@@ -474,12 +308,14 @@ impl MonitorsLoader<2020> {
     }
 }
 
+#[cfg(feature = "plot")]
 pub fn plot_monitor<S: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(
     time: &[f64],
     monitor: &[Exertion],
     key: &str,
     path: S,
 ) {
+    use plotters::prelude::*;
     let max_value = |x: &[f64]| -> f64 {
         x.iter()
             .cloned()
@@ -495,7 +331,7 @@ pub fn plot_monitor<S: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(
             .fold(std::f64::INFINITY, f64::min)
     };
 
-    let file_path = Path::new(&path).join("TOTAL_FORCES.png");
+    let file_path = std::path::Path::new(&path).join("TOTAL_FORCES.png");
     let filename = if let Some(filename) = file_path.to_str() {
         filename.to_string()
     } else {
@@ -604,8 +440,11 @@ mod tests {
     #[test]
     fn load_mirror_table() {
         let mut m1 = Mirror::m1();
-        m1.load("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/zen00az180_OS2")
-            .unwrap();
+        m1.load(
+            "/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/zen00az180_OS2",
+            false,
+        )
+        .unwrap();
         let t = m1.time().front().unwrap();
         let f: Vec<_> = m1
             .force()

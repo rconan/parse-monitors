@@ -8,6 +8,7 @@ use std::{error::Error, fs::File, io::Write, path::Path};
 
 pub struct DomeSeeingPart {
     part: u8,
+    #[allow(dead_code)]
     stats_time_range: f64,
 }
 impl DomeSeeingPart {

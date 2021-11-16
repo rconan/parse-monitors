@@ -320,6 +320,58 @@ impl Baseline<2021> {
             ],
         }
     }
+    /// Mount cases
+    pub fn mount() -> Self {
+        Self(
+            WindSpeed::iter()
+                .take(3)
+                .filter_map(|wind_speed| match wind_speed {
+                    WindSpeed::Two => Some(
+                        Azimuth::iter()
+                            .take(3)
+                            .map(|azimuth| {
+                                CfdCase::new(
+                                    ZenithAngle::Thirty,
+                                    azimuth,
+                                    Enclosure::OpenStowed,
+                                    wind_speed.clone(),
+                                )
+                            })
+                            .collect::<Vec<CfdCase<2021>>>(),
+                    ),
+                    WindSpeed::Seven => Some(
+                        Azimuth::iter()
+                            .take(4)
+                            .map(|azimuth| {
+                                CfdCase::new(
+                                    ZenithAngle::Thirty,
+                                    azimuth,
+                                    Enclosure::OpenStowed,
+                                    wind_speed.clone(),
+                                )
+                            })
+                            .collect::<Vec<CfdCase<2021>>>(),
+                    ),
+                    WindSpeed::Twelve => Some(
+                        Azimuth::iter()
+                            .filter(|azimuth| *azimuth != Azimuth::OneThirtyFive)
+                            .map(|azimuth| {
+                                CfdCase::new(
+                                    ZenithAngle::Thirty,
+                                    azimuth,
+                                    Enclosure::ClosedDeployed,
+                                    wind_speed.clone(),
+                                )
+                            })
+                            .collect::<Vec<CfdCase<2021>>>(),
+                    ),
+                    _ => None,
+                })
+                .flatten()
+                .collect::<Vec<CfdCase<2021>>>(),
+        )
+    }
+    /// Extra cases (22m/s)
     pub fn extras(self) -> Self {
         let mut cases = self.0;
         cases.append(&mut vec![

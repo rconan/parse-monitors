@@ -1,4 +1,5 @@
 use crate::Vector;
+#[cfg(feature = "plot")]
 use plotters::prelude::*;
 use std::{
     collections::BTreeMap,
@@ -41,6 +42,8 @@ impl Default for FemNodes {
 pub struct Exertion {
     pub force: Vector,
     pub moment: Vector,
+    /// Center of pressure
+    pub cop: Option<Vector>,
 }
 impl Exertion {
     /// Build from a force ['Vector']
@@ -108,6 +111,16 @@ impl Exertion {
         self
     }
 }
+impl From<([f64; 3], ([f64; 3], [f64; 3]))> for Exertion {
+    fn from(cop_fm: ([f64; 3], ([f64; 3], [f64; 3]))) -> Self {
+        let (c, (f, m)) = cop_fm;
+        Self {
+            force: f.into(),
+            moment: m.into(),
+            cop: Some(c.into()),
+        }
+    }
+}
 /// Gather all the monitors of a CFD run
 #[derive(Default, Debug)]
 pub struct Monitors {
@@ -172,11 +185,7 @@ impl Monitors {
                 .collect();
             Some(format!(
                 r#"
-\begin{{tabular}}{{crrrr}}\toprule
- ELEMENT & MEAN & STD & MIN & MAX \\\hline
 {}
-\bottomrule
-\end{{tabular}}
 "#,
                 data.join("\n")
             ))
@@ -229,16 +238,7 @@ impl Monitors {
                     }
                 })
                 .collect();
-            Some(format!(
-                r#"
-\begin{{longtable}}{{crrrr}}\toprule
- ELEMENT & MEAN & STD & MIN & MAX \\\hline
-{}
-\bottomrule
-\end{{longtable}}
-"#,
-                data.join("\n")
-            ))
+            Some(data.join("\n"))
         }
     }
     /// Return a latex table with moment monitors summary
@@ -288,16 +288,7 @@ impl Monitors {
                     }
                 })
                 .collect();
-            Some(format!(
-                r#"
-\begin{{longtable}}{{crrrr}}\toprule
- ELEMENT & MEAN & STD & MIN & MAX \\\hline
-{}
-\bottomrule
-\end{{longtable}}
-"#,
-                data.join("\n")
-            ))
+            Some(data.join("\n"))
         }
     }
     /// Print out a monitors summary
@@ -385,7 +376,11 @@ impl Monitors {
             self.total_forces_and_moments = total_force
                 .into_iter()
                 .zip(total_moment.into_iter())
-                .map(|(force, moment)| Exertion { force, moment })
+                .map(|(force, moment)| Exertion {
+                    force,
+                    moment,
+                    cop: None,
+                })
                 .collect();
         }
     }
@@ -408,7 +403,11 @@ impl Monitors {
         self.total_forces_and_moments = total_force
             .into_iter()
             .zip(total_moment.into_iter())
-            .map(|(force, moment)| Exertion { force, moment })
+            .map(|(force, moment)| Exertion {
+                force,
+                moment,
+                cop: None,
+            })
             .collect();
         self
     }
@@ -510,6 +509,7 @@ impl Monitors {
         serde_pickle::to_writer(&mut file, &windloads, Default::default())?;
         Ok(())
     }
+    #[cfg(feature = "plot")]
     pub fn plot_htc(&self) {
         if self.heat_transfer_coefficients.is_empty() {
             return;
@@ -573,6 +573,7 @@ impl Monitors {
             .draw()
             .unwrap();
     }
+    #[cfg(feature = "plot")]
     pub fn plot_forces(&self, filename: Option<&str>) {
         if self.forces_and_moments.is_empty() {
             return;
@@ -654,6 +655,7 @@ impl Monitors {
             .draw()
             .unwrap();
     }
+    #[cfg(feature = "plot")]
     pub fn plot_moments(&self) {
         if self.forces_and_moments.is_empty() {
             return;

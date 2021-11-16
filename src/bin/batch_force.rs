@@ -1,5 +1,4 @@
-use indicatif::{ParallelProgressIterator, ProgressBar};
-use parse_monitors::{cfd::Baseline, plot_monitor, MonitorsLoader};
+use parse_monitors::{cfd::Baseline, plot_monitor, Mirror, MonitorsLoader};
 use rayon::prelude::*;
 use std::path::Path;
 
@@ -26,34 +25,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n_cases = data_paths.len();
     println!("Found {} CFD cases", n_cases);
 
-    let (name, filter) = ("c-ring_parts", "Cring");
-    //let (name, filter) = ("m1-cell", "M1cell");
-    //let (name, filter) = ("upper-truss", "Tu");
-    //let (name, filter) = ("lower-truss", "Tb");
-    //let (name, filter) = ("top-end", "Top");
-    //let (name, filter) = ("m2-segments", "M2s");
-    //let (name, filter) = ("m12-baffles", "Baf");
-    //let (name, filter) = ("m1-outer-covers", "M1cov[1-6]");
-    //let (name, filter) = ("m1-inner-covers", "M1covin[1-6]");
-    //let (name, filter) = ("gir", "GIR");
-    //let (name, filter) = ("pfa-arms", "arm");
-    //let (name, filter) = ("lgs", "LGS");
-    //let (name, filter) = ("platforms-cables", "cable|plat|level");
+    let parts = vec![
+        ("c-ring_parts", "Cring"),
+        ("m1-cell", "M1cell"),
+        ("upper-truss", "Tu"),
+        ("lower-truss", "Tb"),
+        ("top-end", "Top"),
+        ("m2-segments", "M2s"),
+        ("m12-baffles", "Baf"),
+        ("m1-outer-covers", "M1cov[1-6]"),
+        ("m1-inner-covers", "M1covin[1-6]"),
+        ("gir", "GIR"),
+        ("pfa-arms", "arm"),
+        ("lgs", "LGS"),
+        ("platforms-cables", "cable|plat|level"),
+        ("m1-segments", ""),
+    ];
 
-    let pb = ProgressBar::new(n_cases as u64);
-    let _: Vec<_> = data_paths
-        .par_iter()
-        .progress_with(pb)
-        .map(|arg| {
-            let monitors = MonitorsLoader::<CFD_YEAR>::default()
-                .data_path(arg.clone())
-                .header_filter(filter.to_string())
-                //.exclude_filter(xmon)
-                .load()
-                .unwrap();
-            let filename = format!("{}/{}.png", arg, name);
-            monitors.plot_forces(Some(filename.as_str()));
-        })
-        .collect();
+    for part in parts {
+        let (name, filter) = part;
+        println!("Part: {}", name);
+
+        let _: Vec<_> = data_paths
+            .par_iter()
+            .map(|arg| {
+                let filename = format!("{}/{}.png", arg, name);
+                if name == "m1-segments" {
+                    let mut m1 = Mirror::m1();
+                    if let Err(e) = m1.load(arg, false) {
+                        println!("{}: {:}", arg, e);
+                    }
+                    m1.plot_forces(Some(filename.as_str()));
+                } else {
+                    let monitors = MonitorsLoader::<CFD_YEAR>::default()
+                        .data_path(arg.clone())
+                        .header_filter(filter.to_string())
+                        //.exclude_filter(xmon)
+                        .load()
+                        .unwrap();
+                    monitors.plot_forces(Some(filename.as_str()));
+                }
+            })
+            .collect();
+    }
+
     Ok(())
 }

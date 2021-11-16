@@ -12,23 +12,26 @@ colorous = "1.0.5"
 csv = "1.1.6"
 indicatif = { version = "0.16.2", features = ["rayon"] }
 nalgebra = { version = "0.27.1", features = ["rand"] }
-plotters = "0.3.1"
+plotters = { version = "0.3.1", optional = true }
 regex = "1.5.4"
 serde = { version = "1.0.126", features = ["derive"] }
 structopt = "0.3.21"
-windloading = { git = "https://github.com/rconan/windloading.git", branch = "ns-opm-im" , optional=true}
+windloading = { git = "https://github.com/rconan/windloading.git", branch = "ns-opm-im" , optional = true}
 glob = "0.3.0"
 log = "0.4.14"
 env_logger = "0.9.0"
 rayon = "1.5.1"
-tectonic = { version = "0.8.0", optional=true}
+tectonic = { version = "0.8.0", optional = true}
 chrono = "0.4.19"
 strum = "0.22.0"
 strum_macros = "0.22.0"
 serde-pickle = "1.1.0"
-complot = { path = "../complot", features = ["png"]}
+complot = { path = "../complot", features = ["png"] , optional = true}
 geotrans = { path = "../geotrans" }
 #geotrans = "0.1.0"
+
+[features]
+plot = ["plotters", "complot"]
 
 [dev-dependencies]
 rand = "0.8.4"
