@@ -1,8 +1,6 @@
 use glob::glob;
 use indicatif::ParallelProgressIterator;
-use parse_monitors::pressure::Pressure;
-use parse_monitors::MonitorsLoader;
-use parse_monitors::Vector;
+use parse_monitors::{pressure::Pressure, Mirror, MonitorsLoader, Vector};
 use rayon::prelude::*;
 use std::error::Error;
 use std::path::Path;
@@ -16,6 +14,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .map(|p| p.unwrap().to_str().unwrap().to_string())
         .collect();
     println!("Pressure files: {:?}", files.last().unwrap());
+
     /*
         let now = Instant::now();
         let total_absolute_force: Vec<_> = files
@@ -34,16 +33,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let csv_pressure = Pressure::decompress(path.to_path_buf())?;
     let csv_geometry = Pressure::decompress(path.with_file_name("M1p.csv.bz2"))?;
     let mut pressures = Pressure::load(csv_pressure, csv_geometry)?;
+    let (cop, fm): (Vec<_>, Vec<_>) = (1..=7)
+        .map(|sid| pressures.segment_pressure_integral(sid))
+        .unzip();
+    println!("Elapsed time: {}ms", now.elapsed().as_millis());
+
     let segments_force = pressures.segments_force();
     println!("Elapsed time: {}ms", now.elapsed().as_millis());
     println!("M1 Segments force: {:?}", segments_force);
-    (1..=7).for_each(|sid| {
-        println!(
-            " #{} {:>6.3?}",
-            sid,
-            pressures.segment_pressure_integral(sid),
-        )
-    });
     let (cop, fm): (Vec<_>, Vec<_>) = (1..=7)
         .map(|sid| pressures.segment_pressure_integral(sid))
         .unzip();
@@ -82,18 +79,44 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Total force: {:?}", pressures.total_force());
      */
     /*
-        &pressures
-            .to_local(7)
-            .xy_iter()
-            .filter_map(|(x, y)| {
-                if x.hypot(*y) < 4.5_f64 {
-                    Some((x, y))
-                } else {
-                    None
-                }
-            })
-            .map(|(x, y)| (*x, vec![*y]))
-            .collect::<complot::Scatter>();
+       &pressures
+           .to_local(7)
+           .xy_iter()
+           .filter_map(|(x, y)| {
+               if x.hypot(*y) < 4.5_f64 {
+                   Some((x, y))
+               } else {
+                   None
+               }
+           })
+           .map(|(x, y)| (*x, vec![*y]))
+           .collect::<complot::Scatter>();
     */
+
+    {
+        let mut m1 = Mirror::m1();
+        m1.load(
+            "/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/zen30az000_OS7",
+            true,
+        )
+        .unwrap();
+        let pos = m1
+            .time()
+            .iter()
+            .position(|&t| (t - 700f64).abs() < 40f64.recip())
+            .unwrap();
+        let t = m1.time()[pos];
+        let (total_force, total_moment) =
+            m1.exertion()
+                .fold((Vector::zero(), Vector::zero()), |(mut f, mut m), e| {
+                    let mut q = &mut f;
+                    q += &e[pos].force;
+                    let mut q = &mut m;
+                    q += &e[pos].moment;
+                    (f, m)
+                });
+        println!("{}: {:}", t, total_force);
+        println!("{}: {:}", t, total_moment);
+    }
     Ok(())
 }

@@ -244,8 +244,21 @@ impl Pressure {
     }
     /// Returns the center of pressure and the force and moment applied at this location for a given segment
     pub fn segment_pressure_integral(&mut self, sid: usize) -> ([f64; 3], ([f64; 3], [f64; 3])) {
-        let force = self.segment_force(sid);
-        let cop = self.center_of_pressure(sid);
+        let xy: Vec<_> = self.to_local(sid).xy_iter().map(|(x, y)| (x, y)).collect();
+        let (mut cop, force) = self
+            .from_local(sid)
+            .p_aijk_xyz()
+            .zip(xy)
+            .filter(|(_, (x, y))| x.hypot(*y) < 4.5_f64)
+            .fold(([0f64; 3], [0f64; 3]), |(mut cs, mut s), ((p, a, c), _)| {
+                for k in 0..3 {
+                    let df = p * a[k];
+                    cs[k] += df * c[k];
+                    s[k] += df;
+                }
+                (cs, s)
+            });
+        cop.iter_mut().zip(force).for_each(|(cs, s)| *cs /= s);
         let moment = [
             cop[1] * force[2] - cop[2] * force[1],
             cop[2] * force[0] - cop[0] * force[2],
