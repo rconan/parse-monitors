@@ -8,9 +8,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     cfd::Baseline::<2021>::default()
         .extras()
         .into_iter()
-        .skip(50)
+        .filter(|c| {
+            *c == cfd::CfdCase::new(
+                cfd::ZenithAngle::Thirty,
+                cfd::Azimuth::FortyFive,
+                cfd::Enclosure::OpenStowed,
+                cfd::WindSpeed::Seven,
+            )
+        })
         .collect::<Vec<cfd::CfdCase<2021>>>()
-        .into_par_iter()
+        .into_iter()
         .for_each(|cfd_case| {
             let now = Instant::now();
             let case_path = cfd::Baseline::<2021>::path().join(cfd_case.to_string());
@@ -24,9 +31,27 @@ fn main() -> Result<(), Box<dyn Error>> {
             .unwrap()
             .map(|p| p.unwrap().to_str().unwrap().to_string())
             .collect();
+            let case_ext_path = cfd::Baseline::<2021>::path()
+                .join("crings")
+                .join(cfd_case.to_string() + "_ext");
+            let files_ext: Vec<_> = glob(
+                case_ext_path
+                    .join("pressures")
+                    .join("M1p_M1p_*.csv.bz2")
+                    .to_str()
+                    .unwrap(),
+            )
+            .unwrap()
+            .map(|p| p.unwrap().to_str().unwrap().to_string())
+            .collect();
+            let n_files = files.len() + files_ext.len();
 
             let time_cop_fm: Vec<_> = files
+                .into_iter()
+                .chain(files_ext.into_iter())
+                .collect::<Vec<String>>()
                 .par_iter()
+                .progress_count(n_files as u64)
                 .map(|file| {
                     let path = Path::new(file);
                     let stem = Path::new(path.file_stem().unwrap())
@@ -46,7 +71,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 })
                 .collect();
 
-            let filename = case_path.join("center_of_pressure.csv");
+            let filename = case_ext_path.join("center_of_pressure.csv");
             let mut wtr = csv::WriterBuilder::new()
                 .has_headers(false)
                 .from_path(filename)

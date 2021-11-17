@@ -34,7 +34,7 @@ impl super::Report<2021> for WindLoads {
             .unwrap()
             .to_owned();
         let paths = glob(&pattern).expect("Failed to read glob pattern");
-        let vort_pic = paths.last().unwrap()?;
+        let vort_pic = paths.last().unwrap()?.with_extension("");
         let monitors = if let Some(xmon) = &self.xmon {
             MonitorsLoader::<2021>::default()
                 .data_path(path_to_case.clone())
@@ -50,8 +50,9 @@ impl super::Report<2021> for WindLoads {
         Ok(format!(
             r#"
 \section{{{}}}
+\label{{{}}}
 
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
 \subsection{{Forces [N]}}
 \begin{{longtable}}{{crrrr}}\toprule
@@ -60,33 +61,33 @@ impl super::Report<2021> for WindLoads {
 \bottomrule
 \end{{longtable}}
 \subsubsection{{C-Rings}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 Cell}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 segments}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{Lower trusses}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{Upper trusses}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{Top-end}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M2 segments}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 \& M2 baffles}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 outer covers}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 inner covers}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{GIR}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{Prime focus assembly arms}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{Laser launch assemblies}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{Platforms \& cable wraps}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
 \subsection{{Moments [N.M]}}
 \begin{{longtable}}{{crrrr}}\toprule
@@ -96,30 +97,31 @@ impl super::Report<2021> for WindLoads {
 \end{{longtable}}
 "#,
             &cfd_case.to_pretty_string(),
+            &cfd_case.to_string(),
             vort_pic,
             monitors
                 .force_latex_table(self.stats_time_range)
                 .zip(m1.force_latex_table(self.stats_time_range))
-                .and_then(|(x, y)| Some(vec![x, y].join("\n")))
+                .map(|(x, y)| vec![x, y].join("\n"))
                 .unwrap_or_default(),
-            path_to_case.join("c-ring_parts.png"),
-            path_to_case.join("m1-cell.png"),
-            path_to_case.join("m1-segments.png"),
-            path_to_case.join("lower-truss.png"),
-            path_to_case.join("upper-truss.png"),
-            path_to_case.join("top-end.png"),
-            path_to_case.join("m2-segments.png"),
-            path_to_case.join("m12-baffles.png"),
-            path_to_case.join("m1-outer-covers.png"),
-            path_to_case.join("m1-inner-covers.png"),
-            path_to_case.join("gir.png"),
-            path_to_case.join("pfa-arms.png"),
-            path_to_case.join("lgs.png"),
-            path_to_case.join("platforms-cables.png"),
+            path_to_case.join("c-ring_parts"),
+            path_to_case.join("m1-cell"),
+            path_to_case.join("m1-segments"),
+            path_to_case.join("lower-truss"),
+            path_to_case.join("upper-truss"),
+            path_to_case.join("top-end"),
+            path_to_case.join("m2-segments"),
+            path_to_case.join("m12-baffles"),
+            path_to_case.join("m1-outer-covers"),
+            path_to_case.join("m1-inner-covers"),
+            path_to_case.join("gir"),
+            path_to_case.join("pfa-arms"),
+            path_to_case.join("lgs"),
+            path_to_case.join("platforms-cables"),
             monitors
                 .moment_latex_table(self.stats_time_range)
                 .zip(m1.moment_latex_table(self.stats_time_range))
-                .and_then(|(x, y)| Some(vec![x, y].join("\n")))
+                .map(|(x, y)| vec![x, y].join("\n"))
                 .unwrap_or_default()
         ))
     }
@@ -155,7 +157,6 @@ impl super::Report<2021> for WindLoads {
 impl WindLoads {
     /// Mount chapter assembly
     pub fn mount_chapter(&self) -> Result<(), Box<dyn Error>> {
-        let zenith_angle = cfd::ZenithAngle::Thirty;
         let report_path = Path::new("report");
         let chapter_filename = "mount.chapter.tex";
         let cfd_cases = cfd::Baseline::<2021>::mount()

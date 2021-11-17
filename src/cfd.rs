@@ -142,7 +142,7 @@ impl fmt::Display for WindSpeed {
     }
 }
 /// CFD case for a given year: 2020 or 2021
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CfdCase<const YEAR: u32> {
     pub zenith: ZenithAngle,
     pub azimuth: Azimuth,

@@ -291,14 +291,14 @@ impl Mirror {
                 )
             })
             .unzip();
-        let xrange = *self.time().back().unwrap() - self.time()[0];
+        let xrange = (*self.time().front().unwrap(), *self.time().back().unwrap());
         let minmax_padding = 0.1;
         let mut chart = ChartBuilder::on(&plot)
             .set_label_area_size(LabelAreaPosition::Left, 60)
             .set_label_area_size(LabelAreaPosition::Bottom, 40)
             .margin(10)
             .build_cartesian_2d(
-                -xrange * 1e-2..xrange * (1. + 1e-2),
+                xrange.0..xrange.1 * (1. + 1e-2),
                 min_value(&min_values) * (1. - minmax_padding)
                     ..max_value(&max_values) * (1. + minmax_padding),
             )
@@ -320,8 +320,8 @@ impl Mirror {
                     self.time()
                         .iter()
                         .zip(values.iter())
-                        .skip(10 * 20)
-                        .map(|(&x, y)| (x - self.time()[0], y.force.magnitude().unwrap())),
+                        //.skip(10 * 20)
+                        .map(|(&x, y)| (x, y.force.magnitude().unwrap())),
                     &rgb,
                 ))
                 .unwrap()
