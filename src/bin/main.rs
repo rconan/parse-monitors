@@ -36,6 +36,9 @@ struct Opt {
     /// Display M1 net force table summary
     #[structopt(long)]
     m1_table_net: bool,
+    /// Remove linear trends from monitors
+    #[structopt(long)]
+    detrend: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -58,6 +61,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut monitors = loader.load()?;
+    if opt.detrend {
+        monitors.detrend();
+    }
     if opt.local {
         monitors.into_local();
     }
@@ -71,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(filename) = opt.csv {
         monitors.to_csv(filename)?;
     }
-
+    #[cfg(feature = "windloading")]
     if opt.m1_covers {
         monitors.m1covers_windloads()?;
     }

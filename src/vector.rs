@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    ops::{Add, AddAssign, Div, Sub},
+    ops::{Add, AddAssign, Div, Index, IndexMut, Sub},
 };
 
 #[derive(Default, Debug, Clone)]
@@ -162,6 +162,28 @@ impl Div<f64> for &Vector {
             })
         } else {
             None
+        }
+    }
+}
+impl Index<usize> for Vector {
+    type Output = f64;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => self.x.as_ref().unwrap(),
+            1 => self.y.as_ref().unwrap(),
+            2 => self.z.as_ref().unwrap(),
+            _ => panic!("index must be 0, 1 or 2."),
+        }
+    }
+}
+impl IndexMut<usize> for Vector {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        match index {
+            0 => self.x.as_mut().unwrap(),
+            1 => self.y.as_mut().unwrap(),
+            2 => self.z.as_mut().unwrap(),
+            _ => panic!("index must be 0, 1 or 2."),
         }
     }
 }

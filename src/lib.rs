@@ -1,3 +1,6 @@
+use nalgebra as na;
+use std::path::Path;
+
 mod vector;
 pub use vector::Vector;
 mod monitors;
@@ -9,7 +12,6 @@ pub mod mirror;
 pub mod pressure;
 pub mod report;
 pub use mirror::Mirror;
-use nalgebra as na;
 
 pub fn polyfit<T: na::RealField + Copy>(
     x_values: &[T],
@@ -64,6 +66,37 @@ pub fn detrend<T: na::RealField + Copy>(
         Ok(mat) => {
             let y_detrend = b - a * &mat;
             Ok(y_detrend.data.into())
+        }
+        Err(error) => Err(error),
+    }
+}
+pub fn detrend_mut<T: na::RealField + Copy>(
+    x_values: &[T],
+    y_values: &mut [T],
+    polynomial_degree: usize,
+) -> Result<(), &'static str> {
+    let number_of_columns = polynomial_degree + 1;
+    let number_of_rows = x_values.len();
+    let mut a = na::DMatrix::zeros(number_of_rows, number_of_columns);
+
+    for (row, &x) in x_values.iter().enumerate() {
+        // First column is always 1
+        a[(row, 0)] = T::one();
+
+        for col in 1..number_of_columns {
+            a[(row, col)] = x.powf(na::convert(col as f64));
+        }
+    }
+
+    let b = na::DVector::from_row_slice(y_values);
+
+    let decomp = na::SVD::new(a.clone(), true, true);
+
+    match decomp.solve(&b, na::convert(1e-18f64)) {
+        Ok(mat) => {
+            let mut y_detrend = b - a * &mat;
+            y_values.swap_with_slice(&mut y_detrend.as_mut_slice());
+            Ok(())
         }
         Err(error) => Err(error),
     }
@@ -235,6 +268,15 @@ mod tests {
         let (x, y): (Vec<_>, Vec<_>) = (0..10).map(|k| (k as f64, a * k as f64 + b)).unzip();
         let ydtd = detrend(&x, &y, 1).unwrap();
         let ba = polyfit(&x, &ydtd, 1).unwrap();
+        println!("ab: {:#?}", ba);
+        //assert!((ba[0] - b).abs() < 1e-6 && (ba[1] - a).abs() < 1e-6)
+    }
+    #[test]
+    fn test_detrend_mut() {
+        let (a, b) = (-1.5f64, 5f64);
+        let (x, mut y): (Vec<_>, Vec<_>) = (0..10).map(|k| (k as f64, a * k as f64 + b)).unzip();
+        detrend_mut(&x, &mut y, 1).unwrap();
+        let ba = polyfit(&x, &y, 1).unwrap();
         println!("ab: {:#?}", ba);
         //assert!((ba[0] - b).abs() < 1e-6 && (ba[1] - a).abs() < 1e-6)
     }

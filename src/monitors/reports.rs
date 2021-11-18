@@ -1,4 +1,4 @@
-use crate::Vector;
+use crate::{detrend_mut, Vector};
 #[cfg(feature = "plot")]
 use plotters::prelude::*;
 use std::{
@@ -133,6 +133,25 @@ pub struct Monitors {
 impl Monitors {
     pub fn len(&self) -> usize {
         self.time.len()
+    }
+    pub fn detrend(&mut self) -> &mut Self {
+        for value in self.forces_and_moments.values_mut() {
+            for k in 0..2 {
+                let mut f_k: Vec<f64> = value.iter().map(|e| e.force[k]).collect();
+                detrend_mut(&self.time, &mut f_k, 1).unwrap();
+                value
+                    .iter_mut()
+                    .zip(f_k)
+                    .for_each(|(e, f_k)| e.force[k] = f_k);
+                let mut m_k: Vec<f64> = value.iter().map(|e| e.moment[k]).collect();
+                detrend_mut(&self.time, &mut m_k, 1).unwrap();
+                value
+                    .iter_mut()
+                    .zip(m_k)
+                    .for_each(|(e, m_k)| e.moment[k] = m_k);
+            }
+        }
+        self
     }
     pub fn into_local(&mut self) -> &mut Self {
         let nodes = FemNodes::default();
