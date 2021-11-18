@@ -47,6 +47,8 @@ impl super::Report<2021> for WindLoads {
         };
         let mut m1 = Mirror::m1();
         m1.load(path_to_case.clone(), false).unwrap();
+        let mut m1_net = Mirror::m1();
+        m1_net.load(path_to_case.clone(), true).unwrap();
         Ok(format!(
             r#"
 \section{{{}}}
@@ -60,6 +62,15 @@ impl super::Report<2021> for WindLoads {
 {}
 \bottomrule
 \end{{longtable}}
+
+\subsubsection{{M1 segment net forces}}
+\begin{{longtable}}{{crrrr}}\toprule
+ ELEMENT & MEAN & STD & MIN & MAX \\\hline
+{}
+\bottomrule
+\end{{longtable}}
+
+\section{{Time series}}
 \subsubsection{{C-Rings}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 Cell}}
@@ -95,6 +106,14 @@ impl super::Report<2021> for WindLoads {
 {}
 \bottomrule
 \end{{longtable}}
+
+\subsubsection{{M1 segment net moments}}
+\begin{{longtable}}{{crrrr}}\toprule
+ ELEMENT & MEAN & STD & MIN & MAX \\\hline
+{}
+\bottomrule
+\end{{longtable}}
+
 "#,
             &cfd_case.to_pretty_string(),
             &cfd_case.to_string(),
@@ -103,6 +122,9 @@ impl super::Report<2021> for WindLoads {
                 .force_latex_table(self.stats_time_range)
                 .zip(m1.force_latex_table(self.stats_time_range))
                 .map(|(x, y)| vec![x, y].join("\n"))
+                .unwrap_or_default(),
+            m1_net
+                .force_latex_table(self.stats_time_range)
                 .unwrap_or_default(),
             path_to_case.join("c-ring_parts"),
             path_to_case.join("m1-cell"),
@@ -122,7 +144,10 @@ impl super::Report<2021> for WindLoads {
                 .moment_latex_table(self.stats_time_range)
                 .zip(m1.moment_latex_table(self.stats_time_range))
                 .map(|(x, y)| vec![x, y].join("\n"))
-                .unwrap_or_default()
+                .unwrap_or_default(),
+            m1_net
+                .moment_latex_table(self.stats_time_range)
+                .unwrap_or_default(),
         ))
     }
     /// Chapter assembly
