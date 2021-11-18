@@ -1,0 +1,91 @@
+\documentclass{gmto-book}
+
+\DocID{GMT-DOC-05214}
+\DocVersion{1.0}
+\DocStatus{Draft}
+
+\usepackage{dingbat}
+\usepackage{booktabs}
+\usepackage{longtable}
+
+\addbibresource{mount.bib}
+
+\setcounter{tocdepth}{3}
+
+\title{GMT Observatory Computational Fluid Dynamics 2021 Census}
+%\subtitle{Mount Wind Loads}
+\author{R. Conan, K. Vogiatzis, H. Fitzpatrick}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\clearpage
+
+\section*{Signatures}
+\vspace{1cm}
+\subsection*{Author}
+\vspace{1.5cm}
+%\tabulinesep=1em
+\begin{tabu} to \linewidth {X[3,l]X[1,l]}
+  \rule{\linewidth}{.1pt} & \rule{\linewidth}{.1pt} \\
+  Name, title & Date
+\end{tabu}
+\vspace{1.5cm}
+\subsection*{Approvers}
+\vspace{1.5cm}
+%\tabulinesep=1em
+\begin{tabu} to \linewidth {X[3,l]X[1,l]}
+  \rule{\linewidth}{.1pt} & \rule{\linewidth}{.1pt} \\
+  Name, title & Date \\[1cm]
+  \rule{\linewidth}{.1pt} & \rule{\linewidth}{.1pt} \\
+  Name, title & Date
+\end{tabu}
+
+\clearpage
+
+\section*{Revision Log}
+
+\begin{revisions}
+  1.0 & \today & All & None & Initial version & Author \\  
+\end{revisions}
+
+\clearpage
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\clearpage
+
+\chapter{Introduction}
+\label{sec:introduction}
+
+\input{introduction}
+
+\part{Dome Seeing}
+\label{dome-seeing}
+
+\include{part1.chapter1}
+\include{part1.chapter2}
+\include{part1.chapter3}
+
+\part{Wind Loads}
+\label{wind-loads}
+
+\include{part2.chapter1}
+\include{part2.chapter2}
+\include{part2.chapter3}
+
+\part{Heat Transfer Coefficients}
+\label{htc}
+
+\include{part3.chapter1}
+\include{part3.chapter2}
+\include{part3.chapter3}
+
+
+\printbibliography
+
+\end{document}

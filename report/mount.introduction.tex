@@ -1,0 +1,57 @@
+\section{Purpose}
+\label{sec:purpose}
+
+This document describes the wind loads that the GMTO Mount Element is providing
+to the mount vendor.
+
+\section{Introduction}
+
+Following the mount PDR\cite{MOUNT-PDR}, the CFD telescope model has been updated to take
+into account the numerous design changes.
+The updated CFD model is described in GMT-DOC--05211\cite{GMT.DOC.05211}.
+
+The mount wind loads are detailed in  chapter~\ref{cfd-wind-loads}.
+The chapter is divided into 11 sections, one section for each CFD case.
+Each case is defined according to a telescope zenith and azimuth angles, a wind
+speed and an enclosure configuration.
+For the mount wind loads, all the cases correspond to the telescope pointing at a 30 degree zenith angle.
+The telescope azimuth is given with respect to the 30$^o$-NNE predominant wind
+direction at the GMT site.
+The enclosure configuration is either vents open and wind screen stowed (OS) for the
+2m/s and 7m/s cases or vents closed and wind screen deployed (CD) for the 12m/s
+cases.
+Table~\ref{tab:cases} identifies the CFD cases for the mount wind loads.
+\begin{table}
+  \centering
+  \begin{tabular}{c|ccc}\toprule
+    Azimuth [degree]  & 2m/s (OS) & 7m/s (OS) & 12m/s (CD) \\\midrule
+      0               & \checkmark& \checkmark& \checkmark \\
+     45               & \checkmark& \checkmark& \checkmark \\
+     90               & \checkmark& \checkmark& \checkmark \\
+    135               & & \checkmark&  \\
+    180               & & & \checkmark \\\bottomrule
+  \end{tabular}
+  \caption{CFD settings for the mount wind loads cases.}
+  \label{tab:cases}
+\end{table}
+
+Each section in  chapter~\ref{cfd-wind-loads} includes a snapshot of the vorticity for the whole Observatory,
+two tables providing the mean, the standard deviation, the minimum and the
+maximum of the magnitude of either the force or the moment exerted on the
+elements of the telescope and time series plots of the force magnitude on the
+different telescope elements.
+Both, forces and moments are sampled at 20Hz.
+
+The simulations take some time to converge to a stationary solution and this convergence time is a function of the initial conditions but strongly depends on the wind speed and the enclosure configuration.
+The duration of the simulations have been set to 1200s, 700s and 900s for the 2m/s, 7m/s and 12m/s CFD runs, respectively.
+It is usually the case that the last 400s of the simulations are stationary and
+the statistical quantity reported in the forces and moments tables have been derived from
+the last 400s of the corresponding time series.
+A mistake was made in one report of one C-ring element for 3 cases (Sec.~\ref{zen30az000_OS7}, Sec.~\ref{zen30az045_OS7} and Sec.~\ref{zen30az000_CD12}), the erroneous C-ring report have been corrected and the cases have been run for 400 more seconds. 
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "gmto.cfd2021.mount"
+%%% End:

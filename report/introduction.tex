@@ -1,0 +1,89 @@
+\section{Purpose}
+\label{sec:purpose}
+
+This document describes the results from the 2021 CFD baseline simulations.
+
+\section{Introduction}
+
+Following the mount PDR\cite{MOUNT-PDR}, the CFD telescope model has been updated to take
+into account the numerous design changes.
+The updated CFD model is described in GMT-DOC--05211\cite{GMT.DOC.05211}.
+
+There is a total of 77 CFD cases covering 3 telescope pointing angle (wrt. to zenith): 0$^o$, 30$^o$ and 60$^o$, 5 telescope azimuth angles wrt. the 30$^o$-NNE predominant wind direction at the GMT site: 0$^o$, 45$^o$, 90$^o$, 135$^o$ and 180$^o$, 5 wind speeds: 2m/s, 7m/s, 12m/s, 17m/s and 22m/s and 3 enclosure configurations: open vents/stowed wind screen (OS), closed vents/deployed wind screen (CD) and closed vents/stowed wind screen (CS).
+Table~\ref{tab:cases} identifies all the CFD cases.
+\begin{table}
+  \centering
+  \begin{tabular}{c|ccccc}\toprule
+    Azimuth [degree] & \multicolumn{5}{c}{Wind speed [m/s]} \\\hline
+     - & 2 & 7  & 12 & 17 & 22 \\\midrule
+    \multicolumn{6}{c}{0$^o$ zenith}\\\hline
+      0               & OS   & OS/CD & CD    & CD    & -    \\
+     45               & OS   & OS/CD & CD    & CD    & -    \\
+     90               & OS   & OS/CD & CD    & CD$^!$    & -    \\
+    135               & OS   & OS/CD & CD    & CD    & -    \\
+    180               & OS   & OS/CD$^!$ & CD    & CD    & -    \\\hline
+    \multicolumn{6}{c}{30$^o$ zenith}\\\hline
+      0               & OS   & OS/CD & CD    & CD    & CD    \\
+     45               & OS   & OS/CD & CD    & CD    & CD    \\
+     90               & OS   & OS/CD & CD    & CD    &     \\
+    135               & OS   & OS/CD & CD    & CD    &     \\
+    180               & OS   & OS/CD & CD    & CD    &     \\\hline
+    \multicolumn{6}{c}{60$^o$ zenith}\\\hline
+      0               & OS$^!$   & OS/CS & CS    & CS    & -    \\
+     45               & OS   & OS/CS & CS    & CS    & -    \\
+     90               & OS   & OS/CS & CS    & CS    & -    \\
+    135               & OS   & OS/CS & CS    & CS    & -    \\
+    180               & OS   & OS/CS & CS    & CS    & -    \\
+    \bottomrule
+  \end{tabular}
+  \caption[CFD GMT enclosure configuration]{CFD GMT enclosure configuration (OS: open vents/stowed wind screen, CD: closed vents/deployed wind screen, CS: closed vents/stowed wind screen) for all the CFD cases. ($^!$ indicates cases that have failed and that not presented in this report.)}
+  \label{tab:cases}
+\end{table}
+
+The report is divided into 3 parts, each corresponding to a specific data products from the CFD simulations: dome seeing in part~\ref{dome-seeing}, wind loads in part~\ref{wind-loads} and heat transfer coefficients (HTC) in part~\ref{htc}.
+All the parts are divided into 3 chapters, one chapter for each telescope zenith angle.
+In each chapter, there are as many sections as CFD cases at that particular zenith angle.
+
+\paragraph{Dome seeing}
+
+Dome seeing results are given in part~\ref{dome-seeing}.
+Each chapter starts with a table with the WFE RMS and V and H PSSn values for both the current (2021) and the former (2020) set of simulations.
+Each section includes a snapshot of the gradient of the refraction index for the whole Observatory and time series plots of the WFE RMS and V and H PSSn.
+The dome seeing related data is sampled at 5Hz.
+There are PSSn plots for both short exposure (SE) and long exposure (LE) PSSn.
+SE PSSn have the same sampling than the dome seeing data (5Hz).
+The LE PSSn values are derived from cummulative dome seeing images sampled at 1Hz (for the LE PSSn, the meaning of the x-axis is exposure time).
+
+\paragraph{Wind loads}
+
+The wind loads are detailed in part~\ref{wind-loads}.
+Each section includes a snapshot of the vorticity for the whole Observatory,
+two tables providing the mean, the standard deviation, the minimum and the
+maximum of the magnitude of either the force or the moment exerted on the
+elements of the telescope and time series plots of the force magnitude on the
+different telescope elements.
+Both, forces and moments are sampled at 20Hz.
+
+The simulations take some time to converge to a stationary solution and this convergence time is a function of the initial conditions but strongly depends on the wind speed and the enclosure configuration.
+The duration of each simulations have been set accordingly.
+It is usually the case that the last 400s of the simulations are stationary and
+the statistical quantity reported in the forces and moments tables have been derived from
+the last 400s of the corresponding time series.
+A mistake was made in one report of one C-ring element for 4 cases (Sec.~\ref{zen30az000_OS7}, Sec.~\ref{zen30az045_OS7}, Sec.~\ref{zen30az000_CD12} and Sec.~\ref{zen30az045_OS2}), the erroneous C-ring report have been corrected and the cases have been run for 400 more seconds. 
+
+\paragraph{Heat transfer coefficients}
+The HTC are reported in part~\ref{htc}.
+Each section includes a table providing the mean, the standard deviation, the minimum and the
+maximum of the HTC  on the elements of the telescope.
+These quantities have been derived from the last 400s of the corresponding HTCs.
+Like forces and moments, HTCs are sampled at 20Hz.
+
+\paragraph{Excluded cases}
+Three cases (zen00az090-CD17,  zen00az180-CD7,  zen60az000-OS2) have failed to run properly and have been removed from this report.
+The configuration files for this cases have been regenerated and new simulation runs of these cases are currently in progress.
+The results of these new runs will be added to the report once completed.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "gmto.cfd2021.mount"
+%%% End:
