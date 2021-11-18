@@ -32,6 +32,7 @@ geotrans = { path = "../geotrans" }
 
 [features]
 plot = ["plotters", "complot"]
+xcase = []
 
 [dev-dependencies]
 rand = "0.8.4"

@@ -153,6 +153,9 @@ impl super::Report<2021> for WindLoads {
         )?;
         Ok(())
     }
+    fn part_name(&self) -> String {
+        String::from("Wind loads")
+    }
 }
 impl WindLoads {
     /// Mount chapter assembly

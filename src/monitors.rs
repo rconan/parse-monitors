@@ -183,12 +183,7 @@ impl Monitors {
                     )
                 })
                 .collect();
-            Some(format!(
-                r#"
-{}
-"#,
-                data.join("\n")
-            ))
+            Some(data.join("\n"))
         }
     }
     /// Return a latex table with force monitors summary

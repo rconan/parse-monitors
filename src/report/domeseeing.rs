@@ -92,14 +92,14 @@ impl DomeSeeingPart {
             .collect::<Vec<String>>();
         format!(
             r#"
-\begin{{tabular}}{{*{{4}}{{c}}|*{{3}}{{r}}|*{{3}}{{r}}}}\toprule
+\begin{{longtable}}{{*{{4}}{{c}}|*{{3}}{{r}}|*{{3}}{{r}}}}\toprule
  \multicolumn{{4}}{{c|}}{{\textbf{{CFD Cases}}}} & \multicolumn{{3}}{{|c|}}{{\textbf{{2021}}}} & \multicolumn{{3}}{{|c}}{{\textbf{{2020}}}} \\\midrule
   Zen. & Azi. & Cfg. & Wind & WFE & PSSn & PSSn & WFE & PSSn & PSSn \\
   - & -    & -    &  -   & RMS & -  & - & RMS & - & -  \\
   $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& V & H & $[nm]$ & V & H \\\hline
  {}
 \bottomrule
-\end{{tabular}}
+\end{{longtable}}
 "#,
             table_content.join("\n")
         )
@@ -116,28 +116,28 @@ impl super::Report<2021> for DomeSeeingPart {
             .unwrap()
             .to_owned();
         let paths = glob(&pattern).expect("Failed to read glob pattern");
-        let ri_pic = paths.last().unwrap()?;
+        let ri_pic = paths.last().unwrap()?.with_extension("");
         Ok(format!(
             r#"
 \clearpage
 \section{{{}}}
 
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
 \subsection{{Wavefront error RMS}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.7\textwidth]{{{{{{{:?}}}}}}}
 \clearpage
 \subsection{{PSSn}}
 \subsubsection{{V}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.7\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{H}}
-\includegraphics[width=0.8\textwidth]{{{:?}}}
+\includegraphics[width=0.7\textwidth]{{{{{{{:?}}}}}}}
 "#,
             &cfd_case.to_pretty_string(),
             ri_pic,
-            path_to_case.join("dome-seeing_wfe-rms.png"),
-            path_to_case.join("dome-seeing_v-pssn.png"),
-            path_to_case.join("dome-seeing_h-pssn.png"),
+            path_to_case.join("dome-seeing_wfe-rms"),
+            path_to_case.join("dome-seeing_v-pssn"),
+            path_to_case.join("dome-seeing_h-pssn"),
         ))
     }
     /// Chapter assembly
@@ -166,5 +166,8 @@ impl super::Report<2021> for DomeSeeingPart {
                 .join("\n")
         )?;
         Ok(())
+    }
+    fn part_name(&self) -> String {
+        String::from("Dome seeing")
     }
 }

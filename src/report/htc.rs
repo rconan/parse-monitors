@@ -24,14 +24,16 @@ impl super::Report<2021> for HTC {
         Ok(format!(
             r#"
 \section{{{}}}
+\begin{{longtable}}{{crrrr}}\toprule
+ ELEMENT & MEAN & STD & MIN & MAX \\\hline
 {}
+\bottomrule
+\end{{longtable}}
 "#,
             &cfd_case.to_pretty_string(),
-            if let Some(data) = monitors.htc_latex_table(self.stats_time_range) {
-                data
-            } else {
-                String::new()
-            }
+            monitors
+                .htc_latex_table(self.stats_time_range)
+                .unwrap_or_default()
         ))
     }
     /// Chapter assembly
@@ -61,5 +63,8 @@ impl super::Report<2021> for HTC {
             results.join("\n")
         )?;
         Ok(())
+    }
+    fn part_name(&self) -> String {
+        String::from("HTC")
     }
 }

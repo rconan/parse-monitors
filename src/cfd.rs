@@ -235,7 +235,35 @@ impl<const YEAR: u32> IntoIterator for Baseline<YEAR> {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        if cfg!(feature = "xcase") {
+            self.0
+                .into_iter()
+                .filter(|c| {
+                    !(*c == CfdCase::new(
+                        ZenithAngle::Zero,
+                        Azimuth::Ninety,
+                        Enclosure::ClosedDeployed,
+                        WindSpeed::Seventeen,
+                    ) || *c
+                        == CfdCase::new(
+                            ZenithAngle::Zero,
+                            Azimuth::OneEighty,
+                            Enclosure::ClosedDeployed,
+                            WindSpeed::Seven,
+                        )
+                        || *c
+                            == CfdCase::new(
+                                ZenithAngle::Sixty,
+                                Azimuth::Zero,
+                                Enclosure::OpenStowed,
+                                WindSpeed::Two,
+                            ))
+                })
+                .collect::<Vec<CfdCase<YEAR>>>()
+        } else {
+            self.0
+        }
+        .into_iter()
     }
 }
 impl Baseline<2020> {
