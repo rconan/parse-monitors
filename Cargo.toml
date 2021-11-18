@@ -11,7 +11,7 @@ bzip2 = "0.4.3"
 colorous = "1.0.5"
 csv = "1.1.6"
 indicatif = { version = "0.16.2", features = ["rayon"] }
-nalgebra = { version = "0.27.1", features = ["rand"] }
+nalgebra = { version = "0.*", features = ["rand"] }
 plotters = { version = "0.3.1", optional = true }
 regex = "1.5.4"
 serde = { version = "1.0.126", features = ["derive"] }
@@ -26,8 +26,8 @@ chrono = "0.4.19"
 strum = "0.22.0"
 strum_macros = "0.22.0"
 serde-pickle = "1.1.0"
-complot = { path = "../complot", features = ["png"] , optional = true}
-geotrans = { path = "../geotrans" }
+complot = { version = "0.3.1", features = ["png"], optional = true}
+geotrans = { path = "/home/rconan/projects/geotrans/" }
 #geotrans = "0.1.0"
 
 [features]
