@@ -3,14 +3,15 @@ use nalgebra as na;
 mod vector;
 pub use vector::Vector;
 mod monitors;
-pub use monitors::{Exertion, Monitors, MonitorsLoader};
+pub use monitors::{Exertion, Mirror, Monitors, MonitorsLoader};
 pub mod cfd;
 pub mod domeseeing;
 pub use domeseeing::{Band, DomeSeeing};
-pub mod mirror;
 pub mod pressure;
 pub mod report;
-pub use mirror::Mirror;
+
+const FORCE_SAMPLING_FREQUENCY: f64 = 20_f64; // Hz
+const FORCE_SAMPLING: f64 = 1. / FORCE_SAMPLING_FREQUENCY; // Hz
 
 pub fn polyfit<T: na::RealField + Copy>(
     x_values: &[T],

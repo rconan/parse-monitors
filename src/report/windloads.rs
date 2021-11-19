@@ -45,10 +45,8 @@ impl super::Report<2021> for WindLoads {
                 .data_path(path_to_case.clone())
                 .load()?
         };
-        let mut m1 = Mirror::m1();
-        m1.load(path_to_case.clone(), false).unwrap();
-        let mut m1_net = Mirror::m1();
-        m1_net.load(path_to_case.clone(), true).unwrap();
+        let m1 = Mirror::m1(path_to_case.clone()).load().unwrap();
+        let m1_net = Mirror::m1(path_to_case.clone()).net_force().load().unwrap();
         Ok(format!(
             r#"
 \section{{{}}}
@@ -70,7 +68,6 @@ impl super::Report<2021> for WindLoads {
 \bottomrule
 \end{{longtable}}
 
-\subsection{{Time series}}
 \subsubsection{{C-Rings}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 Cell}}
@@ -100,7 +97,7 @@ impl super::Report<2021> for WindLoads {
 \subsubsection{{Platforms \& cable wraps}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
-\subsubsection{{Moments [N.M]}}
+\subsection{{Moments [N.M]}}
 \begin{{longtable}}{{crrrr}}\toprule
  ELEMENT & MEAN & STD & MIN & MAX \\\hline
 {}

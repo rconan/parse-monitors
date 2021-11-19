@@ -83,12 +83,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if opt.m1_table {
-        let mut m1 = Mirror::m1();
-        m1.load(&opt.path, false)?.summary();
+        if let Some(arg) = opt.start {
+            Mirror::m1(&opt.path).start_time(arg).load()?.summary();
+        } else {
+            Mirror::m1(&opt.path).load()?.summary();
+        };
     }
     if opt.m1_table_net {
-        let mut m1 = Mirror::m1();
-        m1.load(&opt.path, true)?.summary();
+        if let Some(arg) = opt.start {
+            Mirror::m1(&opt.path)
+                .net_force()
+                .start_time(arg)
+                .load()?
+                .summary();
+        } else {
+            Mirror::m1(&opt.path).net_force().load()?.summary();
+        };
     }
 
     Ok(())

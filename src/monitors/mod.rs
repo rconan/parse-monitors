@@ -7,7 +7,9 @@ use std::{
     time::Instant,
 };
 
+mod mirror;
 mod reports;
+pub use mirror::Mirror;
 pub use reports::{Exertion, Monitors};
 
 pub struct MonitorsLoader<const YEAR: u32> {
