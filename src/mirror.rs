@@ -118,7 +118,10 @@ impl Mirror {
                     assert_eq!(
                         time.len(),
                         m1_cell.len(),
-                        "M1 segments and M1 cell # of sample do not match"
+                        "{:?} {:?}/{:?}: M1 segments and M1 cell # of sample do not match",
+                        (ts, te),
+                        (monitors.time[0], monitors.time.last().unwrap()),
+                        path
                     );
                     for v in force.values_mut() {
                         for (e, cell) in v.iter_mut().zip(m1_cell) {

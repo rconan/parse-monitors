@@ -1,5 +1,4 @@
 use nalgebra as na;
-use std::path::Path;
 
 mod vector;
 pub use vector::Vector;
@@ -103,7 +102,7 @@ pub fn detrend_mut<T: na::RealField + Copy>(
 }
 
 #[cfg(feature = "plot")]
-pub fn plot_monitor<S: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(
+pub fn plot_monitor<S: AsRef<std::path::Path> + std::convert::AsRef<std::ffi::OsStr>>(
     time: &[f64],
     monitor: &[Exertion],
     key: &str,

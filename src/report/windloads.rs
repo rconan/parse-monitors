@@ -70,7 +70,7 @@ impl super::Report<2021> for WindLoads {
 \bottomrule
 \end{{longtable}}
 
-\section{{Time series}}
+\subsection{{Time series}}
 \subsubsection{{C-Rings}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 Cell}}
@@ -100,7 +100,7 @@ impl super::Report<2021> for WindLoads {
 \subsubsection{{Platforms \& cable wraps}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
-\subsection{{Moments [N.M]}}
+\subsubsection{{Moments [N.M]}}
 \begin{{longtable}}{{crrrr}}\toprule
  ELEMENT & MEAN & STD & MIN & MAX \\\hline
 {}

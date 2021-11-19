@@ -97,7 +97,7 @@ impl MonitorsLoader<2021> {
         for result in rdr.records() {
             let record = result?;
             let time = record.iter().next().unwrap().parse::<f64>()?;
-            if time < self.time_range.0 || time > self.time_range.1 {
+            if time < self.time_range.0 - 1. / 40. || time > self.time_range.1 + 1. / 40. {
                 continue;
             };
             monitors.time.push(time);
