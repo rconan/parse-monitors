@@ -9,15 +9,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         .extras()
         .into_iter()
         /*
-                .filter(|c| {
-                    *c == cfd::CfdCase::new(
-                        cfd::ZenithAngle::Thirty,
-                        cfd::Azimuth::FortyFive,
-                        cfd::Enclosure::OpenStowed,
-                        cfd::WindSpeed::Seven,
-                    )
-                })
+                   .filter(|c| {
+                       *c == cfd::CfdCase::new(
+                           cfd::ZenithAngle::Thirty,
+                           cfd::Azimuth::FortyFive,
+                           cfd::Enclosure::OpenStowed,
+                           cfd::WindSpeed::Seven,
+                       )
+                   })
         */
+        .skip(1)
         .collect::<Vec<cfd::CfdCase<2021>>>()
         .into_iter()
         .for_each(|cfd_case| {
@@ -26,7 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let files: Vec<_> = glob(
                 case_path
                     .join("pressures")
-                    .join("M2p_M2p_*.csv.bz2")
+                    .join("M1p_M1p_*.csv.bz2")
                     .to_str()
                     .unwrap(),
             )
@@ -35,7 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .collect();
             let n_files = files.len();
 
-            let time_cop_fm: Vec<_> = files
+            let records: Vec<_> = files
                 .into_iter()
                 .collect::<Vec<String>>()
                 .par_iter()
@@ -50,42 +51,32 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let time = &stem[8..].parse::<f64>().unwrap();
                     let csv_pressure = Pressure::decompress(path.to_path_buf()).unwrap();
                     let csv_geometry =
-                        Pressure::decompress(path.with_file_name("M2p.csv.bz2")).unwrap();
+                        Pressure::decompress(path.with_file_name("M1p.csv.bz2")).unwrap();
                     let mut pressures = Pressure::load(csv_pressure, csv_geometry).unwrap();
-                    let cop_fm: Vec<_> = (1..=7)
-                        .map(|sid| pressures.segment_pressure_integral(sid))
-                        .collect();
-                    (*time, cop_fm)
+                    let segments_pressure = pressures.segments_average_pressure();
+                    let segments_pressure_std = pressures.segments_pressure_std();
+                    let average_pressure = pressures.mirror_average_pressure();
+                    (
+                        *time,
+                        average_pressure,
+                        segments_pressure,
+                        segments_pressure_std,
+                    )
                 })
                 .collect();
 
-            let filename = case_path.join("m2_center_of_pressure.csv");
+            let filename = case_path.join("m1_pressure-stats.csv");
             let mut wtr = csv::WriterBuilder::new()
                 .has_headers(false)
                 .from_path(filename)
                 .unwrap();
             let headers: Vec<_> = std::iter::once("Time [s]".to_string())
-                .chain((1..=7).flat_map(|sid| {
-                    ["X", "Y", "Z"]
-                        .iter()
-                        .map(|xyz| format!("S{} COP {} [M]", sid, xyz))
-                        .chain(
-                            ["X", "Y", "Z"]
-                                .iter()
-                                .map(|xyz| format!("S{} FORCE {} [N]", sid, xyz))
-                                .chain(
-                                    ["X", "Y", "Z"]
-                                        .iter()
-                                        .map(|xyz| format!("S{} MOMENT {} [N.M]", sid, xyz))
-                                        .collect::<Vec<String>>(),
-                                )
-                                .collect::<Vec<String>>(),
-                        )
-                        .collect::<Vec<String>>()
-                }))
+                .chain(std::iter::once("Mean [Pa]".to_string()))
+                .chain((1..=7).map(|sid| format!("S{} Mean [Pa]", sid)))
+                .chain((1..=7).map(|sid| format!("S{} Std [Pa]", sid)))
                 .collect();
             wtr.write_record(&headers).unwrap();
-            for data in time_cop_fm {
+            for data in records {
                 wtr.serialize(data).unwrap();
             }
             wtr.flush().unwrap();

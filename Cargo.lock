@@ -302,8 +302,6 @@ dependencies = [
 [[package]]
 name = "complot"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b49fab28efa148f5d9614f0c5e8eca1b6703e96454cd70ddc94e27b2b65d263"
 dependencies = [
  "colorous",
  "num-traits",
@@ -941,7 +939,7 @@ dependencies = [
 
 [[package]]
 name = "geotrans"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "getrandom"
@@ -1926,6 +1924,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "tectonic",
+ "triangle-rs",
  "windloading",
 ]
 
@@ -3144,6 +3143,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f4ed65637b8390770814083d20756f87bfa2c21bf2f110babdc5438351746e4"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "triangle-rs"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "rayon",
+ "serde",
+ "serde-pickle 0.6.3",
 ]
 
 [[package]]

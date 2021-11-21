@@ -26,8 +26,9 @@ chrono = "0.4.19"
 strum = "0.22.0"
 strum_macros = "0.22.0"
 serde-pickle = "1.1.0"
-complot = { version = "0.3.1", features = ["png"], optional = true}
-geotrans = { path = "../geotrans"}
+complot = { path = "../complot", version = "0.*", features = ["png"], optional = true}
+geotrans = { path = "../geotrans", version = "0.*"}
+triangle-rs = { path = "../triangle-rs", version = "0.*" }
 
 [features]
 plot = ["plotters", "complot"]

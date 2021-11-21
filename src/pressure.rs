@@ -1,3 +1,5 @@
+//! Mirror surface pressure
+
 use std::{
     error::Error,
     fs::File,
@@ -58,14 +60,18 @@ impl PartialOrd for GeometryRecord {
 /// M1 segments surface pressure
 #[derive(Default)]
 pub struct Pressure {
-    /// the segment surface pressure
+    // the segment surface pressure [Pa]
     pressure: Vec<f64>,
-    /// the area magnitude the pressure is applied to
+    // the area magnitude the pressure is applied to
     area: Vec<f64>,
-    /// the area vector along the surface normal
+    // the area vector along the surface normal
     area_ijk: Vec<[f64; 3]>,
-    /// the (x,y,z) coordinate where the pressure is applied
+    // the (x,y,z) coordinate where the pressure is applied
     xyz: Vec<[f64; 3]>,
+    // segment data filter
+    segment_filter: Vec<Vec<bool>>,
+    // segment data filter
+    segment_filter_size: Vec<f64>,
 }
 impl Pressure {
     /// Loads the pressure data
@@ -83,12 +89,35 @@ impl Pressure {
             "Area magnitude do no match area vector: {}",
             max_diff_area
         );
-        Ok(Self {
+        let mut this = Self {
             pressure: this_pa.pressure,
             area: this_pa.area,
             area_ijk: this_aijk.area_ijk,
             xyz: this_aijk.xyz,
-        })
+            segment_filter: Vec::new(),
+            segment_filter_size: Vec::new(),
+        };
+        let mut n = 0;
+        for sid in 1..=7 {
+            let sf = this
+                .to_local(sid)
+                .xy_iter()
+                .map(|(x, y)| x.hypot(y) < 4.5_f64)
+                .collect::<Vec<bool>>();
+            let n_sf = sf
+                .iter()
+                .filter_map(|sf| if *sf { Some(1usize) } else { None })
+                .sum::<usize>();
+            this.segment_filter.push(sf);
+            this.segment_filter_size.push(n_sf as f64);
+            this.from_local(sid);
+            n += n_sf;
+        }
+        assert!(
+            n == this.pressure.len(),
+            "Data length and segment filter length do not match"
+        );
+        Ok(this)
     }
     pub fn decompress(path: PathBuf) -> Result<String, Box<dyn Error>> {
         let csv_file = File::open(path)?;
@@ -150,6 +179,20 @@ impl Pressure {
     pub fn xy_iter(&self) -> impl Iterator<Item = (f64, f64)> + '_ {
         self.x_iter().zip(self.y_iter())
     }
+    /// Iterator over the (x,y) coordinates of a given segment
+    pub fn segment_xy(&self, sid: usize) -> impl Iterator<Item = (f64, f64)> + '_ {
+        self.x_iter()
+            .zip(self.y_iter())
+            .zip(self.segment_filter.get(sid - 1).unwrap().iter())
+            .filter(|(_, &f)| f)
+            .map(|(xy, _)| xy)
+    }
+    /// Iterator over the pressure and areas of a given segment
+    pub fn segment_pa(&self, sid: usize) -> impl Iterator<Item = (f64, f64)> + '_ {
+        self.pa_iter()
+            .zip(self.segment_filter.get(sid - 1).unwrap().iter())
+            .filter_map(|((p, a), &f)| f.then(|| (*p, *a)))
+    }
     /// Returns the range of the y cooordinate
     pub fn y_range(&self) -> (f64, f64) {
         (
@@ -206,7 +249,23 @@ impl Pressure {
             .zip(self.xyz.iter())
             .map(|((a, b), c)| (a, b, c))
     }
-    /// Returns the z forces of a given segment
+    /// Return the area of a given segment
+    pub fn segment_area(&self, sid: usize) -> f64 {
+        self.area
+            .iter()
+            .zip(self.segment_filter.get(sid - 1).unwrap())
+            .filter(|(_, &f)| f)
+            .fold(0f64, |aa, (a, _)| aa + *a)
+    }
+    /// Return the area of each segment
+    pub fn segments_area(&self) -> Vec<f64> {
+        (1..=7).map(|sid| self.segment_area(sid)).collect()
+    }
+    /// Return the mirror area
+    pub fn mirror_area(&self) -> f64 {
+        self.area.iter().fold(0f64, |aa, a| aa + *a)
+    }
+    /// Returns the vectors of forces of a given segment
     pub fn forces(&mut self, sid: usize) -> Vec<[f64; 3]> {
         let xy: Vec<_> = self.to_local(sid).xy_iter().map(|(x, y)| (x, y)).collect();
         self.from_local(sid)
@@ -215,6 +274,51 @@ impl Pressure {
             .filter(|(_, (x, y))| x.hypot(*y) < 4.5_f64)
             .map(|((p, a), _)| [p * a[0], p * a[1], p * a[2]])
             .collect()
+    }
+    /// Returns the average pressure over a given segment
+    pub fn average_pressure(&mut self, sid: usize) -> f64 {
+        let (pa, aa) = self
+            .pa_iter()
+            .zip(self.segment_filter.get(sid - 1).unwrap().iter())
+            .filter(|(_, &f)| f)
+            .fold((0f64, 0f64), |(pa, aa), ((p, a), _)| (pa + p * a, aa + a));
+        pa / aa
+    }
+    /// Returns the pressure variance over a given segment
+    pub fn pressure_var(&mut self, sid: usize) -> f64 {
+        let p_mean = self.average_pressure(sid);
+        let (pa, aa) = self
+            .pa_iter()
+            .zip(self.segment_filter.get(sid - 1).unwrap().iter())
+            .filter(|(_, &f)| f)
+            .fold((0f64, 0f64), |(pa, aa), ((p, a), _)| {
+                let p_net = p - p_mean;
+                (pa + p_net * p_net * a, aa + a)
+            });
+        pa / aa
+    }
+    /// Returns the pressure standard deviation over a given segment
+    pub fn pressure_std(&mut self, sid: usize) -> f64 {
+        self.pressure_var(sid).sqrt()
+    }
+    /// Returns the average pressure over each segment
+    pub fn segments_average_pressure(&mut self) -> Vec<f64> {
+        (1..=7).map(|sid| self.average_pressure(sid)).collect()
+    }
+    /// Returns the pressure variance over each segment
+    pub fn segments_pressure_var(&mut self) -> Vec<f64> {
+        (1..=7).map(|sid| self.pressure_var(sid)).collect()
+    }
+    /// Returns the pressure standard deviation over each segment
+    pub fn segments_pressure_std(&mut self) -> Vec<f64> {
+        (1..=7).map(|sid| self.pressure_std(sid)).collect()
+    }
+    /// Returns the average pressure over all segment
+    pub fn mirror_average_pressure(&mut self) -> f64 {
+        let (pa, aa) = self
+            .pa_iter()
+            .fold((0f64, 0f64), |(pa, aa), (p, a)| (pa + p * a, aa + a));
+        pa / aa
     }
     /// Returns the center of pressure of a given segment
     pub fn center_of_pressure(&mut self, sid: usize) -> [f64; 3] {
@@ -266,7 +370,7 @@ impl Pressure {
         ];
         (cop, (force, moment))
     }
-    /// Returns the sum of the forces of a all the segments
+    /// Returns the sum of the forces of all the segments
     pub fn segments_force(&mut self) -> [f64; 3] {
         (1..=7)
             .map(|sid| self.segment_force(sid))
@@ -281,5 +385,43 @@ impl Pressure {
             s.iter_mut().zip(a).for_each(|(s, a)| *s += a);
             s
         })
+    }
+    #[cfg(feature = "plot")]
+    /// Display the pressure map
+    pub fn pressure_map(&mut self) {
+        let mut triangles = vec![];
+        let mut tri_pressure = vec![];
+        let average_pressure = self.mirror_average_pressure();
+        let min_pressure = self.pressure.iter().cloned().fold(f64::INFINITY, f64::min);
+        println!("Min. P: {} Pa", min_pressure);
+        for sid in 1..=7 {
+            let mut tri = triangle_rs::Builder::new();
+            let mut del = tri
+                .add_nodes(
+                    &self
+                        .segment_xy(sid)
+                        .flat_map(|(x, y)| vec![x, y])
+                        .collect::<Vec<f64>>(),
+                )
+                .set_switches("Q")
+                .build();
+            let pa: Vec<_> = self
+                .segment_pa(sid)
+                .map(|(p, a)| (if p < 0f64 { f64::NAN } else { p }, a))
+                .collect();
+            tri_pressure.extend(del.triangle_iter().map(|t| {
+                t.iter().fold(0f64, |s, i| s + pa[*i].0 * pa[*i].1)
+                    / t.iter().fold(0f64, |s, i| s + pa[*i].1)
+            }));
+            triangles.extend(del.triangle_vertex_iter());
+        }
+        let _: complot::tri::Heatmap = (
+            triangles
+                .into_iter()
+                .zip(tri_pressure.into_iter())
+                .filter(|(_, p)| !p.is_nan()),
+            None,
+        )
+            .into();
     }
 }
