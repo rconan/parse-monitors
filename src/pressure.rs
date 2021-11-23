@@ -391,12 +391,11 @@ impl Pressure {
     pub fn pressure_map(&mut self) {
         let mut triangles = vec![];
         let mut tri_pressure = vec![];
-        let average_pressure = self.mirror_average_pressure();
+        //let average_pressure = self.mirror_average_pressure();
         let min_pressure = self.pressure.iter().cloned().fold(f64::INFINITY, f64::min);
         println!("Min. P: {} Pa", min_pressure);
         for sid in 1..=7 {
-            let mut tri = triangle_rs::Builder::new();
-            let mut del = tri
+            let del = triangle_rs::Delaunay::builder()
                 .add_nodes(
                     &self
                         .segment_xy(sid)
