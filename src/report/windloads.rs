@@ -25,7 +25,11 @@ impl WindLoads {
 }
 impl super::Report<2021> for WindLoads {
     /// Chapter section
-    fn chapter_section(&self, cfd_case: cfd::CfdCase<2021>) -> Result<String, Box<dyn Error>> {
+    fn chapter_section(
+        &self,
+        cfd_case: cfd::CfdCase<2021>,
+        ri_pic_idx: Option<usize>,
+    ) -> Result<String, Box<dyn Error>> {
         let path_to_case = cfd::Baseline::<2021>::path().join(&cfd_case.to_string());
         let pattern = path_to_case
             .join("scenes")
@@ -47,6 +51,12 @@ impl super::Report<2021> for WindLoads {
         };
         let m1 = Mirror::m1(path_to_case.clone()).load().unwrap();
         let m1_net = Mirror::m1(path_to_case.clone()).net_force().load().unwrap();
+        let m1_pressure_mean = path_to_case
+            .join("m1_pressure-stats_mean.png")
+            .with_extension("");
+        let m1_pressure_std = path_to_case
+            .join("m1_pressure-stats_std.png")
+            .with_extension("");
         Ok(format!(
             r#"
 \section{{{}}}
@@ -111,6 +121,12 @@ impl super::Report<2021> for WindLoads {
 \bottomrule
 \end{{longtable}}
 
+\subsection{{Pressure}}
+\subsubsection{{M1 segment average}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{M1 segment standard deviation}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+
 "#,
             &cfd_case.to_pretty_string(),
             &cfd_case.to_string(),
@@ -145,6 +161,8 @@ impl super::Report<2021> for WindLoads {
             m1_net
                 .moment_latex_table(self.stats_time_range)
                 .unwrap_or_default(),
+            m1_pressure_mean,
+            m1_pressure_std,
         ))
     }
     /// Chapter assembly
@@ -161,7 +179,7 @@ impl super::Report<2021> for WindLoads {
             .collect::<Vec<cfd::CfdCase<2021>>>();
         let results: Vec<_> = cfd_cases
             .into_par_iter()
-            .map(|cfd_case| self.chapter_section(cfd_case).unwrap())
+            .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())
             .collect();
         let mut file = File::create(report_path.join(chapter_filename))?;
         write!(
@@ -189,7 +207,7 @@ impl WindLoads {
             .collect::<Vec<cfd::CfdCase<2021>>>();
         let results: Vec<_> = cfd_cases
             .into_par_iter()
-            .map(|cfd_case| self.chapter_section(cfd_case).unwrap())
+            .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())
             .collect();
         let mut file = File::create(report_path.join(chapter_filename))?;
         write!(

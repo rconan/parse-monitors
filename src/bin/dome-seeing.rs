@@ -1,7 +1,14 @@
+//! DOME SEEING ANALYSYS
+//!
+//! Make the dome seeing plots unless the environment variable `CFD_PLOTS` is set to `NO`
+//! It must be run as root i.e. `sudo -E ./target/release/dome-seeing`
+
 use indicatif::ParallelProgressIterator;
 use parse_monitors::{cfd, Band, DomeSeeing};
 use rayon::prelude::*;
 use std::env;
+
+const OTHER_YEAR: u32 = 2021;
 
 fn make_figure(data: Vec<Vec<(f64, Vec<f64>)>>, labels: Vec<&str>, filename: &str, ylabel: &str) {
     let cfd_plots = env::var("CFD_PLOTS").unwrap_or_else(|_| "YES".to_string());
@@ -29,24 +36,56 @@ fn make_figure(data: Vec<Vec<(f64, Vec<f64>)>>, labels: Vec<&str>, filename: &st
 }
 // MAIN
 fn main() {
+    /*
     let cfd_cases_21 = cfd::Baseline::<2021>::default()
         .extras()
         .into_iter()
         .collect::<Vec<cfd::CfdCase<2021>>>();
+    let root = cfd::Baseline::<2021>::path();
+     */
+    let cfd_cases_21 = cfd::Baseline::<2021>::thbound2()
+        .into_iter()
+        .collect::<Vec<cfd::CfdCase<2021>>>();
+    let root = cfd::Baseline::<2021>::path();
+    let wfe_labels = Some(vec!["Updated TBC", "Default TBC"]);
+    let pssn_labels = Some(vec![
+        "Updated TBC (SE)",
+        "Updated TBC (LE)",
+        "Default TBC (LE)",
+    ]);
+    let truncate = Some((
+        Some(cfd::CfdCase::new(
+            cfd::ZenithAngle::Thirty,
+            cfd::Azimuth::OneThirtyFive,
+            cfd::Enclosure::OpenStowed,
+            cfd::WindSpeed::Seven,
+        )),
+        290 * 5,
+    ));
     let n_cases = cfd_cases_21.len() as u64;
-    let results: Vec<_> = cfd_cases_21
-        .into_par_iter()
-        .progress_count(n_cases)
+    let results: Vec<Option<((String, f64, f64), Option<(String, f64, f64)>)>> = cfd_cases_21
+        .into_iter()
+        //.progress_count(n_cases)
         .map(|cfd_case_21| {
-            let path_to_case = cfd::Baseline::<2021>::path().join(format!("{}", cfd_case_21));
-            let ds_21 = DomeSeeing::load(path_to_case.clone()).unwrap();
+            let path_to_case = root.join(format!("{}", cfd_case_21));
+            let mut ds_21 = DomeSeeing::load(path_to_case.clone()).unwrap();
+            match &truncate {
+                Some((Some(cfd_case), len)) => {
+                    if cfd_case_21 == *cfd_case {
+                        ds_21.truncate(*len)
+                    }
+                }
+                Some((None, len)) => ds_21.truncate(*len),
+                None => (),
+            }
             if let (Some(v_pssn), Some(h_pssn)) = (ds_21.pssn(Band::V), ds_21.pssn(Band::H)) {
                 let wfe_rms_21: Vec<_> = ds_21.wfe_rms_iter_10e(-6).into_iter().collect();
                 Some((
                     (cfd_case_21.to_string(), v_pssn, h_pssn),
-                    if let Some(cfd_case_20) = cfd::Baseline::<2020>::find(cfd_case_21) {
+                    if let Some(cfd_case_20) = cfd::Baseline::<OTHER_YEAR>::find(cfd_case_21) {
                         let ds_20 = DomeSeeing::load(
-                            cfd::Baseline::<2020>::path().join(format!("{}", cfd_case_20)),
+                            cfd::Baseline::<OTHER_YEAR>::default_path()
+                                .join(format!("{}", cfd_case_20)),
                         )
                         .unwrap();
                         if let (Some(v_pssn), Some(h_pssn)) =
@@ -56,7 +95,10 @@ fn main() {
                                 ds_20.wfe_rms_iter_10e(-6).into_iter().collect();
                             make_figure(
                                 vec![wfe_rms_21, wfe_rms_20],
-                                vec!["2021", "2020"],
+                                wfe_labels
+                                    .as_ref()
+                                    .unwrap_or(&vec!["2021", "2020"])
+                                    .to_vec(),
                                 path_to_case
                                     .join("dome-seeing_wfe-rms.png")
                                     .to_str()
@@ -69,7 +111,10 @@ fn main() {
                                     ds_21.le_pssn_iter(Band::V),
                                     ds_20.le_pssn_iter(Band::V),
                                 ],
-                                vec!["2021 (SE)", "2021 (LE)", "2020 (LE)"],
+                                pssn_labels
+                                    .as_ref()
+                                    .unwrap_or(&vec!["2021 (SE)", "2021 (LE)", "2020 (LE)"])
+                                    .to_vec(),
                                 path_to_case
                                     .join("dome-seeing_v-pssn.png")
                                     .to_str()
@@ -82,7 +127,10 @@ fn main() {
                                     ds_21.le_pssn_iter(Band::H),
                                     ds_20.le_pssn_iter(Band::H),
                                 ],
-                                vec!["2021 (SE)", "2021 (LE)", "2020 (LE)"],
+                                pssn_labels
+                                    .as_ref()
+                                    .unwrap_or(&vec!["2021 (SE)", "2021 (LE)", "2020 (LE)"])
+                                    .to_vec(),
                                 path_to_case
                                     .join("dome-seeing_h-pssn.png")
                                     .to_str()

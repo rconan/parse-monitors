@@ -1,5 +1,5 @@
 use std::{
-    fmt,
+    env, fmt,
     path::{Path, PathBuf},
 };
 use strum_macros::EnumIter;
@@ -267,8 +267,11 @@ impl<const YEAR: u32> IntoIterator for Baseline<YEAR> {
     }
 }
 impl Baseline<2020> {
-    pub fn path() -> PathBuf {
+    pub fn default_path() -> PathBuf {
         Path::new("/fsx/Baseline2020").to_path_buf()
+    }
+    pub fn path() -> PathBuf {
+        Baseline::<2020>::default_path()
     }
     pub fn at_zenith(zenith_angle: ZenithAngle) -> Self {
         let mut cfd_cases = vec![];
@@ -313,8 +316,14 @@ impl Baseline<2020> {
     }
 }
 impl Baseline<2021> {
-    pub fn path() -> PathBuf {
+    pub fn default_path() -> PathBuf {
         Path::new("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES").to_path_buf()
+    }
+    pub fn path() -> PathBuf {
+        env::var("CFD_REPO").map_or_else(
+            |_| Baseline::<2021>::default_path(),
+            |p| Path::new(&p).to_path_buf(),
+        )
     }
     pub fn at_zenith(zenith_angle: ZenithAngle) -> Self {
         let mut cfd_cases = vec![];
@@ -347,6 +356,25 @@ impl Baseline<2021> {
                 (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
             ],
         }
+    }
+    /// Finds the CFD 2021 case that matches the given CFD case
+    pub fn find(cfd_case_21: CfdCase<2021>) -> Option<CfdCase<2021>> {
+        Self::default().into_iter().find(|cfd_case_20| {
+            match (cfd_case_21.zenith.clone(), cfd_case_21.wind_speed.clone()) {
+                (ZenithAngle::Sixty, WindSpeed::Twelve | WindSpeed::Seventeen) => {
+                    cfd_case_20.zenith == cfd_case_21.zenith
+                        && cfd_case_20.azimuth == cfd_case_21.azimuth
+                        && cfd_case_20.wind_speed == cfd_case_21.wind_speed
+                        && cfd_case_20.enclosure == Enclosure::ClosedDeployed
+                }
+                _ => {
+                    cfd_case_20.zenith == cfd_case_21.zenith
+                        && cfd_case_20.azimuth == cfd_case_21.azimuth
+                        && cfd_case_20.wind_speed == cfd_case_21.wind_speed
+                        && cfd_case_20.enclosure == cfd_case_21.enclosure
+                }
+            }
+        })
     }
     /// Mount cases
     pub fn mount() -> Self {
@@ -398,6 +426,58 @@ impl Baseline<2021> {
                 .flatten()
                 .collect::<Vec<CfdCase<2021>>>(),
         )
+    }
+    /// REDO cases
+    pub fn redo() -> Self {
+        Self(vec![
+            CfdCase::new(
+                ZenithAngle::Zero,
+                Azimuth::Ninety,
+                Enclosure::ClosedDeployed,
+                WindSpeed::Seventeen,
+            ),
+            CfdCase::new(
+                ZenithAngle::Zero,
+                Azimuth::OneEighty,
+                Enclosure::ClosedDeployed,
+                WindSpeed::Seven,
+            ),
+            CfdCase::new(
+                ZenithAngle::Sixty,
+                Azimuth::Zero,
+                Enclosure::OpenStowed,
+                WindSpeed::Two,
+            ),
+        ])
+    }
+    /// REDO cases
+    pub fn thbound2() -> Self {
+        Self(vec![
+            CfdCase::new(
+                ZenithAngle::Thirty,
+                Azimuth::FortyFive,
+                Enclosure::ClosedDeployed,
+                WindSpeed::Seven,
+            ),
+            CfdCase::new(
+                ZenithAngle::Thirty,
+                Azimuth::FortyFive,
+                Enclosure::OpenStowed,
+                WindSpeed::Seven,
+            ),
+            CfdCase::new(
+                ZenithAngle::Thirty,
+                Azimuth::OneThirtyFive,
+                Enclosure::ClosedDeployed,
+                WindSpeed::Seven,
+            ),
+            CfdCase::new(
+                ZenithAngle::Thirty,
+                Azimuth::OneThirtyFive,
+                Enclosure::OpenStowed,
+                WindSpeed::Seven,
+            ),
+        ])
     }
     /// Extra cases (22m/s)
     pub fn extras(self) -> Self {

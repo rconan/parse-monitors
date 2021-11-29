@@ -15,7 +15,11 @@ pub use windloads::WindLoads;
 
 pub trait Report<const CFD_YEAR: u32>: Send + Sync {
     fn part_name(&self) -> String;
-    fn chapter_section(&self, cfd_case: cfd::CfdCase<CFD_YEAR>) -> Result<String, Box<dyn Error>>;
+    fn chapter_section(
+        &self,
+        cfd_case: cfd::CfdCase<CFD_YEAR>,
+        ri_pic_idx: Option<usize>,
+    ) -> Result<String, Box<dyn Error>>;
     fn chapter(&self, zenith_angle: cfd::ZenithAngle) -> Result<(), Box<dyn Error>>;
     fn part(&self) -> Result<(), Box<dyn Error>> {
         cfd::ZenithAngle::iter()

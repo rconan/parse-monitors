@@ -406,7 +406,7 @@ impl Pressure {
                 .build();
             let pa: Vec<_> = self
                 .segment_pa(sid)
-                .map(|(p, a)| (if p < 0f64 { f64::NAN } else { p }, a))
+                //                .map(|(p, a)| (if p < 0f64 { f64::NAN } else { p }, a))
                 .collect();
             tri_pressure.extend(del.triangle_iter().map(|t| {
                 t.iter().fold(0f64, |s, i| s + pa[*i].0 * pa[*i].1)

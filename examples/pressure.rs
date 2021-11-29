@@ -9,7 +9,7 @@ use std::time::Instant;
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
-    let paths = glob("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/zen30az000_OS7/pressures/M2p_M2p_*.csv.bz2")?;
+    let paths = glob("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES/zen30az000_OS7/pressures/M1p_M1p_*.csv.bz2")?;
     let files: Vec<_> = paths
         .map(|p| p.unwrap().to_str().unwrap().to_string())
         .collect();
@@ -32,9 +32,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let now = Instant::now();
     let path = Path::new(files.last().unwrap());
     let csv_pressure = Pressure::decompress(path.to_path_buf())?;
-    let csv_geometry = Pressure::decompress(path.with_file_name("M2p.csv.bz2"))?;
+    let csv_geometry = Pressure::decompress(path.with_file_name("M1p.csv.bz2"))?;
     let mut pressures = Pressure::load(csv_pressure, csv_geometry)?;
-    /*
+
     let segments_pressure = pressures.segments_average_pressure();
     let segments_pressure_alt: Vec<_> = (1..=7)
         .map(|sid| -> Vector { pressures.segment_force(sid).into() })
@@ -58,6 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Mirror pressure : {:.3?}Pa", average_pressure);
     println!("Mirror pressure : {:.3?}Pa", average_pressure_alt);
 
+    /*
     let now = Instant::now();
     let path = Path::new(files.last().unwrap());
     let csv_pressure = Pressure::decompress(path.to_path_buf())?;

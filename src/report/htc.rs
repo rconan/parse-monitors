@@ -16,7 +16,11 @@ impl HTC {
 }
 impl super::Report<2021> for HTC {
     /// Chapter section
-    fn chapter_section(&self, cfd_case: cfd::CfdCase<2021>) -> Result<String, Box<dyn Error>> {
+    fn chapter_section(
+        &self,
+        cfd_case: cfd::CfdCase<2021>,
+        ri_pic_idx: Option<usize>,
+    ) -> Result<String, Box<dyn Error>> {
         let path_to_case = cfd::Baseline::<2021>::path().join(&cfd_case.to_string());
         let monitors = MonitorsLoader::<2021>::default()
             .data_path(path_to_case)
@@ -50,7 +54,7 @@ impl super::Report<2021> for HTC {
             .collect::<Vec<cfd::CfdCase<2021>>>();
         let results: Vec<_> = cfd_cases
             .into_par_iter()
-            .map(|cfd_case| self.chapter_section(cfd_case).unwrap())
+            .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())
             .collect();
         let mut file = File::create(report_path.join(chapter_filename))?;
         write!(

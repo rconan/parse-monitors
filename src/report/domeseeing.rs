@@ -1,10 +1,13 @@
 use crate::{
     cfd::{self, Baseline, CfdCase},
+    report::Report,
     Band, DomeSeeing,
 };
 use glob::glob;
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
+
+const OTHER_YEAR: u32 = 2021;
 
 pub struct DomeSeeingPart {
     part: u8,
@@ -21,23 +24,34 @@ impl DomeSeeingPart {
 }
 impl DomeSeeingPart {
     /// Chapter table
-    fn chapter_table(&self, zenith_angle: cfd::ZenithAngle) -> String {
-        let cfd_cases_21 = cfd::Baseline::<2021>::at_zenith(zenith_angle.clone())
-            .into_iter()
-            .collect::<Vec<cfd::CfdCase<2021>>>();
+    fn chapter_table(
+        &self,
+        cfd_cases_21: Vec<CfdCase<2021>>,
+        truncate: Option<(Option<CfdCase<2021>>, usize)>,
+    ) -> String {
         let results: Vec<_> = cfd_cases_21
             .into_par_iter()
             .map(|cfd_case_21| {
                 let path_to_case = cfd::Baseline::<2021>::path().join(format!("{}", cfd_case_21));
-                let ds_21 = DomeSeeing::load(path_to_case.clone()).unwrap();
+                let mut ds_21 = DomeSeeing::load(path_to_case.clone()).unwrap();
+                match &truncate {
+                    Some((Some(cfd_case), len)) => {
+                        if cfd_case_21 == *cfd_case {
+                            ds_21.truncate(*len)
+                        }
+                    }
+                    Some((None, len)) => ds_21.truncate(*len),
+                    None => (),
+                }
                 if let (Some(v_pssn), Some(h_pssn)) = (ds_21.pssn(Band::V), ds_21.pssn(Band::H)) {
                     let wfe_rms = 1e9
                         * (ds_21.wfe_rms().map(|x| x * x).sum::<f64>() / ds_21.len() as f64).sqrt();
                     Some((
                         (cfd_case_21.clone(), wfe_rms, v_pssn, h_pssn),
-                        if let Some(cfd_case_20) = cfd::Baseline::<2020>::find(cfd_case_21) {
+                        if let Some(cfd_case_20) = cfd::Baseline::<OTHER_YEAR>::find(cfd_case_21) {
                             let ds_20 = DomeSeeing::load(
-                                cfd::Baseline::<2020>::path().join(format!("{}", cfd_case_20)),
+                                cfd::Baseline::<OTHER_YEAR>::default_path()
+                                    .join(format!("{}", cfd_case_20)),
                             )
                             .unwrap();
                             if let (Some(v_pssn), Some(h_pssn)) =
@@ -90,24 +104,16 @@ impl DomeSeeingPart {
                 _ => unimplemented!(),
             })
             .collect::<Vec<String>>();
-        format!(
-            r#"
-\begin{{longtable}}{{*{{4}}{{c}}|*{{3}}{{r}}|*{{3}}{{r}}}}\toprule
- \multicolumn{{4}}{{c|}}{{\textbf{{CFD Cases}}}} & \multicolumn{{3}}{{|c|}}{{\textbf{{2021}}}} & \multicolumn{{3}}{{|c}}{{\textbf{{2020}}}} \\\midrule
-  Zen. & Azi. & Cfg. & Wind & WFE & PSSn & PSSn & WFE & PSSn & PSSn \\
-  - & -    & -    &  -   & RMS & -  & - & RMS & - & -  \\
-  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& V & H & $[nm]$ & V & H \\\hline
- {}
-\bottomrule
-\end{{longtable}}
-"#,
-            table_content.join("\n")
-        )
+        table_content.join("\n")
     }
 }
 impl super::Report<2021> for DomeSeeingPart {
     /// Chapter section
-    fn chapter_section(&self, cfd_case: CfdCase<2021>) -> Result<String, Box<dyn Error>> {
+    fn chapter_section(
+        &self,
+        cfd_case: CfdCase<2021>,
+        ri_pic_idx: Option<usize>,
+    ) -> Result<String, Box<dyn Error>> {
         let path_to_case = Baseline::<2021>::path().join(&cfd_case.to_string());
         let pattern = path_to_case
             .join("scenes")
@@ -115,8 +121,14 @@ impl super::Report<2021> for DomeSeeingPart {
             .to_str()
             .unwrap()
             .to_owned();
-        let paths = glob(&pattern).expect("Failed to read glob pattern");
-        let ri_pic = paths.last().unwrap()?.with_extension("");
+        let mut paths = glob(&pattern).expect("Failed to read glob pattern");
+        let ri_pic = if let Some(idx) = ri_pic_idx {
+            paths.nth(idx)
+        } else {
+            paths.last()
+        }
+        .unwrap()?
+        .with_extension("");
         Ok(format!(
             r#"
 \clearpage
@@ -154,14 +166,26 @@ impl super::Report<2021> for DomeSeeingPart {
             file,
             r#"
 \chapter{{{}}}
-{},
+\begin{{longtable}}{{*{{4}}{{c}}|*{{3}}{{r}}|*{{3}}{{r}}}}\toprule
+ \multicolumn{{4}}{{c|}}{{\textbf{{CFD Cases}}}} & \multicolumn{{3}}{{|c|}}{{\textbf{{2021}}}} & \multicolumn{{3}}{{|c}}{{\textbf{{2020}}}} \\\midrule
+  Zen. & Azi. & Cfg. & Wind & WFE & PSSn & PSSn & WFE & PSSn & PSSn \\
+  - & -    & -    &  -   & RMS & -  & - & RMS & - & -  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& V & H & $[nm]$ & V & H \\\hline
+ {}
+\bottomrule
+\end{{longtable}}
 {}
 "#,
             zenith_angle.chapter_title(),
-            self.chapter_table(zenith_angle.clone()),
+            self.chapter_table(
+                cfd::Baseline::<2021>::at_zenith(zenith_angle.clone())
+                    .into_iter()
+                    .collect::<Vec<cfd::CfdCase<2021>>>(),
+                None
+            ),
             cfd::Baseline::<2021>::at_zenith(zenith_angle)
                 .into_iter()
-                .map(|cfd_case| self.chapter_section(cfd_case))
+                .map(|cfd_case| self.chapter_section(cfd_case, None))
                 .collect::<Result<Vec<String>, Box<dyn Error>>>()?
                 .join("\n")
         )?;
@@ -169,5 +193,54 @@ impl super::Report<2021> for DomeSeeingPart {
     }
     fn part_name(&self) -> String {
         String::from("Dome seeing")
+    }
+}
+impl DomeSeeingPart {
+    pub fn special(
+        &self,
+        name: &str,
+        cfd_cases: Vec<CfdCase<2021>>,
+    ) -> Result<String, Box<dyn Error>> {
+        let report_path = Path::new("report");
+        let chapter_filename = name.to_lowercase() + ".chapter.tex";
+        let mut file = File::create(report_path.join(&chapter_filename))?;
+        let trouble_maker = CfdCase::new(
+            cfd::ZenithAngle::Thirty,
+            cfd::Azimuth::OneThirtyFive,
+            cfd::Enclosure::OpenStowed,
+            cfd::WindSpeed::Seven,
+        );
+        let cut_len = 290 * 5;
+        let results: Vec<_> = cfd_cases
+            .clone()
+            .into_iter()
+            .map(|cfd_case| {
+                if cfd_case == trouble_maker {
+                    self.chapter_section(cfd_case, Some(cut_len))
+                } else {
+                    self.chapter_section(cfd_case, None)
+                }
+                .unwrap()
+            })
+            .collect();
+        write!(
+            file,
+            r#"
+\chapter{{{}}}
+\begin{{longtable}}{{*{{4}}{{c}}|*{{3}}{{r}}|*{{3}}{{r}}}}\toprule
+ \multicolumn{{4}}{{c|}}{{\textbf{{CFD Cases}}}} & \multicolumn{{3}}{{|c|}}{{\textbf{{Updated TBC}}}} & \multicolumn{{3}}{{|c}}{{\textbf{{Default TBC}}}} \\\midrule
+  Zen. & Azi. & Cfg. & Wind & WFE & PSSn & PSSn & WFE & PSSn & PSSn \\
+  - & -    & -    &  -   & RMS & -  & - & RMS & - & -  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& V & H & $[nm]$ & V & H \\\hline
+ {}
+\bottomrule
+\end{{longtable}}
+{}
+"#,
+            name,
+            self.chapter_table(cfd_cases, Some((Some(trouble_maker), cut_len))),
+            results.join("\n")
+        )?;
+        Ok(chapter_filename)
     }
 }

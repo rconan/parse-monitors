@@ -1,4 +1,9 @@
-use std::{error::Error, fs::File, ops::Deref, path::Path};
+use std::{
+    error::Error,
+    fs::File,
+    ops::{Deref, DerefMut},
+    path::Path,
+};
 
 use serde::Deserialize;
 use serde_pickle as pickle;
@@ -44,6 +49,11 @@ impl Deref for DomeSeeing {
         &self.0
     }
 }
+impl DerefMut for DomeSeeing {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 impl DomeSeeing {
     /// Load the dome seeing time series from a "domeseeing_PSSN.rs.pkl" file
     pub fn load<P>(path: P) -> Result<Self, Box<dyn Error>>
@@ -53,7 +63,11 @@ impl DomeSeeing {
         let mut file = File::open(Path::new(&path).join("domeseeing_PSSN.rs.pkl"))?;
         Ok(Self(pickle::from_reader(&mut file, Default::default())?))
     }
-    /// Reurns the number of sample
+    /// Truncates the records to the first `len` elements
+    pub fn truncates(&mut self, len: usize) {
+        self.0.truncate(len);
+    }
+    /// Returns the number of sample
     pub fn len(&self) -> usize {
         self.0.len()
     }

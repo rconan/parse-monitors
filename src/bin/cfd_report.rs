@@ -1,3 +1,5 @@
+//! CFD REPORT
+
 //use chrono::Local;
 use parse_monitors::{report, report::Report};
 use std::error::Error; //, fs::File, io::Write};
