@@ -1,3 +1,5 @@
+//! Center of pressure and associated force and moment
+
 use glob::glob;
 use indicatif::ParallelProgressIterator;
 use parse_monitors::{cfd, pressure::Pressure};

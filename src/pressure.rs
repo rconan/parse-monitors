@@ -3,10 +3,12 @@
 use std::{
     fs::File,
     io::{BufReader, Read},
+    marker::PhantomData,
     path::PathBuf,
 };
 
 use bzip2::bufread::BzDecoder;
+use geotrans::{Segment, SegmentTrait, TransformMut, M1, M2};
 use serde::Deserialize;
 
 #[derive(thiserror::Error, Debug)]
@@ -17,7 +19,11 @@ pub enum PressureError {
     Io(#[from] std::io::Error),
     #[error("Failed to deserialize the CSV file")]
     Csv(#[from] csv::Error),
+    #[error("Failed to apply geometric transformation")]
+    Geotrans(#[from] geotrans::Error),
 }
+
+type Result<T> = std::result::Result<T, PressureError>;
 
 fn norm(v: &[f64]) -> f64 {
     v.iter().map(|&x| x * x).sum::<f64>().sqrt()
@@ -68,7 +74,11 @@ impl PartialOrd for GeometryRecord {
 }
 /// M1 segments surface pressure
 #[derive(Default)]
-pub struct Pressure {
+pub struct Pressure<M>
+where
+    M: Default,
+    Segment<M>: SegmentTrait,
+{
     // the segment surface pressure [Pa]
     pressure: Vec<f64>,
     // the area magnitude the pressure is applied to
@@ -81,10 +91,29 @@ pub struct Pressure {
     segment_filter: Vec<Vec<bool>>,
     // segment data filter
     segment_filter_size: Vec<f64>,
+    mirror: PhantomData<M>,
 }
-impl Pressure {
+pub trait ExoRadius {
+    fn exo_radius(&self) -> f64;
+}
+impl ExoRadius for Pressure<M1> {
+    fn exo_radius(&self) -> f64 {
+        4.5
+    }
+}
+impl ExoRadius for Pressure<M2> {
+    fn exo_radius(&self) -> f64 {
+        0.55
+    }
+}
+impl<M> Pressure<M>
+where
+    M: Default,
+    Segment<M>: SegmentTrait,
+    Pressure<M>: ExoRadius,
+{
     /// Loads the pressure data
-    pub fn load(csv_pressure: String, csv_geometry: String) -> Result<Self, PressureError> {
+    pub fn load(csv_pressure: String, csv_geometry: String) -> Result<Self> {
         let this_pa = Self::load_pressure(csv_pressure)?;
         let this_aijk = Self::load_geometry(csv_geometry)?;
         let max_diff_area = this_pa
@@ -105,13 +134,15 @@ impl Pressure {
             xyz: this_aijk.xyz,
             segment_filter: Vec::new(),
             segment_filter_size: Vec::new(),
+            mirror: PhantomData,
         };
         let mut n = 0;
+        let xr = this.exo_radius();
         for sid in 1..=7 {
             let sf = this
-                .to_local(sid)
+                .to_local(sid)?
                 .xy_iter()
-                .map(|(x, y)| x.hypot(y) < 4.5_f64)
+                .map(|(x, y)| x.hypot(y) < xr)
                 .collect::<Vec<bool>>();
             let n_sf = sf
                 .iter()
@@ -124,11 +155,13 @@ impl Pressure {
         }
         assert!(
             n == this.pressure.len(),
-            "Data length and segment filter length do not match"
+            "Data length ({}) and segment filter length ({}) do not match",
+            this.pressure.len(),
+            n
         );
         Ok(this)
     }
-    pub fn decompress(path: PathBuf) -> Result<String, PressureError> {
+    pub fn decompress(path: PathBuf) -> Result<String> {
         let csv_file = File::open(path)?;
         let buf = BufReader::new(csv_file);
         let mut bz2 = BzDecoder::new(buf);
@@ -137,7 +170,7 @@ impl Pressure {
         Ok(contents)
     }
     /// Loads the pressure from a csv bz2-compressed file
-    pub fn load_pressure(contents: String) -> Result<Self, PressureError> {
+    pub fn load_pressure(contents: String) -> Result<Self> {
         let mut this = Pressure::default();
         let mut rdr = csv::Reader::from_reader(contents.as_bytes());
         let mut rows = Vec::<Record>::new();
@@ -152,7 +185,7 @@ impl Pressure {
         Ok(this)
     }
     /// Loads the areas and coordinates vector from a csv file
-    pub fn load_geometry(contents: String) -> Result<Self, PressureError> {
+    pub fn load_geometry(contents: String) -> Result<Self> {
         let mut this = Pressure::default();
         let mut rdr = csv::Reader::from_reader(contents.as_bytes());
         let mut rows = Vec::<GeometryRecord>::new();
@@ -221,16 +254,17 @@ impl Pressure {
         )
     }
     /// Transforms the coordinates into the segment local coordinate system
-    pub fn to_local(&mut self, sid: usize) -> &mut Self {
-        self.xyz.iter_mut().for_each(|v| {
-            *v = geotrans::m1_any_to_oss(sid, *v).into();
-        });
-        self
+    pub fn to_local(&mut self, sid: usize) -> Result<&mut Self> {
+        self.xyz
+            .iter_mut()
+            .map(|v| v.fro(Segment::<M>::new(sid as i32)))
+            .collect::<std::result::Result<Vec<()>, geotrans::Error>>()?;
+        Ok(self)
     }
     /// Transforms the coordinates into the OSS
     pub fn from_local(&mut self, sid: usize) -> &mut Self {
         self.xyz.iter_mut().for_each(|v| {
-            *v = geotrans::oss_to_any_m1(sid, *v).into();
+            v.to(Segment::<M>::new(sid as i32)).unwrap();
         });
         self
     }
@@ -275,14 +309,16 @@ impl Pressure {
         self.area.iter().fold(0f64, |aa, a| aa + *a)
     }
     /// Returns the vectors of forces of a given segment
-    pub fn forces(&mut self, sid: usize) -> Vec<[f64; 3]> {
-        let xy: Vec<_> = self.to_local(sid).xy_iter().map(|(x, y)| (x, y)).collect();
-        self.from_local(sid)
+    pub fn forces(&mut self, sid: usize) -> Result<Vec<[f64; 3]>> {
+        let xy: Vec<_> = self.to_local(sid)?.xy_iter().map(|(x, y)| (x, y)).collect();
+        let xr = self.exo_radius();
+        Ok(self
+            .from_local(sid)
             .paijk_iter()
             .zip(xy)
-            .filter(|(_, (x, y))| x.hypot(*y) < 4.5_f64)
+            .filter(|(_, (x, y))| x.hypot(*y) < xr)
             .map(|((p, a), _)| [p * a[0], p * a[1], p * a[2]])
-            .collect()
+            .collect())
     }
     /// Returns the average pressure over a given segment
     pub fn average_pressure(&mut self, sid: usize) -> f64 {
@@ -330,13 +366,14 @@ impl Pressure {
         pa / aa
     }
     /// Returns the center of pressure of a given segment
-    pub fn center_of_pressure(&mut self, sid: usize) -> [f64; 3] {
-        let xy: Vec<_> = self.to_local(sid).xy_iter().map(|(x, y)| (x, y)).collect();
+    pub fn center_of_pressure(&mut self, sid: usize) -> Result<[f64; 3]> {
+        let xy: Vec<_> = self.to_local(sid)?.xy_iter().map(|(x, y)| (x, y)).collect();
+        let xr = self.exo_radius();
         let (mut cs, s) = self
             .from_local(sid)
             .p_aijk_xyz()
             .zip(xy)
-            .filter(|(_, (x, y))| x.hypot(*y) < 4.5_f64)
+            .filter(|(_, (x, y))| x.hypot(*y) < xr)
             .fold(([0f64; 3], [0f64; 3]), |(mut cs, mut s), ((p, a, c), _)| {
                 for k in 0..3 {
                     let df = p * a[k];
@@ -346,23 +383,27 @@ impl Pressure {
                 (cs, s)
             });
         cs.iter_mut().zip(s).for_each(|(cs, s)| *cs /= s);
-        cs
+        Ok(cs)
     }
     /// Returns the sum of the forces of a given segment
-    pub fn segment_force(&mut self, sid: usize) -> [f64; 3] {
-        self.forces(sid).into_iter().fold([0f64; 3], |mut s, a| {
+    pub fn segment_force(&mut self, sid: usize) -> Result<[f64; 3]> {
+        Ok(self.forces(sid)?.into_iter().fold([0f64; 3], |mut s, a| {
             s.iter_mut().zip(a).for_each(|(s, a)| *s += a);
             s
-        })
+        }))
     }
     /// Returns the center of pressure and the force and moment applied at this location for a given segment
-    pub fn segment_pressure_integral(&mut self, sid: usize) -> ([f64; 3], ([f64; 3], [f64; 3])) {
-        let xy: Vec<_> = self.to_local(sid).xy_iter().map(|(x, y)| (x, y)).collect();
+    pub fn segment_pressure_integral(
+        &mut self,
+        sid: usize,
+    ) -> Result<([f64; 3], ([f64; 3], [f64; 3]))> {
+        let xy: Vec<_> = self.to_local(sid)?.xy_iter().map(|(x, y)| (x, y)).collect();
+        let xr = self.exo_radius();
         let (mut cop, force) = self
             .from_local(sid)
             .p_aijk_xyz()
             .zip(xy)
-            .filter(|(_, (x, y))| x.hypot(*y) < 4.5_f64)
+            .filter(|(_, (x, y))| x.hypot(*y) < xr)
             .fold(([0f64; 3], [0f64; 3]), |(mut cs, mut s), ((p, a, c), _)| {
                 for k in 0..3 {
                     let df = p * a[k];
@@ -377,16 +418,18 @@ impl Pressure {
             cop[2] * force[0] - cop[0] * force[2],
             cop[0] * force[1] - cop[1] * force[0],
         ];
-        (cop, (force, moment))
+        Ok((cop, (force, moment)))
     }
     /// Returns the sum of the forces of all the segments
-    pub fn segments_force(&mut self) -> [f64; 3] {
-        (1..=7)
+    pub fn segments_force(&mut self) -> Result<[f64; 3]> {
+        Ok((1..=7)
             .map(|sid| self.segment_force(sid))
+            .collect::<Result<Vec<[f64; 3]>>>()?
+            .into_iter()
             .fold([0f64; 3], |mut s, a| {
                 s.iter_mut().zip(a).for_each(|(s, a)| *s += a);
                 s
-            })
+            }))
     }
     /// Returns the sum of the vectors in [`Iterator`]
     pub fn sum_vectors<'a>(&'a mut self, vec: impl Iterator<Item = &'a [f64; 3]>) -> [f64; 3] {

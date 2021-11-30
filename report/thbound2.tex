@@ -3,11 +3,11 @@
 \usepackage{booktabs}
 \usepackage{longtable}
 
-\DocID{GMT-XXX-\#\#\#\#}
+\DocID{GMT-DOC-05222}
 \DocVersion{1.0}
 \DocStatus{Draft}
 
-\addbibresource{gmt.bib}
+\addbibresource{mount.bib}
 
 \title{CFD Thermal Boundary Updates}
 \author{R. Conan, K. Vogiatzis, H. Fitzpatrick}
@@ -24,8 +24,36 @@
 \section{Purpose}
 \label{sec:purpose}
 
+The analysis reported in the document investigates the effects on dome seeing of changing the temperature of some surfaces in the CFD baseline from 1 degree above ambient to 2 degrees below ambient.
+
 \section{Introduction}
 \label{sec:introduction}
+
+The GMT CFD Baseline Model is described in \cite{GMT.DOC.05211}, it includes the list and specifications of all the thermal boundary conditions (TBCs).
+A complete overview of the results from the GMT CFD Baseline simulations is available in \cite{GMT.DOC.05214}.
+The updated TBCs are given in the \emph{Surface Temp Reqt Update} accompanying document.
+Four new cases, identical to the GMT CFD Baseline, but with the updated TBCs have been run and the V and H band PSSn were derived from ray tracing through the volume of the random field of refraction index.
+
+The following table gives, for each case, the WFE RMS and the V and H band PSSn for the updated and default TBCs.
+The WFE RMS is given as the mean over 400s and the V and H band PSSn are derived from a 400s long exposure dome seeing image.
+\begin{longtable}{*{4}{c}|*{3}{r}|*{3}{r}}\toprule
+ \multicolumn{4}{c|}{\textbf{CFD Cases}} & \multicolumn{3}{|c|}{\textbf{Updated TBC}} & \multicolumn{3}{|c}{\textbf{Default TBC}} \\\midrule
+  Zen. & Azi. & Cfg. & Wind & WFE & PSSn & PSSn & WFE & PSSn & PSSn \\
+  - & -    & -    &  -   & RMS & -  & - & RMS & - & -  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& V & H & $[nm]$ & V & H \\\hline
+   30 &  45 & cd &  7 &    730 & 0.9184 & 0.9091 &    785 & 0.9101 & 0.8978 \\
+  30 &  45 & os &  7 &    755 & 0.9003 & 0.8946 &    776 & 0.8863 & 0.8530 \\
+  30 & 135 & cd &  7 &   1712 & 0.7959 & 0.7431 &   1544 & 0.7921 & 0.7299 \\
+  30 & 135 & os &  7 &   1097 & 0.9365 & 0.9282 &   1232 & 0.9131 & 0.8966 \\
+\bottomrule
+\end{longtable}
+
+In the following,
+each section includes a snapshot of the gradient of the refraction index for the whole Observatory (for both the updated and default TBCs) and time series plots of the WFE RMS and V and H PSSn.
+The dome seeing related data is sampled at 5Hz.
+There are PSSn plots for both short exposure (SE) and long exposure (LE) PSSn.
+SE PSSn have the same sampling than the dome seeing data (5Hz).
+The LE PSSn values are derived from cummulative dome seeing images sampled at 1Hz (for the LE PSSn, the meaning of the x-axis is exposure time).
 
 \input{thbound2.chapter}
 

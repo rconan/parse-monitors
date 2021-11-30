@@ -1,3 +1,9 @@
+//! Pressure plots
+//!
+//! Make the pressure plots:
+//!  - segment average pressure
+//!  - segment std. pressure
+
 use parse_monitors::cfd;
 use plotters::prelude::*;
 use polars::prelude::*;
