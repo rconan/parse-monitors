@@ -1,9 +1,9 @@
-//! CFD REPORT
+//! CREATE THE COMPLETE CFD REPORT
 
 //use chrono::Local;
-use parse_monitors::{report, report::Report};
-use std::error::Error; //, fs::File, io::Write};
-use std::time::Instant;
+use parse_monitors::{cfd, report, report::Report};
+//, fs::File, io::Write};
+use std::{error::Error, sync::Arc, time::Instant};
 use structopt::StructOpt;
 //use tectonic;
 use std::thread;
@@ -26,22 +26,32 @@ struct Opt {
 fn main() -> Result<(), Box<dyn Error>> {
     let opt = Opt::from_args();
 
+    let redo_cases: Arc<Vec<cfd::CfdCase<2021>>> =
+        Arc::new(cfd::Baseline::<2021>::redo().into_iter().collect());
+
     let mut tjh = vec![];
     let now = Instant::now();
     println!("Building the different parts of the report ...");
     if opt.domeseeing || opt.full {
-        tjh.push(thread::spawn(|| {
-            report::DomeSeeingPart::new(1, 0f64).part().unwrap();
+        let cases = redo_cases.clone();
+        tjh.push(thread::spawn(move || {
+            report::DomeSeeingPart::new(10, 0f64)
+                .part_with(&cases)
+                .unwrap();
         }));
     }
     if opt.htc || opt.full {
-        tjh.push(thread::spawn(|| {
-            report::HTC::new(3, 400f64).part().unwrap();
+        let cases = redo_cases.clone();
+        tjh.push(thread::spawn(move || {
+            report::HTC::new(30, 400f64).part_with(&cases).unwrap();
         }));
     }
     if opt.windloads || opt.full {
-        tjh.push(thread::spawn(|| {
-            report::WindLoads::new(2, 400f64).part().unwrap();
+        let cases = redo_cases.clone();
+        tjh.push(thread::spawn(move || {
+            report::WindLoads::new(20, 400f64)
+                .part_with(&cases)
+                .unwrap();
         }));
     }
 

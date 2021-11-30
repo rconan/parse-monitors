@@ -47,7 +47,7 @@ impl DomeSeeingPart {
                     let wfe_rms = 1e9
                         * (ds_21.wfe_rms().map(|x| x * x).sum::<f64>() / ds_21.len() as f64).sqrt();
                     Some((
-                        (cfd_case_21.clone(), wfe_rms, v_pssn, h_pssn),
+                        (cfd_case_21, wfe_rms, v_pssn, h_pssn),
                         if let Some(cfd_case_20) = cfd::Baseline::<OTHER_YEAR>::find(cfd_case_21) {
                             let ds_20 = DomeSeeing::load(
                                 cfd::Baseline::<OTHER_YEAR>::default_path()
@@ -153,7 +153,11 @@ impl super::Report<2021> for DomeSeeingPart {
         ))
     }
     /// Chapter assembly
-    fn chapter(&self, zenith_angle: cfd::ZenithAngle) -> Result<(), Box<dyn Error>> {
+    fn chapter(
+        &self,
+        zenith_angle: cfd::ZenithAngle,
+        cfd_cases_subset: Option<&[cfd::CfdCase<2021>]>,
+    ) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
         let part = format!("part{}.", self.part);
         let chapter_filename = match zenith_angle {
@@ -178,13 +182,23 @@ impl super::Report<2021> for DomeSeeingPart {
 "#,
             zenith_angle.chapter_title(),
             self.chapter_table(
-                cfd::Baseline::<2021>::at_zenith(zenith_angle.clone())
+                cfd::Baseline::<2021>::at_zenith(zenith_angle)
                     .into_iter()
+                    .filter(|cfd_case| if let Some(cases) = cfd_cases_subset {
+                        cases.contains(cfd_case)
+                    } else {
+                        true
+                    })
                     .collect::<Vec<cfd::CfdCase<2021>>>(),
                 None
             ),
             cfd::Baseline::<2021>::at_zenith(zenith_angle)
                 .into_iter()
+                .filter(|cfd_case| if let Some(cases) = cfd_cases_subset {
+                    cases.contains(cfd_case)
+                } else {
+                    true
+                })
                 .map(|cfd_case| self.chapter_section(cfd_case, None))
                 .collect::<Result<Vec<String>, Box<dyn Error>>>()?
                 .join("\n")

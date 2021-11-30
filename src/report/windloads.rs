@@ -28,7 +28,7 @@ impl super::Report<2021> for WindLoads {
     fn chapter_section(
         &self,
         cfd_case: cfd::CfdCase<2021>,
-        ri_pic_idx: Option<usize>,
+        _: Option<usize>,
     ) -> Result<String, Box<dyn Error>> {
         let path_to_case = cfd::Baseline::<2021>::path().join(&cfd_case.to_string());
         let pattern = path_to_case
@@ -49,16 +49,18 @@ impl super::Report<2021> for WindLoads {
                 .data_path(path_to_case.clone())
                 .load()?
         };
-        let m1 = Mirror::m1(path_to_case.clone()).load().unwrap();
-        let m1_net = Mirror::m1(path_to_case.clone()).net_force().load().unwrap();
-        let m1_pressure_mean = path_to_case
-            .join("m1_pressure-stats_mean.png")
-            .with_extension("");
-        let m1_pressure_std = path_to_case
-            .join("m1_pressure-stats_std.png")
-            .with_extension("");
-        Ok(format!(
-            r#"
+        if let (Ok(m1), Ok(m1_net)) = (
+            Mirror::m1(path_to_case.clone()).load(),
+            Mirror::m1(path_to_case.clone()).net_force().load(),
+        ) {
+            let m1_pressure_mean = path_to_case
+                .join("m1_pressure-stats_mean.png")
+                .with_extension("");
+            let m1_pressure_std = path_to_case
+                .join("m1_pressure-stats_std.png")
+                .with_extension("");
+            Ok(format!(
+                r#"
 \section{{{}}}
 \label{{{}}}
 
@@ -128,45 +130,123 @@ impl super::Report<2021> for WindLoads {
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
 "#,
-            &cfd_case.to_pretty_string(),
-            &cfd_case.to_string(),
-            vort_pic,
-            monitors
-                .force_latex_table(self.stats_time_range)
-                .zip(m1.force_latex_table(self.stats_time_range))
-                .map(|(x, y)| vec![x, y].join("\n"))
-                .unwrap_or_default(),
-            m1_net
-                .force_latex_table(self.stats_time_range)
-                .unwrap_or_default(),
-            path_to_case.join("c-ring_parts"),
-            path_to_case.join("m1-cell"),
-            path_to_case.join("m1-segments"),
-            path_to_case.join("lower-truss"),
-            path_to_case.join("upper-truss"),
-            path_to_case.join("top-end"),
-            path_to_case.join("m2-segments"),
-            path_to_case.join("m12-baffles"),
-            path_to_case.join("m1-outer-covers"),
-            path_to_case.join("m1-inner-covers"),
-            path_to_case.join("gir"),
-            path_to_case.join("pfa-arms"),
-            path_to_case.join("lgs"),
-            path_to_case.join("platforms-cables"),
-            monitors
-                .moment_latex_table(self.stats_time_range)
-                .zip(m1.moment_latex_table(self.stats_time_range))
-                .map(|(x, y)| vec![x, y].join("\n"))
-                .unwrap_or_default(),
-            m1_net
-                .moment_latex_table(self.stats_time_range)
-                .unwrap_or_default(),
-            m1_pressure_mean,
-            m1_pressure_std,
-        ))
+                &cfd_case.to_pretty_string(),
+                &cfd_case.to_string(),
+                vort_pic,
+                monitors
+                    .force_latex_table(self.stats_time_range)
+                    .zip(m1.force_latex_table(self.stats_time_range))
+                    .map(|(x, y)| vec![x, y].join("\n"))
+                    .unwrap_or_default(),
+                m1_net
+                    .force_latex_table(self.stats_time_range)
+                    .unwrap_or_default(),
+                path_to_case.join("c-ring_parts"),
+                path_to_case.join("m1-cell"),
+                path_to_case.join("m1-segments"),
+                path_to_case.join("lower-truss"),
+                path_to_case.join("upper-truss"),
+                path_to_case.join("top-end"),
+                path_to_case.join("m2-segments"),
+                path_to_case.join("m12-baffles"),
+                path_to_case.join("m1-outer-covers"),
+                path_to_case.join("m1-inner-covers"),
+                path_to_case.join("gir"),
+                path_to_case.join("pfa-arms"),
+                path_to_case.join("lgs"),
+                path_to_case.join("platforms-cables"),
+                monitors
+                    .moment_latex_table(self.stats_time_range)
+                    .zip(m1.moment_latex_table(self.stats_time_range))
+                    .map(|(x, y)| vec![x, y].join("\n"))
+                    .unwrap_or_default(),
+                m1_net
+                    .moment_latex_table(self.stats_time_range)
+                    .unwrap_or_default(),
+                m1_pressure_mean,
+                m1_pressure_std,
+            ))
+        } else {
+            Ok(format!(
+                r#"
+\section{{{}}}
+\label{{{}}}
+
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+
+\subsection{{Forces [N]}}
+\begin{{longtable}}{{crrrr}}\toprule
+ ELEMENT & MEAN & STD & MIN & MAX \\\hline
+{}
+\bottomrule
+\end{{longtable}}
+
+\subsubsection{{C-Rings}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{M1 Cell}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{Lower trusses}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{Upper trusses}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{Top-end}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{M2 segments}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{M1 \& M2 baffles}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{M1 outer covers}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{M1 inner covers}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{GIR}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{Prime focus assembly arms}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{Laser launch assemblies}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{Platforms \& cable wraps}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+
+\subsection{{Moments [N.M]}}
+\begin{{longtable}}{{crrrr}}\toprule
+ ELEMENT & MEAN & STD & MIN & MAX \\\hline
+{}
+\bottomrule
+\end{{longtable}}
+
+"#,
+                &cfd_case.to_pretty_string(),
+                &cfd_case.to_string(),
+                vort_pic,
+                monitors
+                    .force_latex_table(self.stats_time_range)
+                    .unwrap_or_default(),
+                path_to_case.join("c-ring_parts"),
+                path_to_case.join("m1-cell"),
+                path_to_case.join("lower-truss"),
+                path_to_case.join("upper-truss"),
+                path_to_case.join("top-end"),
+                path_to_case.join("m2-segments"),
+                path_to_case.join("m12-baffles"),
+                path_to_case.join("m1-outer-covers"),
+                path_to_case.join("m1-inner-covers"),
+                path_to_case.join("gir"),
+                path_to_case.join("pfa-arms"),
+                path_to_case.join("lgs"),
+                path_to_case.join("platforms-cables"),
+                monitors
+                    .moment_latex_table(self.stats_time_range)
+                    .unwrap_or_default(),
+            ))
+        }
     }
     /// Chapter assembly
-    fn chapter(&self, zenith_angle: cfd::ZenithAngle) -> Result<(), Box<dyn Error>> {
+    fn chapter(
+        &self,
+        zenith_angle: cfd::ZenithAngle,
+        cfd_cases_subset: Option<&[cfd::CfdCase<2021>]>,
+    ) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
         let part = format!("part{}.", self.part);
         let chapter_filename = match zenith_angle {
@@ -174,8 +254,15 @@ impl super::Report<2021> for WindLoads {
             cfd::ZenithAngle::Thirty => part + "chapter2.tex",
             cfd::ZenithAngle::Sixty => part + "chapter3.tex",
         };
-        let cfd_cases = cfd::Baseline::<2021>::at_zenith(zenith_angle.clone())
+        let cfd_cases = cfd::Baseline::<2021>::at_zenith(zenith_angle)
             .into_iter()
+            .filter(|cfd_case| {
+                if let Some(cases) = cfd_cases_subset {
+                    cases.contains(cfd_case)
+                } else {
+                    true
+                }
+            })
             .collect::<Vec<cfd::CfdCase<2021>>>();
         let results: Vec<_> = cfd_cases
             .into_par_iter()

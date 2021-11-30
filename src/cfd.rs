@@ -5,7 +5,7 @@ use std::{
 use strum_macros::EnumIter;
 
 /// CFD Telescope zenith pointing angle
-#[derive(EnumIter, Clone, PartialEq, Debug)]
+#[derive(EnumIter, Clone, Copy, PartialEq, Debug)]
 pub enum ZenithAngle {
     Zero,
     Thirty,
@@ -45,7 +45,7 @@ impl fmt::Display for ZenithAngle {
     }
 }
 /// CFD Telescope azimuth angle (wrt. NNE wind)
-#[derive(EnumIter, Clone, PartialEq, Debug)]
+#[derive(EnumIter, Clone, Copy, PartialEq, Debug)]
 pub enum Azimuth {
     Zero,
     FortyFive,
@@ -96,7 +96,7 @@ impl fmt::Display for Azimuth {
     }
 }
 /// Enclosure vents and wind screen configuration combinations
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Enclosure {
     OpenStowed,
     ClosedDeployed,
@@ -121,7 +121,7 @@ impl fmt::Display for Enclosure {
     }
 }
 /// CFD wind speed
-#[derive(EnumIter, PartialEq, Clone, Debug)]
+#[derive(EnumIter, Copy, PartialEq, Clone, Debug)]
 pub enum WindSpeed {
     Two,
     Seven,
@@ -142,7 +142,7 @@ impl fmt::Display for WindSpeed {
     }
 }
 /// CFD case for a given year: 2020 or 2021
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CfdCase<const YEAR: u32> {
     pub zenith: ZenithAngle,
     pub azimuth: Azimuth,

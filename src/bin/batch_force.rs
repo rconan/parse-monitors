@@ -1,3 +1,7 @@
+//! Make all the wind forces plots
+//!
+//! It must be run as root i.e. `sudo -E ./target/release/batch_force`
+
 use parse_monitors::{cfd::Baseline, plot_monitor, Mirror, MonitorsLoader};
 use rayon::prelude::*;
 use std::path::Path;
@@ -56,13 +60,8 @@ const CFD_YEAR: u32 = 2021;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
-    let cfd_root = match CFD_YEAR {
-        2020_u32 => Path::new("/fsx/Baseline2020"),
-        2021_u32 => Path::new("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES"),
-        _ => panic!("Not a good year!"),
-    };
-    let data_paths: Vec<_> = Baseline::<CFD_YEAR>::default()
-        .extras()
+    let cfd_root = Baseline::<CFD_YEAR>::path();
+    let data_paths: Vec<_> = Baseline::<CFD_YEAR>::redo()
         .into_iter()
         .map(|cfd_case| {
             cfd_root
@@ -101,11 +100,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|arg| {
                 let filename = format!("{}/{}.png", arg, name);
                 if name == "m1-segments" {
-                    let mut m1 = Mirror::m1();
-                    if let Err(e) = m1.load(arg, false) {
-                        println!("{}: {:}", arg, e);
+                    match Mirror::m1(arg).load() {
+                        Ok(m1) => m1.plot_forces(Some(filename.as_str())),
+                        Err(e) => println!("{}: {:}", arg, e),
                     }
-                    m1.plot_forces(Some(filename.as_str()));
                 } else {
                     let monitors = MonitorsLoader::<CFD_YEAR>::default()
                         .data_path(arg.clone())

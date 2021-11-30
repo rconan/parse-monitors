@@ -19,7 +19,7 @@ impl super::Report<2021> for HTC {
     fn chapter_section(
         &self,
         cfd_case: cfd::CfdCase<2021>,
-        ri_pic_idx: Option<usize>,
+        _: Option<usize>,
     ) -> Result<String, Box<dyn Error>> {
         let path_to_case = cfd::Baseline::<2021>::path().join(&cfd_case.to_string());
         let monitors = MonitorsLoader::<2021>::default()
@@ -41,7 +41,11 @@ impl super::Report<2021> for HTC {
         ))
     }
     /// Chapter assembly
-    fn chapter(&self, zenith_angle: cfd::ZenithAngle) -> Result<(), Box<dyn Error>> {
+    fn chapter(
+        &self,
+        zenith_angle: cfd::ZenithAngle,
+        cfd_cases_subset: Option<&[cfd::CfdCase<2021>]>,
+    ) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
         let part = format!("part{}.", self.part);
         let chapter_filename = match zenith_angle {
@@ -49,8 +53,15 @@ impl super::Report<2021> for HTC {
             cfd::ZenithAngle::Thirty => part + "chapter2.tex",
             cfd::ZenithAngle::Sixty => part + "chapter3.tex",
         };
-        let cfd_cases = cfd::Baseline::<2021>::at_zenith(zenith_angle.clone())
+        let cfd_cases = cfd::Baseline::<2021>::at_zenith(zenith_angle)
             .into_iter()
+            .filter(|cfd_case| {
+                if let Some(cases) = cfd_cases_subset {
+                    cases.contains(cfd_case)
+                } else {
+                    true
+                }
+            })
             .collect::<Vec<cfd::CfdCase<2021>>>();
         let results: Vec<_> = cfd_cases
             .into_par_iter()
