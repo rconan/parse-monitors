@@ -1,5 +1,6 @@
 use nalgebra as na;
 
+pub mod error;
 mod vector;
 pub use vector::Vector;
 mod monitors;

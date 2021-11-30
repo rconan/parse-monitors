@@ -1,7 +1,6 @@
 //! Mirror surface pressure
 
 use std::{
-    error::Error,
     fs::File,
     io::{BufReader, Read},
     path::PathBuf,
@@ -9,6 +8,16 @@ use std::{
 
 use bzip2::bufread::BzDecoder;
 use serde::Deserialize;
+
+#[derive(thiserror::Error, Debug)]
+pub enum PressureError {
+    #[error("Failed to decompress the file")]
+    Decompress(#[from] bzip2::Error),
+    #[error("Failed to open the pressure file")]
+    Io(#[from] std::io::Error),
+    #[error("Failed to deserialize the CSV file")]
+    Csv(#[from] csv::Error),
+}
 
 fn norm(v: &[f64]) -> f64 {
     v.iter().map(|&x| x * x).sum::<f64>().sqrt()
@@ -75,7 +84,7 @@ pub struct Pressure {
 }
 impl Pressure {
     /// Loads the pressure data
-    pub fn load(csv_pressure: String, csv_geometry: String) -> Result<Self, Box<dyn Error>> {
+    pub fn load(csv_pressure: String, csv_geometry: String) -> Result<Self, PressureError> {
         let this_pa = Self::load_pressure(csv_pressure)?;
         let this_aijk = Self::load_geometry(csv_geometry)?;
         let max_diff_area = this_pa
@@ -119,7 +128,7 @@ impl Pressure {
         );
         Ok(this)
     }
-    pub fn decompress(path: PathBuf) -> Result<String, Box<dyn Error>> {
+    pub fn decompress(path: PathBuf) -> Result<String, PressureError> {
         let csv_file = File::open(path)?;
         let buf = BufReader::new(csv_file);
         let mut bz2 = BzDecoder::new(buf);
@@ -128,7 +137,7 @@ impl Pressure {
         Ok(contents)
     }
     /// Loads the pressure from a csv bz2-compressed file
-    pub fn load_pressure(contents: String) -> Result<Self, Box<dyn Error>> {
+    pub fn load_pressure(contents: String) -> Result<Self, PressureError> {
         let mut this = Pressure::default();
         let mut rdr = csv::Reader::from_reader(contents.as_bytes());
         let mut rows = Vec::<Record>::new();
@@ -143,7 +152,7 @@ impl Pressure {
         Ok(this)
     }
     /// Loads the areas and coordinates vector from a csv file
-    pub fn load_geometry(contents: String) -> Result<Self, Box<dyn Error>> {
+    pub fn load_geometry(contents: String) -> Result<Self, PressureError> {
         let mut this = Pressure::default();
         let mut rdr = csv::Reader::from_reader(contents.as_bytes());
         let mut rows = Vec::<GeometryRecord>::new();

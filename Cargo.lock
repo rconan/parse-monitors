@@ -2130,6 +2130,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "tectonic",
+ "thiserror",
  "triangle-rs",
  "windloading",
 ]

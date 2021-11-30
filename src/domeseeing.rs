@@ -1,5 +1,4 @@
 use std::{
-    error::Error,
     fs::File,
     ops::{Deref, DerefMut},
     path::Path,
@@ -7,6 +6,14 @@ use std::{
 
 use serde::Deserialize;
 use serde_pickle as pickle;
+
+#[derive(thiserror::Error, Debug)]
+pub enum DomeSeeingError {
+    #[error("Failed to open `domeseeing_PSSN.rs.pkl`")]
+    Io(#[from] std::io::Error),
+    #[error("Failed to read `domeseeing_PSSN.rs.pkl`")]
+    Pickle(#[from] pickle::Error),
+}
 
 /// Photometric band
 pub enum Band {
@@ -56,7 +63,7 @@ impl DerefMut for DomeSeeing {
 }
 impl DomeSeeing {
     /// Load the dome seeing time series from a "domeseeing_PSSN.rs.pkl" file
-    pub fn load<P>(path: P) -> Result<Self, Box<dyn Error>>
+    pub fn load<P>(path: P) -> Result<Self, DomeSeeingError>
     where
         P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>,
     {
