@@ -2,13 +2,15 @@
 //!
 //! It must be run as root i.e. `sudo -E ./target/release/batch_force`
 
-use parse_monitors::{cfd::Baseline, plot_monitor, Mirror, MonitorsLoader};
+use parse_monitors::{cfd::Baseline, Mirror, MonitorsLoader};
 use rayon::prelude::*;
-use std::path::Path;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Opt {
+    /// Truncate monitors to the `last` seconds
+    #[structopt(short, long)]
+    last: Option<usize>,
     /// Make all the plots
     #[structopt(long)]
     all: bool,
@@ -54,6 +56,9 @@ struct Opt {
     /// Make platforms and cables force magnitude plot
     #[structopt(long)]
     platforms_cables: bool,
+    /// Remove linear trends from monitors
+    #[structopt(long)]
+    detrend: bool,
 }
 
 const CFD_YEAR: u32 = 2021;
@@ -61,7 +66,7 @@ const CFD_YEAR: u32 = 2021;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
     let cfd_root = Baseline::<CFD_YEAR>::path();
-    let data_paths: Vec<_> = Baseline::<CFD_YEAR>::redo()
+    let data_paths: Vec<_> = Baseline::<CFD_YEAR>::default()
         .into_iter()
         .map(|cfd_case| {
             cfd_root
@@ -98,19 +103,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _: Vec<_> = data_paths
             .par_iter()
             .map(|arg| {
-                let filename = format!("{}/{}.png", arg, name);
+                let mut filename = format!("{}/{}.png", arg, name);
                 if name == "m1-segments" {
-                    match Mirror::m1(arg).load() {
-                        Ok(m1) => m1.plot_forces(Some(filename.as_str())),
+                    match Mirror::m1(arg).net_force().load() {
+                        Ok(mut m1) => {
+                            if let Some(arg) = opt.last {
+                                m1.keep_last(arg);
+                            }
+                            m1.plot_forces(Some(filename.as_str()))
+                        }
                         Err(e) => println!("{}: {:}", arg, e),
                     }
                 } else {
-                    let monitors = MonitorsLoader::<CFD_YEAR>::default()
+                    let mut monitors = MonitorsLoader::<CFD_YEAR>::default()
                         .data_path(arg.clone())
                         .header_filter(filter.to_string())
                         //.exclude_filter(xmon)
                         .load()
                         .unwrap();
+                    if let Some(arg) = opt.last {
+                        monitors.keep_last(arg);
+                    }
+                    if opt.detrend {
+                        monitors.detrend();
+                        filename = format!("{}/{}-detrend.png", arg, name)
+                    }
                     monitors.plot_forces(Some(filename.as_str()));
                 }
             })

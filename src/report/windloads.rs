@@ -10,6 +10,7 @@ pub struct WindLoads {
     xmon: Option<String>,
     detrend: bool,
     last_time_range: Option<usize>,
+    show_pressure: bool,
 }
 impl WindLoads {
     pub fn new(part: u8, stats_time_range: f64) -> Self {
@@ -34,6 +35,12 @@ impl WindLoads {
     pub fn keep_last(self, period: usize) -> Self {
         Self {
             last_time_range: Some(period),
+            ..self
+        }
+    }
+    pub fn show_m12_pressure(self) -> Self {
+        Self {
+            show_pressure: true,
             ..self
         }
     }
@@ -67,9 +74,12 @@ impl super::Report<2021> for WindLoads {
         if let Some(period) = self.last_time_range {
             monitors.keep_last(period);
         }
-        if self.detrend {
+        let parts_suffix = if self.detrend {
             monitors.detrend();
-        }
+            String::from("-detrend")
+        } else {
+            String::new()
+        };
         if let (Ok(m1), Ok(m1_net)) = (
             Mirror::m1(path_to_case.clone()).load(),
             Mirror::m1(path_to_case.clone()).net_force().load(),
@@ -86,6 +96,25 @@ impl super::Report<2021> for WindLoads {
             let m2_pressure_std = path_to_case
                 .join("m2_pressure-stats_std.png")
                 .with_extension("");
+            let m12_pressures = if self.show_pressure {
+                format!(
+                    r#"
+\subsection{{Pressure}}
+\subsubsection{{M1 segment average}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{M1 segment standard deviation}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+
+\subsubsection{{M2 segment average}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{M2 segment standard deviation}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+"#,
+                    m1_pressure_mean, m1_pressure_std, m2_pressure_mean, m2_pressure_std,
+                )
+            } else {
+                String::new()
+            };
             Ok(format!(
                 r#"
 \section{{{}}}
@@ -143,24 +172,7 @@ impl super::Report<2021> for WindLoads {
 \bottomrule
 \end{{longtable}}
 
-\subsubsection{{M1 segment net moments}}
-\begin{{longtable}}{{crrrr}}\toprule
- ELEMENT & MEAN & STD & MIN & MAX \\\hline
 {}
-\bottomrule
-\end{{longtable}}
-
-\subsection{{Pressure}}
-\subsubsection{{M1 segment average}}
-\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
-\subsubsection{{M1 segment standard deviation}}
-\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
-
-\subsubsection{{M2 segment average}}
-\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
-\subsubsection{{M2 segment standard deviation}}
-\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
-
 "#,
                 &cfd_case.to_pretty_string(),
                 &cfd_case.to_string(),
@@ -173,32 +185,26 @@ impl super::Report<2021> for WindLoads {
                 m1_net
                     .force_latex_table(self.stats_time_range)
                     .unwrap_or_default(),
-                path_to_case.join("c-ring_parts"),
-                path_to_case.join("m1-cell"),
-                path_to_case.join("m1-segments"),
-                path_to_case.join("lower-truss"),
-                path_to_case.join("upper-truss"),
-                path_to_case.join("top-end"),
-                path_to_case.join("m2-segments"),
-                path_to_case.join("m12-baffles"),
-                path_to_case.join("m1-outer-covers"),
-                path_to_case.join("m1-inner-covers"),
-                path_to_case.join("gir"),
-                path_to_case.join("pfa-arms"),
-                path_to_case.join("lgs"),
-                path_to_case.join("platforms-cables"),
+                path_to_case.join(format!("c-ring_parts{}", parts_suffix)),
+                path_to_case.join(format!("m1-cell{}", parts_suffix)),
+                path_to_case.join(format!("m1-segments{}", "")),
+                path_to_case.join(format!("lower-truss{}", parts_suffix)),
+                path_to_case.join(format!("upper-truss{}", parts_suffix)),
+                path_to_case.join(format!("top-end{}", parts_suffix)),
+                path_to_case.join(format!("m2-segments{}", parts_suffix)),
+                path_to_case.join(format!("m12-baffles{}", parts_suffix)),
+                path_to_case.join(format!("m1-outer-covers{}", parts_suffix)),
+                path_to_case.join(format!("m1-inner-covers{}", parts_suffix)),
+                path_to_case.join(format!("gir{}", parts_suffix)),
+                path_to_case.join(format!("pfa-arms{}", parts_suffix)),
+                path_to_case.join(format!("lgs{}", parts_suffix)),
+                path_to_case.join(format!("platforms-cables{}", parts_suffix)),
                 monitors
                     .moment_latex_table(self.stats_time_range)
                     .zip(m1.moment_latex_table(self.stats_time_range))
                     .map(|(x, y)| vec![x, y].join("\n"))
                     .unwrap_or_default(),
-                m1_net
-                    .moment_latex_table(self.stats_time_range)
-                    .unwrap_or_default(),
-                m1_pressure_mean,
-                m1_pressure_std,
-                m2_pressure_mean,
-                m2_pressure_std,
+                m12_pressures
             ))
         } else {
             Ok(format!(

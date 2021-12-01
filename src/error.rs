@@ -2,10 +2,12 @@ use crate::{domeseeing::DomeSeeingError, pressure::PressureError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Error in the `pressure` module")]
+    #[error(transparent)]
     Pressure(#[from] PressureError),
-    #[error("Error in the `domeseeing` module")]
+    #[error(transparent)]
     DomeSeeing(#[from] DomeSeeingError),
+    #[error(transparent)]
+    Any(#[from] Box<dyn std::error::Error>),
 }
 
 /*

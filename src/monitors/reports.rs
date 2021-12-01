@@ -440,7 +440,7 @@ impl Monitors {
     }
     pub fn detrend(&mut self) -> &mut Self {
         for value in self.forces_and_moments.values_mut() {
-            for k in 0..2 {
+            for k in 0..3 {
                 let mut f_k: Vec<f64> = value.iter().map(|e| e.force[k]).collect();
                 detrend_mut(&self.time, &mut f_k, 1).unwrap();
                 value

@@ -1,0 +1,72 @@
+\documentclass{gmto-book}
+
+\DocID{GMT-DOC-05213}
+\DocVersion{1.0}
+\DocStatus{Draft}
+
+\usepackage{dingbat}
+\usepackage{booktabs}
+\usepackage{longtable}
+
+\addbibresource{mount.bib}
+
+\setcounter{tocdepth}{5}
+
+\title{GMT Computational Fluid Dynamics Mount Wind Loads}
+%\subtitle{Mount Wind Loads}
+\author{R. Conan, K. Vogiatzis, H. Fitzpatrick}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\clearpage
+
+\section*{Signatures}
+\vspace{1cm}
+\subsection*{Author}
+\vspace{1.5cm}
+%\tabulinesep=1em
+\begin{tabu} to \linewidth {X[3,l]X[1,l]}
+  \rule{\linewidth}{.1pt} & \rule{\linewidth}{.1pt} \\
+  Name, title & Date
+\end{tabu}
+\vspace{1.5cm}
+\subsection*{Approvers}
+\vspace{1.5cm}
+%\tabulinesep=1em
+\begin{tabu} to \linewidth {X[3,l]X[1,l]}
+  \rule{\linewidth}{.1pt} & \rule{\linewidth}{.1pt} \\
+  Name, title & Date \\[1cm]
+  \rule{\linewidth}{.1pt} & \rule{\linewidth}{.1pt} \\
+  Name, title & Date
+\end{tabu}
+
+\clearpage
+
+\section*{Revision Log}
+
+\begin{revisions}
+  1.0 & 11.17.21 & All & None & Initial version & R. Conan \\  
+  1.0 & \today & All & None & Add mount wind loads cases definition and M1 segments net forces and moments & R. Conan \\  
+\end{revisions}
+
+\clearpage
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\clearpage
+
+\chapter{Introduction}
+\label{sec:introduction}
+
+\input{mount.introduction}
+
+\input{mount.detrend.chapter}
+
+\printbibliography
+
+\end{document}

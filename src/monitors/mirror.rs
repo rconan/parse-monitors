@@ -158,6 +158,15 @@ impl Mirror {
             path,
         )
     }
+    /// Keeps only the last `period` seconds of the monitors
+    pub fn keep_last(&mut self, period: usize) -> &mut Self {
+        let i = self.len() - period * crate::FORCE_SAMPLING_FREQUENCY as usize;
+        let _: Vec<_> = self.time_mut().drain(..i).collect();
+        for value in self.exertion_mut() {
+            let _: Vec<_> = value.drain(..i).collect();
+        }
+        self
+    }
     pub fn summary(&self) {
         let (mirror, time, force) = match self {
             Mirror::M1 { time, force } => ("M1", time, force),
@@ -180,7 +189,16 @@ impl Mirror {
             Monitors::display(key, force_magnitude);
         }
     }
+    pub fn len(&self) -> usize {
+        self.time().len()
+    }
     pub fn time(&self) -> &VecDeque<f64> {
+        match self {
+            Mirror::M1 { time, .. } => time,
+            Mirror::M2 { time, .. } => time,
+        }
+    }
+    pub fn time_mut(&mut self) -> &mut VecDeque<f64> {
         match self {
             Mirror::M1 { time, .. } => time,
             Mirror::M2 { time, .. } => time,
@@ -192,10 +210,22 @@ impl Mirror {
             Mirror::M2 { force, .. } => force,
         }
     }
+    pub fn forces_and_moments_mut(&mut self) -> &mut BTreeMap<String, VecDeque<Exertion>> {
+        match self {
+            Mirror::M1 { force, .. } => force,
+            Mirror::M2 { force, .. } => force,
+        }
+    }
     pub fn exertion(&self) -> impl Iterator<Item = &VecDeque<Exertion>> {
         match self {
             Mirror::M1 { force, .. } => force.values(),
             Mirror::M2 { force, .. } => force.values(),
+        }
+    }
+    pub fn exertion_mut(&mut self) -> impl Iterator<Item = &mut VecDeque<Exertion>> {
+        match self {
+            Mirror::M1 { force, .. } => force.values_mut(),
+            Mirror::M2 { force, .. } => force.values_mut(),
         }
     }
     /// Return a latex table with force monitors summary
