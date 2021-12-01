@@ -26,31 +26,36 @@ struct Opt {
 fn main() -> Result<(), Box<dyn Error>> {
     let opt = Opt::from_args();
 
-    let redo_cases: Arc<Vec<cfd::CfdCase<2021>>> =
-        Arc::new(cfd::Baseline::<2021>::redo().into_iter().collect());
+    /*    let redo_cases: Arc<Vec<cfd::CfdCase<2021>>> =
+    Arc::new(cfd::Baseline::<2021>::redo().into_iter().collect());*/
 
     let mut tjh = vec![];
     let now = Instant::now();
     println!("Building the different parts of the report ...");
     if opt.domeseeing || opt.full {
-        let cases = redo_cases.clone();
+        //let cases = redo_cases.clone();
         tjh.push(thread::spawn(move || {
-            report::DomeSeeingPart::new(10, 0f64)
-                .part_with(&cases)
+            report::DomeSeeingPart::new(1, 0f64)
+                .part()
+                //.part_with(&cases)
                 .unwrap();
         }));
     }
     if opt.htc || opt.full {
-        let cases = redo_cases.clone();
+        //let cases = redo_cases.clone();
         tjh.push(thread::spawn(move || {
-            report::HTC::new(30, 400f64).part_with(&cases).unwrap();
+            report::HTC::new(3, 400f64)
+                .part()
+                //.part_with(&cases)
+                .unwrap();
         }));
     }
     if opt.windloads || opt.full {
-        let cases = redo_cases.clone();
+        //let cases = redo_cases.clone();
         tjh.push(thread::spawn(move || {
-            report::WindLoads::new(20, 400f64)
-                .part_with(&cases)
+            report::WindLoads::new(2, 400f64)
+                .part()
+                //.part_with(&cases)
                 .unwrap();
         }));
     }

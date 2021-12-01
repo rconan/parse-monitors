@@ -3,6 +3,12 @@
 //! Make the pressure plots:
 //!  - segment average pressure
 //!  - segment std. pressure
+//!
+//! Two arguments are required:
+//!  - mirror: M1 or M2
+//!  - stats: Mean or Std
+
+use std::env;
 
 use parse_monitors::cfd;
 use plotters::prelude::*;
@@ -10,7 +16,8 @@ use polars::prelude::*;
 use rayon::prelude::*;
 
 fn main() -> Result<()> {
-    let stats = String::from("Mean");
+    let mirror = env::args().nth(1).unwrap().to_lowercase();
+    let stats = env::args().nth(2).unwrap();
     let _ = cfd::Baseline::<2021>::default()
         .extras()
         .into_iter()
@@ -18,7 +25,7 @@ fn main() -> Result<()> {
         .into_par_iter()
         .map(|data_path| {
             let mut df = {
-                let filename = "m1_pressure-stats.csv";
+                let filename = format!("{}_pressure-stats.csv", mirror);
                 let path = cfd::Baseline::<2021>::path()
                     .join(data_path.to_string())
                     .join(filename);
@@ -29,7 +36,7 @@ fn main() -> Result<()> {
             };
             df.sort_in_place("Time [s]", false)?;
 
-            let filename = format!("m1_pressure-stats_{}.png", stats.to_lowercase());
+            let filename = format!("{}_pressure-stats_{}.png", mirror, stats.to_lowercase());
             let path = cfd::Baseline::<2021>::path()
                 .join(data_path.to_string())
                 .join(filename);

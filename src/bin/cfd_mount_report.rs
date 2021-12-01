@@ -25,7 +25,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Building the report ...");
     report::WindLoads::new(0, opt.stats_duration)
         .exclude_monitors("floor|enclosure|screen|shutter")
-        .mount_chapter()?;
+        .keep_last(400)
+        .detrend()
+        .mount_chapter(Some("mount.detrend.chapter.tex"))?;
     println!(" ... report build in {}s", now.elapsed().as_secs());
     //    }
 

@@ -112,7 +112,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("z range: {:?}", pressures.z_range());
 
     &pressures
-        .to_local(4)?
+        .to_local(0)?
         .xy_iter()
         .filter_map(|(x, y)| {
             if x.hypot(y) < 0.55_f64 {

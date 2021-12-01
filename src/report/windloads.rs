@@ -3,22 +3,37 @@ use glob::glob;
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
 
+#[derive(Default)]
 pub struct WindLoads {
     part: u8,
     stats_time_range: f64,
     xmon: Option<String>,
+    detrend: bool,
+    last_time_range: Option<usize>,
 }
 impl WindLoads {
     pub fn new(part: u8, stats_time_range: f64) -> Self {
         Self {
             part,
             stats_time_range,
-            xmon: None,
+            ..Default::default()
         }
     }
     pub fn exclude_monitors(self, xmon: &str) -> Self {
         Self {
             xmon: Some(xmon.to_string()),
+            ..self
+        }
+    }
+    pub fn detrend(self) -> Self {
+        Self {
+            detrend: true,
+            ..self
+        }
+    }
+    pub fn keep_last(self, period: usize) -> Self {
+        Self {
+            last_time_range: Some(period),
             ..self
         }
     }
@@ -39,7 +54,7 @@ impl super::Report<2021> for WindLoads {
             .to_owned();
         let paths = glob(&pattern).expect("Failed to read glob pattern");
         let vort_pic = paths.last().unwrap()?.with_extension("");
-        let monitors = if let Some(xmon) = &self.xmon {
+        let mut monitors = if let Some(xmon) = &self.xmon {
             MonitorsLoader::<2021>::default()
                 .data_path(path_to_case.clone())
                 .exclude_filter(xmon)
@@ -49,6 +64,12 @@ impl super::Report<2021> for WindLoads {
                 .data_path(path_to_case.clone())
                 .load()?
         };
+        if let Some(period) = self.last_time_range {
+            monitors.keep_last(period);
+        }
+        if self.detrend {
+            monitors.detrend();
+        }
         if let (Ok(m1), Ok(m1_net)) = (
             Mirror::m1(path_to_case.clone()).load(),
             Mirror::m1(path_to_case.clone()).net_force().load(),
@@ -58,6 +79,12 @@ impl super::Report<2021> for WindLoads {
                 .with_extension("");
             let m1_pressure_std = path_to_case
                 .join("m1_pressure-stats_std.png")
+                .with_extension("");
+            let m2_pressure_mean = path_to_case
+                .join("m2_pressure-stats_mean.png")
+                .with_extension("");
+            let m2_pressure_std = path_to_case
+                .join("m2_pressure-stats_std.png")
                 .with_extension("");
             Ok(format!(
                 r#"
@@ -129,6 +156,11 @@ impl super::Report<2021> for WindLoads {
 \subsubsection{{M1 segment standard deviation}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
+\subsubsection{{M2 segment average}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{M2 segment standard deviation}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+
 "#,
                 &cfd_case.to_pretty_string(),
                 &cfd_case.to_string(),
@@ -165,6 +197,8 @@ impl super::Report<2021> for WindLoads {
                     .unwrap_or_default(),
                 m1_pressure_mean,
                 m1_pressure_std,
+                m2_pressure_mean,
+                m2_pressure_std,
             ))
         } else {
             Ok(format!(
@@ -286,9 +320,8 @@ impl super::Report<2021> for WindLoads {
 }
 impl WindLoads {
     /// Mount chapter assembly
-    pub fn mount_chapter(&self) -> Result<(), Box<dyn Error>> {
+    pub fn mount_chapter(&self, chapter_filename: Option<&str>) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
-        let chapter_filename = "mount.chapter.tex";
         let cfd_cases = cfd::Baseline::<2021>::mount()
             .into_iter()
             .collect::<Vec<cfd::CfdCase<2021>>>();
@@ -296,7 +329,8 @@ impl WindLoads {
             .into_par_iter()
             .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())
             .collect();
-        let mut file = File::create(report_path.join(chapter_filename))?;
+        let mut file =
+            File::create(report_path.join(chapter_filename.unwrap_or("mount.chapter.tex")))?;
         write!(
             file,
             r#"

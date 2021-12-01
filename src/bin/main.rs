@@ -18,6 +18,9 @@ struct Opt {
     /// Monitors end time
     #[structopt(short, long)]
     end: Option<f64>,
+    /// Truncate monitors to the `last` seconds
+    #[structopt(short, long)]
+    last: Option<usize>,
     /// Save monitors to CSV file
     #[structopt(long)]
     csv: Option<String>,
@@ -61,6 +64,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut monitors = loader.load()?;
+    if let Some(arg) = opt.last {
+        monitors.keep_last(arg);
+    }
     if opt.detrend {
         monitors.detrend();
     }

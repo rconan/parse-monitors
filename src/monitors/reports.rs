@@ -12,6 +12,8 @@ use std::{
     time::Instant,
 };
 
+type Result<T> = std::result::Result<T, super::MonitorsError>;
+
 pub struct FemNodes(BTreeMap<String, Vector>);
 impl Deref for FemNodes {
     type Target = BTreeMap<String, Vector>;
@@ -181,7 +183,7 @@ impl<const YEAR: u32> MonitorsLoader<YEAR> {
     }
 }
 impl MonitorsLoader<2021> {
-    pub fn load(self) -> Result<Monitors, Box<dyn std::error::Error>> {
+    pub fn load(self) -> Result<Monitors> {
         let csv_file = File::open(Path::new(&self.path).with_extension("csv.bz2"))?;
         log::info!("Loading {:?}...", csv_file);
         let now = Instant::now();
@@ -304,7 +306,7 @@ impl MonitorsLoader<2021> {
     }
 }
 impl MonitorsLoader<2020> {
-    pub fn load(self) -> Result<Monitors, Box<dyn std::error::Error>> {
+    pub fn load(self) -> Result<Monitors> {
         let csv_file = File::open(Path::new(&self.path).with_file_name("FORCES.txt"))?;
         log::info!("Loading {:?}...", csv_file);
         let now = Instant::now();
@@ -410,7 +412,7 @@ impl MonitorsLoader<2020> {
         if let Some(data) = monitors.forces_and_moments.remove("Total") {
             monitors.total_forces_and_moments = data;
         } else {
-            return Err("No Total entry found".into());
+            return Err(super::MonitorsError::MissingEntry(String::from("Total")));
         }
         log::info!("... loaded in {:}s", now.elapsed().as_secs());
         Ok(monitors)
@@ -452,6 +454,21 @@ impl Monitors {
                     .zip(m_k)
                     .for_each(|(e, m_k)| e.moment[k] = m_k);
             }
+        }
+        self
+    }
+    /// Keeps only the last `period` seconds of the monitors
+    pub fn keep_last(&mut self, period: usize) -> &mut Self {
+        let i = self.len() - period * crate::FORCE_SAMPLING_FREQUENCY as usize;
+        let _: Vec<_> = self.time.drain(..i).collect();
+        for value in self.heat_transfer_coefficients.values_mut() {
+            let _: Vec<_> = value.drain(..i).collect();
+        }
+        for value in self.forces_and_moments.values_mut() {
+            let _: Vec<_> = value.drain(..i).collect();
+        }
+        if i < self.total_forces_and_moments.len() {
+            let _: Vec<_> = self.total_forces_and_moments.drain(..i).collect();
         }
         self
     }
@@ -750,7 +767,7 @@ impl Monitors {
             None => println!("  - {:16}: {:?}", key, None::<f64>),
         }
     }
-    pub fn to_csv(&self, filename: String) -> Result<Vec<()>, csv::Error> {
+    pub fn to_csv(&self, filename: String) -> Result<Vec<()>> {
         let mut wtr = csv::Writer::from_path(filename)?;
         let mut keys = vec![String::from("Time [s]")];
         keys.extend(
@@ -769,7 +786,8 @@ impl Monitors {
                 }),
         );
         wtr.write_record(&keys)?;
-        self.time
+        Ok(self
+            .time
             .iter()
             .enumerate()
             .map(|(k, t)| {
@@ -791,7 +809,7 @@ impl Monitors {
                 );
                 wtr.write_record(&record)
             })
-            .collect::<Result<Vec<()>, csv::Error>>()
+            .collect::<std::result::Result<Vec<()>, csv::Error>>()?)
     }
     #[cfg(feature = "windloading")]
     pub fn m1covers_windloads(&self) -> Result<(), Box<dyn std::error::Error>> {
