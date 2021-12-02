@@ -84,12 +84,14 @@ impl super::Report<2021> for WindLoads {
             Mirror::m1(path_to_case.clone()).load(),
             Mirror::m1(path_to_case.clone()).net_force().load(),
         ) {
+            let m1_pressure_map = path_to_case.join("m1_pressure_map.png").with_extension("");
             let m1_pressure_mean = path_to_case
                 .join("m1_pressure-stats_mean.png")
                 .with_extension("");
             let m1_pressure_std = path_to_case
                 .join("m1_pressure-stats_std.png")
                 .with_extension("");
+            let m2_pressure_map = path_to_case.join("m2_pressure_map.png").with_extension("");
             let m2_pressure_mean = path_to_case
                 .join("m2_pressure-stats_mean.png")
                 .with_extension("");
@@ -100,17 +102,26 @@ impl super::Report<2021> for WindLoads {
                 format!(
                     r#"
 \subsection{{Pressure}}
+\subsubsection{{M1 pressure snapshot}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 segment average}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 segment standard deviation}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
+\subsubsection{{M2 pressure snapshot}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M2 segment average}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M2 segment standard deviation}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 "#,
-                    m1_pressure_mean, m1_pressure_std, m2_pressure_mean, m2_pressure_std,
+                    m1_pressure_map,
+                    m1_pressure_mean,
+                    m1_pressure_std,
+                    m2_pressure_map,
+                    m2_pressure_mean,
+                    m2_pressure_std,
                 )
             } else {
                 String::new()

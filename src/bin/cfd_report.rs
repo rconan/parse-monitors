@@ -54,6 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         //let cases = redo_cases.clone();
         tjh.push(thread::spawn(move || {
             report::WindLoads::new(2, 400f64)
+                .show_m12_pressure()
                 .part()
                 //.part_with(&cases)
                 .unwrap();

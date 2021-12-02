@@ -46,7 +46,6 @@ struct Opt {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
-    //println!("{:?}", opt);
 
     let mut loader = MonitorsLoader::<2021>::default();
     loader = loader.data_path(&opt.path);

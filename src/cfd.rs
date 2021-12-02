@@ -12,6 +12,14 @@ pub enum ZenithAngle {
     Sixty,
 }
 impl ZenithAngle {
+    pub fn new(zenith_angle: u32) -> Self {
+        match zenith_angle {
+            0 => ZenithAngle::Zero,
+            30 => ZenithAngle::Thirty,
+            60 => ZenithAngle::Sixty,
+            _ => panic!("Zenith angle must be either 0, 30 or 60 degree"),
+        }
+    }
     pub fn chapter_title(&self) -> String {
         let z: f64 = self.into();
         format!("Zenith angle: {} degree", z)

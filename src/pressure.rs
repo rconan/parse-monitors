@@ -93,24 +93,38 @@ where
     segment_filter_size: Vec<f64>,
     mirror: PhantomData<M>,
 }
-pub trait ExoRadius {
+pub trait MirrorProperties {
     fn exo_radius(&self) -> f64;
+    fn mirror(&self) -> String;
+    fn center_hole(&self) -> Option<f64>;
 }
-impl ExoRadius for Pressure<M1> {
+impl MirrorProperties for Pressure<M1> {
     fn exo_radius(&self) -> f64 {
         4.5
     }
+    fn mirror(&self) -> String {
+        String::from("M1")
+    }
+    fn center_hole(&self) -> Option<f64> {
+        Some(2.75 * 0.5)
+    }
 }
-impl ExoRadius for Pressure<M2> {
+impl MirrorProperties for Pressure<M2> {
     fn exo_radius(&self) -> f64 {
         0.55
+    }
+    fn mirror(&self) -> String {
+        String::from("M2")
+    }
+    fn center_hole(&self) -> Option<f64> {
+        None
     }
 }
 impl<M> Pressure<M>
 where
     M: Default,
     Segment<M>: SegmentTrait,
-    Pressure<M>: ExoRadius,
+    Pressure<M>: MirrorProperties,
 {
     /// Loads the pressure data
     pub fn load(csv_pressure: String, csv_geometry: String) -> Result<Self> {
@@ -440,14 +454,18 @@ where
     }
     #[cfg(feature = "plot")]
     /// Display the pressure map
-    pub fn pressure_map(&mut self) {
+    pub fn pressure_map(&mut self, cfd_case_path: PathBuf) {
         let mut triangles = vec![];
         let mut tri_pressure = vec![];
-        //let average_pressure = self.mirror_average_pressure();
+        /*let average_pressure = self.mirror_average_pressure();
         let min_pressure = self.pressure.iter().cloned().fold(f64::INFINITY, f64::min);
-        println!("Min. P: {} Pa", min_pressure);
+        let max_pressure = self
+            .pressure
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);*/
         for sid in 1..=7 {
-            let del = triangle_rs::Delaunay::builder()
+            let mut del = triangle_rs::Delaunay::builder()
                 .add_nodes(
                     &self
                         .segment_xy(sid)
@@ -456,6 +474,12 @@ where
                 )
                 .set_switches("Q")
                 .build();
+            match (sid, self.center_hole()) {
+                (7, Some(radius)) => {
+                    del.filter_within_circle(radius, None);
+                }
+                _ => (),
+            }
             let pa: Vec<_> = self
                 .segment_pa(sid)
                 //                .map(|(p, a)| (if p < 0f64 { f64::NAN } else { p }, a))
@@ -466,12 +490,11 @@ where
             }));
             triangles.extend(del.triangle_vertex_iter());
         }
+        let path = cfd_case_path.join(format!("{}_pressure_map.png", self.mirror().to_lowercase()));
+        let filename = format!("{}", path.as_path().display());
         let _: complot::tri::Heatmap = (
-            triangles
-                .into_iter()
-                .zip(tri_pressure.into_iter())
-                .filter(|(_, p)| !p.is_nan()),
-            None,
+            triangles.into_iter().zip(tri_pressure.into_iter()),
+            complot::complot!(filename),
         )
             .into();
     }
