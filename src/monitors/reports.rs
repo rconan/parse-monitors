@@ -929,7 +929,7 @@ impl Monitors {
         };
 
         let plot =
-            BitMapBackend::new(filename.unwrap_or("FORCE.png"), (768, 512)).into_drawing_area();
+            BitMapBackend::new(filename.unwrap_or("FORCES.png"), (768, 512)).into_drawing_area();
         plot.fill(&WHITE).unwrap();
 
         let (min_values, max_values): (Vec<_>, Vec<_>) = self
@@ -959,7 +959,7 @@ impl Monitors {
         chart
             .configure_mesh()
             .x_desc("Time [s]")
-            .y_desc("Force [N]")
+            .y_desc("Moment [N.m]")
             .draw()
             .unwrap();
 
@@ -990,7 +990,7 @@ impl Monitors {
             .unwrap();
     }
     #[cfg(feature = "plot")]
-    pub fn plot_moments(&self) {
+    pub fn plot_moments(&self, filename: Option<&str>) {
         if self.forces_and_moments.is_empty() {
             return;
         }
@@ -999,7 +999,8 @@ impl Monitors {
             |x: &[f64]| -> f64 { x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max) };
         let min_value = |x: &[f64]| -> f64 { x.iter().cloned().fold(std::f64::INFINITY, f64::min) };
 
-        let plot = SVGBackend::new("MOMENTS.svg", (768, 512)).into_drawing_area();
+        let plot =
+            BitMapBackend::new(filename.unwrap_or("MOMENTS.png"), (768, 512)).into_drawing_area();
         plot.fill(&WHITE).unwrap();
 
         let (min_values, max_values): (Vec<_>, Vec<_>) = self

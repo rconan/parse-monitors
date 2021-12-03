@@ -136,7 +136,9 @@ impl super::Report<2021> for DomeSeeingPart {
 
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
-\subsection{{Wavefront error RMS}}
+\subsection{{Wavefront error }}
+\includegraphics[width=0.5\textwidth]{{{{{{{:?}}}}}}}
+\subsubsection{{WFE RMS}}
 \includegraphics[width=0.7\textwidth]{{{{{{{:?}}}}}}}
 \clearpage
 \subsection{{PSSn}}
@@ -147,6 +149,7 @@ impl super::Report<2021> for DomeSeeingPart {
 "#,
             &cfd_case.to_pretty_string(),
             ri_pic,
+            path_to_case.join("opd_map"),
             path_to_case.join("dome-seeing_wfe-rms"),
             path_to_case.join("dome-seeing_v-pssn"),
             path_to_case.join("dome-seeing_h-pssn"),

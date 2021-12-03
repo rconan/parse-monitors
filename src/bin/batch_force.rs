@@ -103,14 +103,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _: Vec<_> = data_paths
             .par_iter()
             .map(|arg| {
-                let mut filename = format!("{}/{}.png", arg, name);
+                let mut filename = format!("{}/moments_{}.png", arg, name);
                 if name == "m1-segments" {
                     match Mirror::m1(arg).net_force().load() {
                         Ok(mut m1) => {
                             if let Some(arg) = opt.last {
                                 m1.keep_last(arg);
                             }
-                            m1.plot_forces(Some(filename.as_str()))
+                            m1.plot_moments(Some(filename.as_str()))
                         }
                         Err(e) => println!("{}: {:}", arg, e),
                     }
@@ -126,9 +126,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     if opt.detrend {
                         monitors.detrend();
-                        filename = format!("{}/{}-detrend.png", arg, name)
+                        filename = format!("{}/moments_{}-detrend.png", arg, name)
                     }
-                    monitors.plot_forces(Some(filename.as_str()));
+                    monitors.plot_moments(Some(filename.as_str()));
                 }
             })
             .collect();

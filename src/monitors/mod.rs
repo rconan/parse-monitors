@@ -1,5 +1,7 @@
 mod mirror;
 mod reports;
+use std::collections::{BTreeMap, VecDeque};
+
 pub use mirror::Mirror;
 pub use reports::{Exertion, Monitors, MonitorsLoader};
 

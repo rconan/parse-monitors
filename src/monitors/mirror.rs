@@ -411,4 +411,87 @@ impl Mirror {
             .draw()
             .unwrap();
     }
+    #[cfg(feature = "plot")]
+    pub fn plot_moments(&self, filename: Option<&str>) {
+        if self.forces_and_moments().is_empty() {
+            println!("Empty mirror");
+            return;
+        }
+
+        let max_value = |x: &[f64]| -> f64 {
+            x.iter()
+                .cloned()
+                .rev()
+                .take(400 * 20)
+                .fold(std::f64::NEG_INFINITY, f64::max)
+        };
+        let min_value = |x: &[f64]| -> f64 {
+            x.iter()
+                .cloned()
+                .rev()
+                .take(400 * 20)
+                .fold(std::f64::INFINITY, f64::min)
+        };
+
+        let plot =
+            BitMapBackend::new(filename.unwrap_or("MOMENT.png"), (768, 512)).into_drawing_area();
+        plot.fill(&WHITE).unwrap();
+
+        let (min_values, max_values): (Vec<_>, Vec<_>) = self
+            .forces_and_moments()
+            .values()
+            .map(|values| {
+                let moment_magnitude: Option<Vec<f64>> =
+                    values.iter().map(|e| e.moment.magnitude()).collect();
+                (
+                    min_value(moment_magnitude.as_ref().unwrap()),
+                    max_value(moment_magnitude.as_ref().unwrap()),
+                )
+            })
+            .unzip();
+        let xrange = (*self.time().front().unwrap(), *self.time().back().unwrap());
+        let minmax_padding = 0.1;
+        let mut chart = ChartBuilder::on(&plot)
+            .set_label_area_size(LabelAreaPosition::Left, 60)
+            .set_label_area_size(LabelAreaPosition::Bottom, 40)
+            .margin(10)
+            .build_cartesian_2d(
+                xrange.0..xrange.1 * (1. + 1e-2),
+                min_value(&min_values) * (1. - minmax_padding)
+                    ..max_value(&max_values) * (1. + minmax_padding),
+            )
+            .unwrap();
+        chart
+            .configure_mesh()
+            .x_desc("Time [s]")
+            .y_desc("Force [N]")
+            .draw()
+            .unwrap();
+
+        let mut colors = colorous::TABLEAU10.iter().cycle();
+
+        for (key, values) in self.forces_and_moments().iter() {
+            let color = colors.next().unwrap();
+            let rgb = RGBColor(color.r, color.g, color.b);
+            chart
+                .draw_series(LineSeries::new(
+                    self.time()
+                        .iter()
+                        .zip(values.iter())
+                        //.skip(10 * 20)
+                        .map(|(&x, y)| (x, y.moment.magnitude().unwrap())),
+                    &rgb,
+                ))
+                .unwrap()
+                .label(key)
+                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &rgb));
+        }
+        chart
+            .configure_series_labels()
+            .border_style(&BLACK)
+            .background_style(&WHITE.mix(0.8))
+            .position(SeriesLabelPosition::UpperRight)
+            .draw()
+            .unwrap();
+    }
 }

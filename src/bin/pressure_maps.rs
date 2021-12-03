@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             });
 
             println!(
-                "{:<32}/{}: {:>8}s",
+                "{:<32}{}: {:>8}s",
                 cfd_case,
                 files.last().unwrap(),
                 now.elapsed().as_secs()
