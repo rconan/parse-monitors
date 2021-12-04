@@ -1,8 +1,24 @@
+//! CFD database model based on Rust types
+
 use std::{
     env, fmt,
     path::{Path, PathBuf},
 };
 use strum_macros::EnumIter;
+
+#[derive(thiserror::Error, Debug)]
+pub enum CfdError {
+    #[error("zenith angle {0} is not recognized, expected 0, 30 or 60 degree")]
+    ZenithAngle(u32),
+    #[error("azimuth {0} angle is not recognized, expected 0, 45, 90, 135 or 180 degree")]
+    Azimuth(u32),
+    #[error(r#"enclosure {0} is not recognized, expected "os", "cd" or "cs""#)]
+    Enclosure(String),
+    #[error(r#"wind speed {0} is not recognized, expected 2, 7, 12m 17 or 22 m/s"#)]
+    WindSpeed(u32),
+}
+
+type Result<T> = std::result::Result<T, CfdError>;
 
 /// CFD Telescope zenith pointing angle
 #[derive(EnumIter, Clone, Copy, PartialEq, Debug)]
@@ -12,12 +28,14 @@ pub enum ZenithAngle {
     Sixty,
 }
 impl ZenithAngle {
-    pub fn new(zenith_angle: u32) -> Self {
+    /// Get a new `ZenithAngle` chosen from 0, 30 or 60 degrees
+    pub fn new(zenith_angle: u32) -> Result<Self> {
+        use ZenithAngle::*;
         match zenith_angle {
-            0 => ZenithAngle::Zero,
-            30 => ZenithAngle::Thirty,
-            60 => ZenithAngle::Sixty,
-            _ => panic!("Zenith angle must be either 0, 30 or 60 degree"),
+            0 => Ok(Zero),
+            30 => Ok(Thirty),
+            60 => Ok(Sixty),
+            _ => Err(CfdError::ZenithAngle(zenith_angle)),
         }
     }
     pub fn chapter_title(&self) -> String {
@@ -62,6 +80,18 @@ pub enum Azimuth {
     OneEighty,
 }
 impl Azimuth {
+    /// Get a new `Azimuth` chosen from 0, 45, 90, 135 or 180 degrees
+    pub fn new(azimuth: u32) -> Result<Self> {
+        use Azimuth::*;
+        match azimuth {
+            0 => Ok(Zero),
+            45 => Ok(FortyFive),
+            90 => Ok(Ninety),
+            135 => Ok(OneThirtyFive),
+            180 => Ok(OneEighty),
+            _ => Err(CfdError::Azimuth(azimuth)),
+        }
+    }
     pub fn sin_cos(&self) -> (f64, f64) {
         let v: f64 = self.into();
         v.to_radians().sin_cos()
@@ -111,6 +141,16 @@ pub enum Enclosure {
     ClosedStowed,
 }
 impl Enclosure {
+    /// Get a new `Enclosure` chosen from "os", "cd" or "cs"
+    pub fn new(enclosure: &str) -> Result<Self> {
+        use Enclosure::*;
+        match enclosure {
+            "os" => Ok(OpenStowed),
+            "cd" => Ok(ClosedDeployed),
+            "cs" => Ok(ClosedStowed),
+            _ => Err(CfdError::Enclosure(enclosure.into())),
+        }
+    }
     pub fn to_pretty_string(&self) -> String {
         match self {
             Enclosure::OpenStowed => "Open vents/Stowed wind screen".to_string(),
@@ -137,6 +177,20 @@ pub enum WindSpeed {
     Seventeen,
     TwentyTwo,
 }
+impl WindSpeed {
+    /// Get a new `WindSpeed` chosen from 0, 2, 7, 12, 17 or 22m/s
+    fn new(wind_speed: u32) -> Result<Self> {
+        use WindSpeed::*;
+        match wind_speed {
+            2 => Ok(Two),
+            7 => Ok(Seven),
+            12 => Ok(Twelve),
+            17 => Ok(Seventeen),
+            22 => Ok(TwentyTwo),
+            _ => Err(CfdError::WindSpeed(wind_speed)),
+        }
+    }
+}
 impl fmt::Display for WindSpeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use WindSpeed::*;
@@ -158,6 +212,7 @@ pub struct CfdCase<const YEAR: u32> {
     pub wind_speed: WindSpeed,
 }
 impl<const YEAR: u32> CfdCase<YEAR> {
+    /// A new CFD case
     pub fn new(
         zenith: ZenithAngle,
         azimuth: Azimuth,
@@ -171,6 +226,21 @@ impl<const YEAR: u32> CfdCase<YEAR> {
             wind_speed,
         }
     }
+    /// A new CFD case, it will return an error if the values are not found in the CFD database
+    pub fn colloquial(
+        zenith_angle: u32,
+        azimuth: u32,
+        enclosure: &str,
+        wind_speed: u32,
+    ) -> Result<Self> {
+        Ok(CfdCase::<YEAR>::new(
+            ZenithAngle::new(zenith_angle)?,
+            Azimuth::new(azimuth)?,
+            Enclosure::new(enclosure)?,
+            WindSpeed::new(wind_speed)?,
+        ))
+    }
+    ///
     pub fn to_pretty_string(&self) -> String {
         let z: f64 = self.zenith.clone().into();
         let a: f64 = self.azimuth.clone().into();

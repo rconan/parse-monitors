@@ -1,4 +1,4 @@
-use crate::{domeseeing::DomeSeeingError, pressure::PressureError};
+use crate::{cfd::CfdError, domeseeing::DomeSeeingError, pressure::PressureError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -6,6 +6,8 @@ pub enum Error {
     Pressure(#[from] PressureError),
     #[error(transparent)]
     DomeSeeing(#[from] DomeSeeingError),
+    #[error(transparent)]
+    CFD(#[from] CfdError),
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error>),
 }
