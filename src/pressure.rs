@@ -1,4 +1,7 @@
-//! Mirror surface pressure
+//! M1 and M2 segments surface pressure
+//!
+//! Analyze segments surface wind pressure from pressure files either *M1p_M1p_\*.csv.bz2* or
+//! *M2p_M2p_\*.csv.bz2* for M1 or M2, respectively.
 
 use std::{
     fs::File,

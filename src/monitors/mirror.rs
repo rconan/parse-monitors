@@ -1,3 +1,5 @@
+//! M1 and M2 segments center of pressure, forces and moments
+
 use crate::{Exertion, Monitors, MonitorsLoader};
 #[cfg(feature = "plot")]
 use plotters::prelude::*;
