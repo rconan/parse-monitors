@@ -1,3 +1,19 @@
+//! GMT Computation Fluid Dynamic API
+//!
+//! A library to query and to process the GMT CFD Baseline databases.
+//!
+//! CFD repository default to "/fsx/Baseline2021/Baseline2021/Baseline2021/CASES" or
+//! set with the environment variable `CFD_REPO
+//!
+//! ## Binaries
+//! ### pressure_stats: computes the average pressure per segment and for the whole mirror as well as
+//! the pressure standart deviation per segment
+//! ### integral_pressure: computes center of pressure and associated force and moment
+//! ### batch_force: makes all the wind forces plots
+//! ### pressure-stats_plots: make the pressure plots:
+//!  - segment average pressure
+//!  - segment std. pressure
+
 use nalgebra as na;
 
 pub mod error;
@@ -11,8 +27,9 @@ pub use domeseeing::{Band, DomeSeeing};
 pub mod pressure;
 pub mod report;
 
-const FORCE_SAMPLING_FREQUENCY: f64 = 20_f64; // Hz
-const FORCE_SAMPLING: f64 = 1. / FORCE_SAMPLING_FREQUENCY; // Hz
+pub const FORCE_SAMPLING_FREQUENCY: f64 = 20_f64; // Hz
+pub const FORCE_SAMPLING: f64 = 1. / FORCE_SAMPLING_FREQUENCY; // Hz
+pub const TEMPERATURE_SAMPLING_FREQUENCY: f64 = 5_f64; // Hz
 
 pub fn polyfit<T: na::RealField + Copy>(
     x_values: &[T],

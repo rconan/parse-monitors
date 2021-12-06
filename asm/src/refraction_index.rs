@@ -27,7 +27,6 @@ pub fn stats(
     files
         .into_iter()
         .skip(n_skip)
-        .take(100)
         .map(|path| {
             let df = CsvReader::from_path(path)?
                 .infer_schema(None)
@@ -43,11 +42,14 @@ pub fn stats(
             )?;
             let df_asm = df_asm.filter(&df_asm.column("Z (m)")?.gt(23.99))?;
             let df_asm = df_asm.filter(&df_asm.column("Z (m)")?.lt(24.29))?;
-            Ok(df_asm
-                .column("Temperature (K)")?
-                .f64()?
-                .apply(refraction_index)
-                .into())
+            Ok({
+                let mut ri = df_asm
+                    .column("Temperature (K)")?
+                    .f64()?
+                    .apply(refraction_index);
+                ri.rename(&cfd_case.to_string());
+                ri.into()
+            })
         })
         .collect()
 }

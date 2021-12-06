@@ -1,3 +1,4 @@
+use crate::Stats;
 use bzip2::bufread::BzDecoder;
 use parse_monitors::{cfd, FORCE_SAMPLING_FREQUENCY};
 use polars::prelude::*;
@@ -11,7 +12,7 @@ pub fn stats(
     duration: usize,
     cfd_case: cfd::CfdCase<2021>,
     radius: f64,
-) -> anyhow::Result<Vec<Option<f64>>> {
+) -> anyhow::Result<Vec<Stats>> {
     let files: Vec<PathBuf> = cfd::CfdDataFile::M2Pressure
         .glob(cfd_case)?
         .collect::<std::result::Result<Vec<PathBuf>, glob::GlobError>>()?;
@@ -21,7 +22,7 @@ pub fn stats(
     } else {
         files.len() - n_sample
     };
-    Ok(files
+    files
         .into_iter()
         .skip(n_skip)
         .map(|path| {
@@ -36,17 +37,20 @@ pub fn stats(
                         .has_header(true)
                         .finish()?
                 };
-                {
-                    let radius_squared = {
+                df.filter(
+                    &{
                         let x = df.column("X (m)")?;
                         let y = df.column("Y (m)")?;
                         &(x * x) + &(y * y)
-                    };
-                    let mask = radius_squared.lt(radius * radius);
-                    df.filter(&mask)?
-                }
+                    }
+                    .lt(radius * radius),
+                )?
             };
-            Ok(es_df.column("Pressure (Pa)")?.f64()?.std())
+            Ok({
+                let mut pa = es_df.column("Pressure (Pa)")?.f64()?.to_owned();
+                pa.rename(&cfd_case.to_string());
+                pa.into()
+            })
         })
-        .collect::<anyhow::Result<Vec<Option<f64>>>>()?)
+        .collect()
 }
