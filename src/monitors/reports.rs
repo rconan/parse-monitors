@@ -959,7 +959,7 @@ impl Monitors {
         chart
             .configure_mesh()
             .x_desc("Time [s]")
-            .y_desc("Moment [N.m]")
+            .y_desc("Force [N]")
             .draw()
             .unwrap();
 
