@@ -10,12 +10,16 @@ use strum_macros::EnumIter;
 pub enum CfdError {
     #[error("zenith angle {0} is not recognized, expected 0, 30 or 60 degree")]
     ZenithAngle(u32),
-    #[error("azimuth {0} angle is not recognized, expected 0, 45, 90, 135 or 180 degree")]
+    #[error("azimuth angle {0} is not recognized, expected 0, 45, 90, 135 or 180 degree")]
     Azimuth(u32),
     #[error(r#"enclosure {0} is not recognized, expected "os", "cd" or "cs""#)]
     Enclosure(String),
     #[error(r#"wind speed {0} is not recognized, expected 2, 7, 12m 17 or 22 m/s"#)]
     WindSpeed(u32),
+    #[error("Failed to read CFD data file")]
+    ReadDataFile(#[from] glob::GlobError),
+    #[error("Data file not recognized")]
+    DataFile(#[from] glob::PatternError),
 }
 
 type Result<T> = std::result::Result<T, CfdError>;
@@ -203,6 +207,72 @@ impl fmt::Display for WindSpeed {
         }
     }
 }
+/// Data file collections available in the CFD database
+pub enum CfdDataFile<const YEAR: u32> {
+    M1Pressure,
+    M2Pressure,
+    TemperatureField,
+    OpticalPathDifference,
+}
+impl CfdDataFile<2021> {
+    pub fn glob(
+        self,
+        cfd_case: CfdCase<2021>,
+    ) -> std::result::Result<impl Iterator<Item = glob::GlobResult>, CfdError> {
+        use CfdDataFile::*;
+        let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
+        Ok(match self {
+            M1Pressure => glob::glob(
+                cfd_path
+                    .join("pressures")
+                    .join("M1p_M1p_*.csv.bz2")
+                    .to_str()
+                    .unwrap(),
+            )?,
+            M2Pressure => glob::glob(
+                cfd_path
+                    .join("pressures")
+                    .join("M2p_M2p_*.csv.bz2")
+                    .to_str()
+                    .unwrap(),
+            )?,
+            TemperatureField => glob::glob(
+                cfd_path
+                    .join("optvol")
+                    .join("optvol_optvol_*.csv.gz")
+                    .to_str()
+                    .unwrap(),
+            )?,
+            OpticalPathDifference => glob::glob(
+                cfd_path
+                    .join("optvol")
+                    .join("optvol_optvol_*.npz")
+                    .to_str()
+                    .unwrap(),
+            )?,
+        })
+    }
+}
+impl CfdDataFile<2020> {
+    pub fn glob(
+        self,
+        cfd_case: CfdCase<2021>,
+    ) -> std::result::Result<impl Iterator<Item = glob::GlobResult>, CfdError> {
+        use CfdDataFile::*;
+        let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
+        Ok(match self {
+            M1Pressure => glob::glob(cfd_path.join("M1_data_Mod_M1_Data_*.csv").to_str().unwrap())?,
+            M2Pressure => glob::glob(cfd_path.join("M2_data_Mod_M2_Data_*.csv").to_str().unwrap())?,
+            TemperatureField => {
+                glob::glob(cfd_path.join("OPDData_OPD_Data_*.csv.gz").to_str().unwrap())?
+            }
+            OpticalPathDifference => {
+                glob::glob(cfd_path.join("OPDData_OPD_Data_*.npz").to_str().unwrap())?
+            }
+        })
+    }
+}
+
 /// CFD case for a given year: 2020 or 2021
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CfdCase<const YEAR: u32> {
