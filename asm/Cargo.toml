@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.51"
 bzip2 = "0.4.3"
 glob = "0.3.0"
+indicatif = { version = "0.16.2", features = ["rayon"] }
 parse-monitors = { path = ".." }
 polars = { version = "0.18.0", features = ["decompress"] }
 rayon = "1.5.1"

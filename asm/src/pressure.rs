@@ -1,4 +1,4 @@
-use crate::Stats;
+use crate::{file_timestamp, Stats};
 use bzip2::bufread::BzDecoder;
 use parse_monitors::{cfd, FORCE_SAMPLING_FREQUENCY};
 use polars::prelude::*;
@@ -13,7 +13,7 @@ pub fn stats(
     cfd_case: cfd::CfdCase<2021>,
     radius: f64,
 ) -> anyhow::Result<Vec<Stats>> {
-    let files: Vec<PathBuf> = cfd::CfdDataFile::M2Pressure
+    let files: Vec<PathBuf> = cfd::CfdDataFile::<2021>::M2Pressure
         .glob(cfd_case)?
         .collect::<std::result::Result<Vec<PathBuf>, glob::GlobError>>()?;
     let n_sample = duration * FORCE_SAMPLING_FREQUENCY as usize;
@@ -32,7 +32,7 @@ pub fn stats(
                     let mut contents = String::new();
                     BzDecoder::new(BufReader::new(csv_file)).read_to_string(&mut contents)?;
                     CsvReader::new(Cursor::new(contents.as_bytes()))
-                        .with_path(Some(path))
+                        .with_path(Some(path.clone()))
                         .infer_schema(None)
                         .has_header(true)
                         .finish()?
@@ -47,9 +47,12 @@ pub fn stats(
                 )?
             };
             Ok({
-                let mut pa = es_df.column("Pressure (Pa)")?.f64()?.to_owned();
-                pa.rename(&cfd_case.to_string());
-                pa.into()
+                let p = es_df.column("Pressure (Pa)")?.f64()?.to_owned();
+                (
+                    file_timestamp(path, &cfd::CfdDataFile::<2021>::M2Pressure.pattern()),
+                    p,
+                )
+                    .into()
             })
         })
         .collect()

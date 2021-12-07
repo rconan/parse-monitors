@@ -1,4 +1,7 @@
-use std::iter::FromIterator;
+use std::{
+    iter::FromIterator,
+    path::{Path, PathBuf},
+};
 
 use polars::prelude::*;
 
@@ -9,7 +12,7 @@ type StatsData = Option<f64>;
 
 #[derive(Debug, Default)]
 pub struct Stats {
-    sample_name: String,
+    time_stamp: StatsData,
     sample_size: usize,
     mean: StatsData,
     median: StatsData,
@@ -18,10 +21,15 @@ pub struct Stats {
     min: StatsData,
 }
 
-impl From<ChunkedArray<Float64Type>> for Stats {
-    fn from(data: ChunkedArray<Float64Type>) -> Self {
+impl From<(StatsData, ChunkedArray<Float64Type>)> for Stats {
+    fn from(
+        (time_stamp, data): (
+            StatsData,
+            polars::prelude::ChunkedArray<polars::prelude::Float64Type>,
+        ),
+    ) -> Self {
         Self {
-            sample_name: data.name().to_string(),
+            time_stamp,
             sample_size: data.len(),
             mean: data.mean(),
             median: data.median(),
@@ -33,7 +41,7 @@ impl From<ChunkedArray<Float64Type>> for Stats {
 }
 
 type StatsTuple = (
-    Vec<String>,
+    Vec<StatsData>,
     (
         Vec<u32>,
         (
@@ -51,7 +59,7 @@ impl FromIterator<Stats> for Result<DataFrame> {
             .into_iter()
             .map(|s| {
                 (
-                    s.sample_name,
+                    s.time_stamp,
                     (
                         s.sample_size as u32,
                         (s.mean, (s.median, (s.var, (s.max, s.min)))),
@@ -69,4 +77,14 @@ impl FromIterator<Stats> for Result<DataFrame> {
         );
         DataFrame::new(series)
     }
+}
+
+pub fn file_timestamp(path: PathBuf, pattern: &str) -> Option<f64> {
+    Path::new(path.file_stem()?)
+        .file_stem()?
+        .to_str()?
+        .replace(pattern, "")
+        .parse::<f64>()
+        .ok()
+        .map(|x| (x * 1e3).round() * 1e-3)
 }

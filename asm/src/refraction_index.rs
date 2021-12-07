@@ -2,7 +2,7 @@ use parse_monitors::{cfd, TEMPERATURE_SAMPLING_FREQUENCY};
 use polars::prelude::*;
 use std::path::PathBuf;
 
-use crate::Stats;
+use crate::{file_timestamp, Stats};
 
 fn refraction_index(temperature: f64) -> f64 {
     let pref = 75000.0; //  Reference pressure [Pa]
@@ -15,7 +15,7 @@ pub fn stats(
     cfd_case: cfd::CfdCase<2021>,
     radius: f64,
 ) -> anyhow::Result<Vec<Stats>> {
-    let files: Vec<PathBuf> = cfd::CfdDataFile::TemperatureField
+    let files: Vec<PathBuf> = cfd::CfdDataFile::<2021>::TemperatureField
         .glob(cfd_case)?
         .collect::<std::result::Result<Vec<PathBuf>, glob::GlobError>>()?;
     let n_sample = duration * TEMPERATURE_SAMPLING_FREQUENCY as usize;
@@ -28,7 +28,7 @@ pub fn stats(
         .into_iter()
         .skip(n_skip)
         .map(|path| {
-            let df = CsvReader::from_path(path)?
+            let df = CsvReader::from_path(&path)?
                 .infer_schema(None)
                 .has_header(true)
                 .finish()?;
@@ -48,7 +48,11 @@ pub fn stats(
                     .f64()?
                     .apply(refraction_index);
                 ri.rename(&cfd_case.to_string());
-                ri.into()
+                (
+                    file_timestamp(path, &cfd::CfdDataFile::<2021>::M2Pressure.pattern()),
+                    ri,
+                )
+                    .into()
             })
         })
         .collect()
