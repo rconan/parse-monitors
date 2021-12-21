@@ -26,11 +26,11 @@ chrono = "0.4.19"
 strum = "0.22.0"
 strum_macros = "0.22.0"
 serde-pickle = "1.1.0"
-complot = { path = "../complot", version = "0.*", features = ["png"], optional = true}
-triangle-rs = { path = "../triangle-rs", version = "0.*" }
+complot = { version = "0.*", features = ["png"], optional = true}
+triangle-rs = { version = "0.*" }
 polars = { version = "0.18.0", features = ["decompress"], optional = true }
 thiserror = ">=1.0.30"
-geotrans = { version = "^0.2.0", path = "../geotrans" }
+geotrans = { version = "^0.2.0" }
 anyhow = "1.0.51"
 npyz = { version = "0.6.1", features = ["npz"] }
 flate2 = "1.0.22"
