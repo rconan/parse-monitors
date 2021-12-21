@@ -11,7 +11,7 @@ use std::{
 };
 
 use bzip2::bufread::BzDecoder;
-use geotrans::{Segment, SegmentTrait, TransformMut, M1, M2};
+use geotrans::{Segment, SegmentTrait, Transform, TransformMut, M1, M2};
 use serde::Deserialize;
 
 #[derive(thiserror::Error, Debug)]
@@ -285,6 +285,20 @@ where
         });
         self
     }
+    /// Filter that is apply locally to segment `sid` selecting samplea within the radii `r_in`<0> and `r_out`<`exo_radius`>
+    pub fn local_radial_filter(
+        &self,
+        sid: usize,
+        r_in: Option<f64>,
+        r_out: Option<f64>,
+    ) -> impl Iterator<Item = bool> + '_ {
+        let xr = self.exo_radius();
+        self.xyz
+            .iter()
+            .map(move |v| v.fro(Segment::<M>::new(sid as i32)).unwrap())
+            .map(|v| v[0].hypot(v[1]))
+            .map(move |r| r >= r_in.unwrap_or_default() && r < r_out.unwrap_or(xr))
+    }
     /// Returns the sum of the z forces of all the segments
     pub fn total_force(&self) -> f64 {
         self.pressure
@@ -375,11 +389,71 @@ where
     pub fn segments_pressure_std(&mut self) -> Vec<f64> {
         (1..=7).map(|sid| self.pressure_std(sid)).collect()
     }
-    /// Returns the average pressure over all segment
+    /// Returns the average mean pressure over all segment
     pub fn mirror_average_pressure(&mut self) -> f64 {
         let (pa, aa) = self
             .pa_iter()
             .fold((0f64, 0f64), |(pa, aa), (p, a)| (pa + p * a, aa + a));
+        pa / aa
+    }
+    /// Returns the average pressure variance over all segment
+    pub fn mirror_average_pressure_var(&mut self) -> f64 {
+        let p_mean = self.mirror_average_pressure();
+        let (pa, aa) = self.pa_iter().fold((0f64, 0f64), |(pa, aa), (p, a)| {
+            let p_net = p - p_mean;
+            (pa + p_net * p_net * a, aa + a)
+        });
+        pa / aa
+    }
+    /// Returns the average pressure standart deviation over all segment
+    pub fn mirror_average_pressure_std(&mut self) -> f64 {
+        self.mirror_average_pressure_var().sqrt()
+    }
+    /// Returns the average mean pressure over all segment within the given `radius`
+    pub fn mirror_average_pressure_within(&self, radius: f64) -> f64 {
+        let (pa, aa) = self
+            .pa_iter()
+            .zip(self.xy_iter())
+            .filter(|(_, (x, y))| x.hypot(*y) < radius)
+            .fold((0f64, 0f64), |(pa, aa), ((p, a), _)| (pa + p * a, aa + a));
+        pa / aa
+    }
+    /// Returns the average mean pressure over all segment with data filtered with `select`
+    pub fn mirror_average_pressure_by(&self, select: impl Iterator<Item = bool>) -> f64 {
+        let (pa, aa) = self
+            .pa_iter()
+            .zip(select)
+            .filter(|(_, m)| *m)
+            .fold((0f64, 0f64), |(pa, aa), ((p, a), _)| (pa + p * a, aa + a));
+        pa / aa
+    }
+    /// Returns the average pressure variance over all segment within the given `radius`
+    pub fn mirror_average_pressure_var_within(&self, radius: f64) -> f64 {
+        let p_mean = self.mirror_average_pressure_within(radius);
+        let (pa, aa) = self
+            .pa_iter()
+            .zip(self.xy_iter())
+            .filter(|(_, (x, y))| x.hypot(*y) < radius)
+            .fold((0f64, 0f64), |(pa, aa), ((p, a), _)| {
+                let p_net = p - p_mean;
+                (pa + p_net * p_net * a, aa + a)
+            });
+        pa / aa
+    }
+    /// Returns the average pressure variance over all segment with data filtered with `select`
+    pub fn mirror_average_pressure_var_by(
+        &self,
+        p_mean: f64,
+        select: impl Iterator<Item = bool>,
+    ) -> f64 {
+        //        let b: Vec<_> = select.collect();
+        let (pa, aa) = self.pa_iter().zip(select).filter(|(_, m)| *m).fold(
+            (0f64, 0f64),
+            |(pa, aa), ((p, a), _)| {
+                let p_net = p - p_mean;
+                (pa + p_net * p_net * a, aa + a)
+            },
+        );
         pa / aa
     }
     /// Returns the center of pressure of a given segment
