@@ -35,14 +35,21 @@ pub trait Report<const CFD_YEAR: u32>: Send + Sync {
             });
         Ok(())
     }
-    fn part_with(&self, cfd_cases_subset: &[cfd::CfdCase<2021>]) -> Result<(), Box<dyn Error>> {
-        cfd::ZenithAngle::iter()
-            .collect::<Vec<cfd::ZenithAngle>>()
-            .into_par_iter()
-            .for_each(|zenith_angle| {
-                println!(" - {} @ {:?}", self.part_name(), zenith_angle);
-                self.chapter(zenith_angle, Some(cfd_cases_subset)).unwrap();
-            });
-        Ok(())
+    fn part_with(
+        &self,
+        may_be_cfd_cases_subset: Option<&[cfd::CfdCase<2021>]>,
+    ) -> Result<(), Box<dyn Error>> {
+        if let Some(cfd_cases_subset) = may_be_cfd_cases_subset {
+            cfd::ZenithAngle::iter()
+                .collect::<Vec<cfd::ZenithAngle>>()
+                .into_par_iter()
+                .for_each(|zenith_angle| {
+                    println!(" - {} @ {:?}", self.part_name(), zenith_angle);
+                    self.chapter(zenith_angle, Some(cfd_cases_subset)).unwrap();
+                });
+            Ok(())
+        } else {
+            self.part()
+        }
     }
 }
