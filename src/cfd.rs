@@ -215,6 +215,15 @@ pub enum CfdDataFile<const YEAR: u32> {
     OpticalPathDifference,
 }
 impl CfdDataFile<2021> {
+    pub fn pattern(self) -> String {
+        use CfdDataFile::*;
+        String::from(match self {
+            M1Pressure => "M1p_M1p_",
+            M2Pressure => "M2p_M2p_",
+            TemperatureField => "optvol_optvol_",
+            OpticalPathDifference => "optvol_optvol_",
+        })
+    }
     pub fn glob(
         self,
         cfd_case: CfdCase<2021>,
