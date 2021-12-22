@@ -7,7 +7,7 @@ use std::{env, iter::once, path::Path, time::Instant};
 const R: f64 = 1.2;
 
 fn main() -> anyhow::Result<()> {
-    let duration = 1;
+    let duration = 400;
 
     let job_idx = env::var("AWS_BATCH_JOB_ARRAY_INDEX")
         .expect("AWS_BATCH_JOB_ARRAY_INDEX env var missing")
