@@ -472,7 +472,12 @@ impl Monitors {
     }
     /// Keeps only the last `period` seconds of the monitors
     pub fn keep_last(&mut self, period: usize) -> &mut Self {
-        let i = self.len() - period * crate::FORCE_SAMPLING_FREQUENCY as usize;
+        let n_sample = period * crate::FORCE_SAMPLING_FREQUENCY as usize;
+        let i = if self.len() > n_sample {
+            self.len() - n_sample
+        } else {
+            0
+        };
         let _: Vec<_> = self.time.drain(..i).collect();
         for value in self.heat_transfer_coefficients.values_mut() {
             let _: Vec<_> = value.drain(..i).collect();

@@ -84,6 +84,7 @@ impl super::Report<2021> for WindLoads {
             Mirror::m1(path_to_case.clone()).load(),
             Mirror::m1(path_to_case.clone()).net_force().load(),
         ) {
+            let path_to_case = path_to_case.join("report");
             let m1_pressure_map = path_to_case.join("m1_pressure_map.png").with_extension("");
             let m1_pressure_mean = path_to_case
                 .join("m1_pressure-stats_mean.png")
@@ -218,6 +219,7 @@ impl super::Report<2021> for WindLoads {
                 m12_pressures
             ))
         } else {
+            let path_to_case = path_to_case.join("report");
             Ok(format!(
                 r#"
 \section{{{}}}

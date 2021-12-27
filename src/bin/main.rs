@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if opt.plot {
         monitors.plot_htc();
         monitors.plot_forces(None);
-        monitors.plot_moments();
+        monitors.plot_moments(None);
     }
 
     if let Some(filename) = opt.csv {
