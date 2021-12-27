@@ -380,11 +380,12 @@ impl Default for Baseline<2020> {
 }
 impl Default for Baseline<2021> {
     fn default() -> Self {
-        Self(
-            ZenithAngle::iter()
-                .flat_map(|zenith_angle| Self::at_zenith(zenith_angle).0)
-                .collect(),
-        )
+        /*Self(
+                ZenithAngle::iter()
+                    .flat_map(|zenith_angle| Self::at_zenith(zenith_angle).0)
+                    .collect(),
+        )*/
+        Self::mount()
     }
 }
 impl<const YEAR: u32> IntoIterator for Baseline<YEAR> {
@@ -474,7 +475,7 @@ impl Baseline<2020> {
 }
 impl Baseline<2021> {
     pub fn default_path() -> PathBuf {
-        Path::new("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES").to_path_buf()
+        Path::new("/fsx").to_path_buf()
     }
     pub fn path() -> PathBuf {
         env::var("CFD_REPO").map_or_else(

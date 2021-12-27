@@ -1,5 +1,5 @@
 use crate::{detrend_mut, Vector};
-use bzip2::bufread::BzDecoder;
+use flate2::read::GzDecoder;
 #[cfg(feature = "plot")]
 use plotters::prelude::*;
 use regex::Regex;
@@ -183,14 +183,27 @@ impl<const YEAR: u32> MonitorsLoader<YEAR> {
     }
 }
 impl MonitorsLoader<2021> {
-    pub fn load(self) -> Result<Monitors> {
+    #[cfg(feature = "bzip2")]
+    fn decompress(&self) -> Result<String> {
+        let mut contents = String::new();
         let csv_file = File::open(Path::new(&self.path).with_extension("csv.bz2"))?;
         log::info!("Loading {:?}...", csv_file);
-        let now = Instant::now();
-        let buf = BufReader::new(csv_file);
-        let mut bz2 = BzDecoder::new(buf);
-        let mut contents = String::new();
+        let buf = bzip2::BufReader::new(csv_file);
+        let mut bz2 = bzip2::bufread::BzDecoder::new(buf);
         bz2.read_to_string(&mut contents)?;
+        Ok(contents)
+    }
+    #[cfg(not(feature = "bzip2"))]
+    fn decompress(&self) -> Result<String> {
+        let mut contents = String::new();
+        let csv_file = File::open(Path::new(&self.path).with_extension("csv.z"))?;
+        let mut gz = GzDecoder::new(csv_file);
+        gz.read_to_string(&mut contents)?;
+        Ok(contents)
+    }
+    pub fn load(self) -> Result<Monitors> {
+        let now = Instant::now();
+        let contents = self.decompress()?;
         let mut rdr = csv::Reader::from_reader(contents.as_bytes());
 
         let headers: Vec<_> = {

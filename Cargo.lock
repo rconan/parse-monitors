@@ -353,6 +353,8 @@ dependencies = [
 [[package]]
 name = "complot"
 version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b49fab28efa148f5d9614f0c5e8eca1b6703e96454cd70ddc94e27b2b65d263"
 dependencies = [
  "colorous",
  "num-traits",
@@ -1017,6 +1019,8 @@ dependencies = [
 [[package]]
 name = "geotrans"
 version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6125af3ecbfcbd54448e857ad895b20bc36149556f0a51181b56af229af24454"
 dependencies = [
  "thiserror",
 ]
@@ -3560,6 +3564,8 @@ dependencies = [
 [[package]]
 name = "triangle-rs"
 version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79ac44bc2f0ee09d28aa800477217b73e77bd0f61668056e9d71687ba76ace4c"
 dependencies = [
  "cc",
  "rayon",

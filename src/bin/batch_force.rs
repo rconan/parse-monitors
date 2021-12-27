@@ -2,7 +2,7 @@
 //!
 //! It must be run as root i.e. `sudo -E ./target/release/batch_force`
 
-use parse_monitors::{cfd::Baseline, Mirror, MonitorsLoader};
+use parse_monitors::{cfd::Baseline, Mirror, Monitors};
 use rayon::prelude::*;
 use structopt::StructOpt;
 
@@ -83,8 +83,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (opt.crings || opt.all).then(|| Some(("c-ring_parts", "Cring"))),
         (opt.m1_cell || opt.all).then(|| Some(("m1-cell", "M1cell"))),
         (opt.upper_truss || opt.all).then(|| Some(("upper-truss", "Tu"))),
-        (opt.upper_truss || opt.all).then(|| Some(("lower-truss", "Tb"))),
-        (opt.lower_truss || opt.all).then(|| Some(("top-end", "Top"))),
+        (opt.lower_truss || opt.all).then(|| Some(("lower-truss", "Tb"))),
+        (opt.top_end || opt.all).then(|| Some(("top-end", "Top"))),
         (opt.m2_segments || opt.all).then(|| Some(("m2-segments", "M2s"))),
         (opt.m12_baffles || opt.all).then(|| Some(("m12-baffles", "Baf"))),
         (opt.m1_outer_covers || opt.all).then(|| Some(("m1-outer-covers", "M1cov[1-6]"))),
@@ -93,7 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (opt.pfa_arms || opt.all).then(|| Some(("pfa-arms", "arm"))),
         (opt.lgsa || opt.all).then(|| Some(("lgs", "LGS"))),
         (opt.platforms_cables || opt.all).then(|| Some(("platforms-cables", "cable|plat|level"))),
-        (opt.m1_segments || opt.all).then(|| Some(("m1-segments", ""))),
+        opt.m1_segments.then(|| Some(("m1-segments", ""))),
     ];
 
     for part in parts.into_iter().filter_map(|x| x) {
@@ -103,20 +103,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _: Vec<_> = data_paths
             .par_iter()
             .map(|arg| {
-                let mut filename = format!("{}/moments_{}.png", arg, name);
+                let mut filename = format!("{}/report/{}.png", arg, name);
                 if name == "m1-segments" {
                     match Mirror::m1(arg).net_force().load() {
                         Ok(mut m1) => {
                             if let Some(arg) = opt.last {
                                 m1.keep_last(arg);
                             }
-                            m1.plot_moments(Some(filename.as_str()))
+                            m1.plot_forces(Some(filename.as_str()))
                         }
                         Err(e) => println!("{}: {:}", arg, e),
                     }
                 } else {
-                    let mut monitors = MonitorsLoader::<CFD_YEAR>::default()
-                        .data_path(arg.clone())
+                    let mut monitors = Monitors::loader::<String, CFD_YEAR>(arg.clone())
                         .header_filter(filter.to_string())
                         //.exclude_filter(xmon)
                         .load()
@@ -126,9 +125,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     if opt.detrend {
                         monitors.detrend();
-                        filename = format!("{}/moments_{}-detrend.png", arg, name)
+                        filename = format!("{}/{}-detrend.png", arg, name)
                     }
-                    monitors.plot_moments(Some(filename.as_str()));
+                    monitors.plot_forces(Some(filename.as_str()));
                 }
             })
             .collect();

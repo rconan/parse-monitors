@@ -10,12 +10,12 @@ use std::{
     path::PathBuf,
 };
 
-use bzip2::bufread::BzDecoder;
 use geotrans::{Segment, SegmentTrait, Transform, TransformMut, M1, M2};
 use serde::Deserialize;
 
 #[derive(thiserror::Error, Debug)]
 pub enum PressureError {
+    #[cfg(feature = "bzip2")]
     #[error("Failed to decompress the file")]
     Decompress(#[from] bzip2::Error),
     #[error("Failed to open the pressure file")]
@@ -24,6 +24,8 @@ pub enum PressureError {
     Csv(#[from] csv::Error),
     #[error("Failed to apply geometric transformation")]
     Geotrans(#[from] geotrans::Error),
+    #[error("Missing decompression protocol")]
+    Decompression,
 }
 
 type Result<T> = std::result::Result<T, PressureError>;
@@ -178,13 +180,18 @@ where
         );
         Ok(this)
     }
+    #[cfg(feature = "bzip2")]
     pub fn decompress(path: PathBuf) -> Result<String> {
         let csv_file = File::open(path)?;
         let buf = BufReader::new(csv_file);
-        let mut bz2 = BzDecoder::new(buf);
+        let mut bz2 = bzip2::bufread::BzDecoder::new(buf);
         let mut contents = String::new();
         bz2.read_to_string(&mut contents)?;
         Ok(contents)
+    }
+    #[cfg(not(feature = "bzip2"))]
+    pub fn decompress(path: PathBuf) -> Result<String> {
+        Err(PressureError::Decompression)
     }
     /// Loads the pressure from a csv bz2-compressed file
     pub fn load_pressure(contents: String) -> Result<Self> {
