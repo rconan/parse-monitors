@@ -8,7 +8,7 @@ default-run = "main"
 
 [dependencies]
 bzip2 = { version = "0.4.3", optional = true }
-colorous = "1.0.5"
+colorous = "1.0.6"
 csv = "1.1.6"
 indicatif = { version = "0.16.2", features = ["rayon"] }
 nalgebra = { version = "0.*", features = ["rand"] }
@@ -34,6 +34,7 @@ geotrans = { version = "^0.2.0" }
 anyhow = "1.0.51"
 npyz = { version = "0.6.1", features = ["npz"] }
 flate2 = "1.0.22"
+itertools = "0.10.3"
 
 [features]
 plot = ["plotters", "complot"]

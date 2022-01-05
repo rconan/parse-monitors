@@ -7,7 +7,7 @@ use glob::glob;
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
 
-const OTHER_YEAR: u32 = 2021;
+const OTHER_YEAR: u32 = 2020;
 
 pub struct DomeSeeingPart {
     part: u8,
@@ -149,10 +149,10 @@ impl super::Report<2021> for DomeSeeingPart {
 "#,
             &cfd_case.to_pretty_string(),
             ri_pic,
-            path_to_case.join("opd_map"),
-            path_to_case.join("dome-seeing_wfe-rms"),
-            path_to_case.join("dome-seeing_v-pssn"),
-            path_to_case.join("dome-seeing_h-pssn"),
+            path_to_case.join("report").join("opd_map"),
+            path_to_case.join("report").join("dome-seeing_wfe-rms"),
+            path_to_case.join("report").join("dome-seeing_v-pssn"),
+            path_to_case.join("report").join("dome-seeing_h-pssn"),
         ))
     }
     /// Chapter assembly

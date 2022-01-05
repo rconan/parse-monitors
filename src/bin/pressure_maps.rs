@@ -2,15 +2,38 @@
 //!
 //! Plot the pressure maps on M1 and M2 segments
 
-use glob::glob;
 use parse_monitors::{cfd, pressure::Pressure};
 use rayon::prelude::*;
-use std::{error::Error, path::Path, time::Instant};
+use std::{path::Path, time::Instant};
 
-fn main() -> Result<(), Box<dyn Error>> {
-    type M12 = geotrans::M1;
-    let pattern = "M1p_M1p_*.csv.bz2";
-    let geometry = "M1p.csv.bz2";
+trait Config {
+    fn configure(cfd_case: cfd::CfdCase<2021>) -> anyhow::Result<(String, Vec<String>)>;
+}
+impl Config for geotrans::M1 {
+    fn configure(cfd_case: cfd::CfdCase<2021>) -> anyhow::Result<(String, Vec<String>)> {
+        Ok((
+            "M1p.csv.z".to_string(),
+            cfd::CfdDataFile::<2021>::M1Pressure
+                .glob(cfd_case)?
+                .map(|p| p.unwrap().to_str().unwrap().to_string())
+                .collect(),
+        ))
+    }
+}
+impl Config for geotrans::M2 {
+    fn configure(cfd_case: cfd::CfdCase<2021>) -> anyhow::Result<(String, Vec<String>)> {
+        Ok((
+            "M2p.csv.z".to_string(),
+            cfd::CfdDataFile::<2021>::M2Pressure
+                .glob(cfd_case)?
+                .map(|p| p.unwrap().to_str().unwrap().to_string())
+                .collect(),
+        ))
+    }
+}
+
+fn main() -> anyhow::Result<()> {
+    type M12 = geotrans::M2;
 
     cfd::Baseline::<2021>::default()
         .extras()
@@ -20,10 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .for_each(|cfd_case| {
             let now = Instant::now();
             let case_path = cfd::Baseline::<2021>::path().join(cfd_case.to_string());
-            let files: Vec<_> = glob(case_path.join("pressures").join(pattern).to_str().unwrap())
-                .unwrap()
-                .map(|p| p.unwrap().to_str().unwrap().to_string())
-                .collect();
+            let (geometry, files) = M12::configure(cfd_case).unwrap();
 
             let _ = files.last().map(|file| {
                 let path = Path::new(file);

@@ -3,30 +3,11 @@
 //! Analyze segments surface wind pressure from pressure files either *M1p_M1p_\*.csv.bz2* or
 //! *M2p_M2p_\*.csv.bz2* for M1 or M2, respectively.
 
-use std::{
-    fs::File,
-    io::{BufReader, Read},
-    marker::PhantomData,
-    path::PathBuf,
-};
+use super::PressureError;
+use std::{fs::File, io::Read, marker::PhantomData, path::PathBuf};
 
 use geotrans::{Segment, SegmentTrait, Transform, TransformMut, M1, M2};
 use serde::Deserialize;
-
-#[derive(thiserror::Error, Debug)]
-pub enum PressureError {
-    #[cfg(feature = "bzip2")]
-    #[error("Failed to decompress the file")]
-    Decompress(#[from] bzip2::Error),
-    #[error("Failed to open the pressure file")]
-    Io(#[from] std::io::Error),
-    #[error("Failed to deserialize the CSV file")]
-    Csv(#[from] csv::Error),
-    #[error("Failed to apply geometric transformation")]
-    Geotrans(#[from] geotrans::Error),
-    #[error("Missing decompression protocol")]
-    Decompression,
-}
 
 type Result<T> = std::result::Result<T, PressureError>;
 
@@ -191,7 +172,11 @@ where
     }
     #[cfg(not(feature = "bzip2"))]
     pub fn decompress(path: PathBuf) -> Result<String> {
-        Err(PressureError::Decompression)
+        let csv_file = File::open(path)?;
+        let mut gz = flate2::read::GzDecoder::new(csv_file);
+        let mut contents = String::new();
+        gz.read_to_string(&mut contents)?;
+        Ok(contents)
     }
     /// Loads the pressure from a csv bz2-compressed file
     pub fn load_pressure(contents: String) -> Result<Self> {
@@ -574,7 +559,9 @@ where
             }));
             triangles.extend(del.triangle_vertex_iter());
         }
-        let path = cfd_case_path.join(format!("{}_pressure_map.png", self.mirror().to_lowercase()));
+        let path = cfd_case_path
+            .join("report")
+            .join(format!("{}_pressure_map.png", self.mirror().to_lowercase()));
         let filename = format!("{}", path.as_path().display());
         let _: complot::tri::Heatmap = (
             triangles.into_iter().zip(tri_pressure.into_iter()),

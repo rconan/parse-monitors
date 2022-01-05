@@ -19,7 +19,9 @@ pub enum CfdError {
     #[error("Failed to read CFD data file")]
     ReadDataFile(#[from] glob::GlobError),
     #[error("Data file not recognized")]
-    DataFile(#[from] glob::PatternError),
+    DataFileGlob(#[from] glob::PatternError),
+    #[error("{0} data not available")]
+    DataFile(String),
 }
 
 type Result<T> = std::result::Result<T, CfdError>;
@@ -208,11 +210,13 @@ impl fmt::Display for WindSpeed {
     }
 }
 /// Data file collections available in the CFD database
+#[derive(Debug)]
 pub enum CfdDataFile<const YEAR: u32> {
     M1Pressure,
     M2Pressure,
     TemperatureField,
     OpticalPathDifference,
+    TelescopePressure,
 }
 impl CfdDataFile<2021> {
     pub fn pattern(self) -> String {
@@ -222,6 +226,7 @@ impl CfdDataFile<2021> {
             M2Pressure => "M2p_M2p_",
             TemperatureField => "optvol_optvol_",
             OpticalPathDifference => "optvol_optvol_",
+            TelescopePressure => "Telescope_p_telescope_",
         })
     }
     pub fn glob(
@@ -259,6 +264,13 @@ impl CfdDataFile<2021> {
                     .to_str()
                     .unwrap(),
             )?,
+            TelescopePressure => glob::glob(
+                cfd_path
+                    .join("pressures")
+                    .join("Telescope_p_telescope_*.csv.z")
+                    .to_str()
+                    .unwrap(),
+            )?,
         })
     }
 }
@@ -269,16 +281,21 @@ impl CfdDataFile<2020> {
     ) -> std::result::Result<impl Iterator<Item = glob::GlobResult>, CfdError> {
         use CfdDataFile::*;
         let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
-        Ok(match self {
-            M1Pressure => glob::glob(cfd_path.join("M1_data_Mod_M1_Data_*.csv").to_str().unwrap())?,
-            M2Pressure => glob::glob(cfd_path.join("M2_data_Mod_M2_Data_*.csv").to_str().unwrap())?,
-            TemperatureField => {
-                glob::glob(cfd_path.join("OPDData_OPD_Data_*.csv.gz").to_str().unwrap())?
-            }
-            OpticalPathDifference => {
-                glob::glob(cfd_path.join("OPDData_OPD_Data_*.npz").to_str().unwrap())?
-            }
-        })
+        match self {
+            M1Pressure => Ok(glob::glob(
+                cfd_path.join("M1_data_Mod_M1_Data_*.csv").to_str().unwrap(),
+            )?),
+            M2Pressure => Ok(glob::glob(
+                cfd_path.join("M2_data_Mod_M2_Data_*.csv").to_str().unwrap(),
+            )?),
+            TemperatureField => Ok(glob::glob(
+                cfd_path.join("OPDData_OPD_Data_*.csv.gz").to_str().unwrap(),
+            )?),
+            OpticalPathDifference => Ok(glob::glob(
+                cfd_path.join("OPDData_OPD_Data_*.npz").to_str().unwrap(),
+            )?),
+            _ => Err(CfdError::DataFile(format!("{:?}", self))),
+        }
     }
 }
 

@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let pattern = "optvol_optvol*.npz";
 
     cfd::Baseline::<2021>::default()
-        .extras()
+        //.extras()
         .into_iter()
         .collect::<Vec<cfd::CfdCase<2021>>>()
         .into_par_iter()
@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .map(|x| x * 1e6)
                 .collect();
 
-            let path = case_path.join("opd_map.png");
+            let path = case_path.join("report").join("opd_map.png");
             let filename = format!("{}", path.as_path().display());
             let _: complot::Heatmap = (
                 (opd.as_slice(), (512, 512)),

@@ -23,40 +23,42 @@ struct Opt {
 
 //const CFD_YEAR: u32 = 2021;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
 
-    /*    let redo_cases: Arc<Vec<cfd::CfdCase<2021>>> =
-    Arc::new(cfd::Baseline::<2021>::redo().into_iter().collect());*/
+    /*let cases: Arc<Option<Vec<cfd::CfdCase<2021>>>> =
+    Arc::new(Some(vec![cfd::CfdCase::<2021>::colloquial(
+        30, 45, "cd", 12,
+    )?]));*/
+    let cases: Arc<Option<Vec<cfd::CfdCase<2021>>>> =
+        Arc::new(Some(cfd::Baseline::<2021>::default().into_iter().collect()));
+    let parts_base = 0;
 
     let mut tjh = vec![];
     let now = Instant::now();
     println!("Building the different parts of the report ...");
     if opt.domeseeing || opt.full {
-        //let cases = redo_cases.clone();
+        let cases = cases.clone();
         tjh.push(thread::spawn(move || {
-            report::DomeSeeingPart::new(1, 0f64)
-                .part()
-                //.part_with(&cases)
+            report::DomeSeeingPart::new(1 + parts_base, 0f64)
+                .part_with(cases.as_deref())
                 .unwrap();
         }));
     }
     if opt.htc || opt.full {
-        //let cases = redo_cases.clone();
+        let cases = cases.clone();
         tjh.push(thread::spawn(move || {
-            report::HTC::new(3, 400f64)
-                .part()
-                //.part_with(&cases)
+            report::HTC::new(3 + parts_base, 400f64)
+                .part_with(cases.as_deref())
                 .unwrap();
         }));
     }
     if opt.windloads || opt.full {
-        //let cases = redo_cases.clone();
+        let cases = cases.clone();
         tjh.push(thread::spawn(move || {
-            report::WindLoads::new(2, 400f64)
-                .show_m12_pressure()
-                .part()
-                //.part_with(&cases)
+            report::WindLoads::new(2 + parts_base, 400f64)
+                //.show_m12_pressure()
+                .part_with(cases.as_deref())
                 .unwrap();
         }));
     }
