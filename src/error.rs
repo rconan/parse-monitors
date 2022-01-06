@@ -1,6 +1,6 @@
 use crate::{cfd::CfdError, domeseeing::DomeSeeingError, pressure::PressureError};
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     Pressure(#[from] PressureError),
@@ -12,7 +12,6 @@ pub enum Error {
     Any(#[from] Box<dyn std::error::Error>),
 }
 
-/*
 fn error_chain_fmt(
     e: &impl std::error::Error,
     f: &mut std::fmt::Formatter<'_>,
@@ -26,9 +25,8 @@ fn error_chain_fmt(
     Ok(())
 }
 
-impl std::fmt::Debug for CfdError {
+impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         error_chain_fmt(self, f)
     }
 }
-*/

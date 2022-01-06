@@ -16,7 +16,6 @@ plotters = { version = "0.3.1", optional = true }
 regex = "1.5.4"
 serde = { version = "1.0.126", features = ["derive"] }
 structopt = "0.3.21"
-windloading = { git = "https://github.com/rconan/windloading.git", branch = "ns-opm-im" , optional = true}
 glob = "0.3.0"
 log = "0.4.14"
 env_logger = "0.9.0"
@@ -35,6 +34,7 @@ anyhow = "1.0.51"
 npyz = { version = "0.6.1", features = ["npz"] }
 flate2 = "1.0.22"
 itertools = "0.10.3"
+dosio = { version = "0.1.2", optional = true }
 
 [features]
 plot = ["plotters", "complot"]

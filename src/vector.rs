@@ -201,3 +201,31 @@ impl From<[f64; 3]> for Vector {
         }
     }
 }
+impl From<Vector> for Option<Vec<f64>> {
+    fn from(v: Vector) -> Self {
+        if let Vector {
+            x: Some(x),
+            y: Some(y),
+            z: Some(z),
+        } = v
+        {
+            Some(vec![x, y, z])
+        } else {
+            None
+        }
+    }
+}
+impl From<&Vector> for Option<Vec<f64>> {
+    fn from(v: &Vector) -> Self {
+        if let Vector {
+            x: Some(x),
+            y: Some(y),
+            z: Some(z),
+        } = v
+        {
+            Some(vec![*x, *y, *z])
+        } else {
+            None
+        }
+    }
+}

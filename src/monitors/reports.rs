@@ -169,9 +169,9 @@ impl<const YEAR: u32> MonitorsLoader<YEAR> {
             ..self
         }
     }
-    pub fn header_filter(self, header_regex: String) -> Self {
+    pub fn header_filter<S: Into<String>>(self, header_regex: S) -> Self {
         Self {
-            header_regex,
+            header_regex: header_regex.into(),
             ..self
         }
     }
@@ -440,6 +440,8 @@ pub struct Monitors {
     pub forces_and_moments: BTreeMap<String, Vec<Exertion>>,
     pub total_forces_and_moments: Vec<Exertion>,
     //    pub segments_integrated_forces: Option<Vec<Mirror>>,
+    time_idx: usize,
+    data: Option<Vec<f64>>,
 }
 impl Monitors {
     pub fn loader<S, const YEAR: u32>(data_path: S) -> MonitorsLoader<YEAR>
@@ -450,6 +452,10 @@ impl Monitors {
     }
     pub fn len(&self) -> usize {
         self.time.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
     pub fn detrend(&mut self) -> &mut Self {
         for value in self.forces_and_moments.values_mut() {
@@ -1074,6 +1080,44 @@ impl Monitors {
             .position(SeriesLabelPosition::UpperRight)
             .draw()
             .unwrap();
+    }
+}
+impl Iterator for Monitors {
+    type Item = ();
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let i = self.time_idx;
+        self.time_idx += 1;
+        self.data = Some(Vec::new());
+        for e in self.forces_and_moments.values() {
+            if let (Some(mut f), Some(mut m)) = ((&e[i].force).into(), (&e[i].moment).into()) {
+                if let Some(x) = self.data.as_mut() {
+                    x.append(&mut f);
+                    x.append(&mut m);
+                }
+            } else {
+                return None;
+            }
+        }
+        Some(())
+    }
+}
+
+#[cfg(feature = "dosio")]
+pub mod dos {
+    use dosio::{ios, DOSIOSError, Dos, IO};
+    impl Dos for super::Monitors {
+        type Input = ();
+        type Output = Vec<f64>;
+        fn outputs(&mut self) -> Option<Vec<IO<Self::Output>>> {
+            Some(vec![ios!(CFD2021106F(self.data.as_ref().unwrap().clone()))])
+        }
+        fn inputs(
+            &mut self,
+            _data: Option<Vec<IO<Self::Input>>>,
+        ) -> Result<&mut Self, DOSIOSError> {
+            unimplemented! {}
+        }
     }
 }
 
