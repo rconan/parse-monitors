@@ -196,7 +196,9 @@ impl MonitorsLoader<2021> {
     #[cfg(not(feature = "bzip2"))]
     fn decompress(&self) -> Result<String> {
         let mut contents = String::new();
-        let csv_file = File::open(Path::new(&self.path).with_extension("csv.z"))?;
+        let data_path = Path::new(&self.path).with_extension("csv.z");
+        log::info!("Loading {:?}...", data_path);
+        let csv_file = File::open(data_path)?;
         let mut gz = GzDecoder::new(csv_file);
         gz.read_to_string(&mut contents)?;
         Ok(contents)
