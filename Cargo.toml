@@ -34,11 +34,16 @@ anyhow = "1.0.51"
 npyz = { version = "0.6.1", features = ["npz"] }
 flate2 = "1.0.22"
 itertools = "0.10.3"
-dosio = { version = "0.1.2", optional = true }
+dosio = {  version = "0.1.3", default-features = false, optional = true }
 
 [features]
 plot = ["plotters", "complot"]
 xcase = []
+dos = ["dosio/default"]
+dos-prqt = ["dosio/prqt"]
 
 [dev-dependencies]
 rand = "0.8.4"
+
+[package.metadata.docs.rs]
+features = ["dos-prqt"]
