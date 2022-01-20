@@ -209,6 +209,18 @@ impl fmt::Display for WindSpeed {
         }
     }
 }
+impl From<WindSpeed> for f64 {
+    fn from(wind_speed: WindSpeed) -> Self {
+        use WindSpeed::*;
+        (match wind_speed {
+            Two => 2,
+            Seven => 7,
+            Twelve => 12,
+            Seventeen => 17,
+            TwentyTwo => 22,
+        } as f64)
+    }
+}
 /// Data file collections available in the CFD database
 #[derive(Debug)]
 pub enum CfdDataFile<const YEAR: u32> {
@@ -239,14 +251,14 @@ impl CfdDataFile<2021> {
             M1Pressure => glob::glob(
                 cfd_path
                     .join("pressures")
-                    .join("M1p_M1p_*.csv.bz2")
+                    .join("M1p_M1p_*.csv.z")
                     .to_str()
                     .unwrap(),
             )?,
             M2Pressure => glob::glob(
                 cfd_path
                     .join("pressures")
-                    .join("M2p_M2p_*.csv.bz2")
+                    .join("M2p_M2p_*.csv.z")
                     .to_str()
                     .unwrap(),
             )?,
@@ -572,7 +584,7 @@ impl Baseline<2021> {
                     ),
                     WindSpeed::Seven => Some(
                         Azimuth::iter()
-                            .take(4)
+                            .take(3)
                             .map(|azimuth| {
                                 CfdCase::new(
                                     ZenithAngle::Thirty,

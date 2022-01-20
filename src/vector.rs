@@ -24,8 +24,6 @@ impl Vector {
             None
         }
     }
-}
-impl Vector {
     pub fn from_x(value: f64) -> Self {
         Self {
             x: Some(value),
@@ -94,7 +92,22 @@ impl Vector {
         }
     }
 }
-impl Sub for &Vector {
+impl Sub<Vector> for &Vector {
+    type Output = Option<Vector>;
+
+    fn sub(self, rhs: Vector) -> Self::Output {
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), rhs.as_tuple()) {
+            Some(Vector {
+                x: Some(a1 - b1),
+                y: Some(a2 - b2),
+                z: Some(a3 - b3),
+            })
+        } else {
+            None
+        }
+    }
+}
+impl Sub for Vector {
     type Output = Option<Vector>;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -121,6 +134,36 @@ impl Add for &Vector {
             })
         } else {
             None
+        }
+    }
+}
+impl Add for Vector {
+    type Output = Vector;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), rhs.as_tuple()) {
+            Vector {
+                x: Some(a1 + b1),
+                y: Some(a2 + b2),
+                z: Some(a3 + b3),
+            }
+        } else {
+            rhs
+        }
+    }
+}
+impl Add<&Vector> for Vector {
+    type Output = Vector;
+
+    fn add(self, rhs: &Vector) -> Self::Output {
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), rhs.as_tuple()) {
+            Vector {
+                x: Some(a1 + b1),
+                y: Some(a2 + b2),
+                z: Some(a3 + b3),
+            }
+        } else {
+            rhs.clone()
         }
     }
 }

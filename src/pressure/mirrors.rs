@@ -4,10 +4,9 @@
 //! *M2p_M2p_\*.csv.bz2* for M1 or M2, respectively.
 
 use super::PressureError;
-use std::{fs::File, io::Read, marker::PhantomData, path::PathBuf};
-
 use geotrans::{Segment, SegmentTrait, Transform, TransformMut, M1, M2};
 use serde::Deserialize;
+use std::{fs::File, io::Read, marker::PhantomData, path::PathBuf};
 
 type Result<T> = std::result::Result<T, PressureError>;
 
@@ -17,8 +16,14 @@ fn norm(v: &[f64]) -> f64 {
 
 #[derive(Deserialize, Debug, PartialEq)]
 struct Record {
-    #[serde(rename = "Area: Magnitude (m^2)")]
-    area: f64,
+    #[serde(rename = "Area in TCS[i] (m^2)")]
+    area_i: f64,
+    #[serde(rename = "Area in TCS[j] (m^2)")]
+    area_j: f64,
+    #[serde(rename = "Area in TCS[k] (m^2)")]
+    area_k: f64,
+    //#[serde(rename = "Area: Magnitude (m^2)")]
+    //area: f64,
     #[serde(rename = "Pressure (Pa)")]
     pressure: f64,
     #[serde(rename = "X (m)")]
@@ -28,11 +33,11 @@ struct Record {
     #[serde(rename = "Z (m)")]
     z: f64,
 }
-impl PartialOrd for Record {
+/*impl PartialOrd for Record {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.area.partial_cmp(&other.area)
     }
-}
+}*/
 #[derive(Deserialize, Debug, PartialEq)]
 struct GeometryRecord {
     #[serde(rename = "Area in TCS[i] (m^2)")]
@@ -113,9 +118,9 @@ where
     Pressure<M>: MirrorProperties,
 {
     /// Loads the pressure data
-    pub fn load(csv_pressure: String, csv_geometry: String) -> Result<Self> {
+    pub fn load(csv_pressure: String) -> Result<Self> {
         let this_pa = Self::load_pressure(csv_pressure)?;
-        let this_aijk = Self::load_geometry(csv_geometry)?;
+        /*let this_aijk = Self::load_geometry(csv_geometry)?;
         let max_diff_area = this_pa
             .area
             .iter()
@@ -126,12 +131,16 @@ where
             max_diff_area < 1e-14,
             "Area magnitude do no match area vector: {}",
             max_diff_area
-        );
+        );*/
         let mut this = Self {
             pressure: this_pa.pressure,
-            area: this_pa.area,
-            area_ijk: this_aijk.area_ijk,
-            xyz: this_aijk.xyz,
+            area: this_pa
+                .area_ijk
+                .iter()
+                .map(|a| a.iter().fold(0f64, |s, &a| s + a * a).sqrt())
+                .collect(),
+            area_ijk: this_pa.area_ijk,
+            xyz: this_pa.xyz,
             segment_filter: Vec::new(),
             segment_filter_size: Vec::new(),
             mirror: PhantomData,
@@ -164,7 +173,7 @@ where
     #[cfg(feature = "bzip2")]
     pub fn decompress(path: PathBuf) -> Result<String> {
         let csv_file = File::open(path)?;
-        let buf = BufReader::new(csv_file);
+        let buf = std::io::BufReader::new(csv_file);
         let mut bz2 = bzip2::bufread::BzDecoder::new(buf);
         let mut contents = String::new();
         bz2.read_to_string(&mut contents)?;
@@ -186,10 +195,12 @@ where
         for result in rdr.deserialize() {
             rows.push(result?);
         }
-        rows.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        //rows.sort_by(|a, b| a.partial_cmp(b).unwrap());
         rows.into_iter().for_each(|row| {
-            this.area.push(row.area);
+            //this.area.push(row.area);
             this.pressure.push(row.pressure);
+            this.area_ijk.push([row.area_i, row.area_j, row.area_k]);
+            this.xyz.push([row.x, row.y, row.z]);
         });
         Ok(this)
     }

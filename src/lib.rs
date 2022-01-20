@@ -20,7 +20,7 @@ pub mod error;
 mod vector;
 pub use vector::Vector;
 mod monitors;
-pub use monitors::{Exertion, Mirror, Monitors, MonitorsLoader};
+pub use monitors::{Exertion, Mirror, Monitors, MonitorsError, MonitorsLoader};
 pub mod cfd;
 pub mod domeseeing;
 pub use domeseeing::{Band, DomeSeeing};

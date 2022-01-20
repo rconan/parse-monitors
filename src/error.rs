@@ -1,7 +1,11 @@
-use crate::{cfd::CfdError, domeseeing::DomeSeeingError, pressure::PressureError};
+use crate::{
+    cfd::CfdError, domeseeing::DomeSeeingError, monitors::MonitorsError, pressure::PressureError,
+};
 
 #[derive(thiserror::Error)]
 pub enum Error {
+    #[error(transparent)]
+    Monitors(#[from] MonitorsError),
     #[error(transparent)]
     Pressure(#[from] PressureError),
     #[error(transparent)]

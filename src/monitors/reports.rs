@@ -114,7 +114,7 @@ impl Exertion {
     }
     pub fn into_local(&mut self, node: &Vector) -> &mut Self {
         if let Some(v) = node.cross(&self.force) {
-            self.moment = (&self.moment - &v).unwrap();
+            self.moment = (&self.moment - v).unwrap();
         }
         self
     }
@@ -127,6 +127,14 @@ impl From<([f64; 3], ([f64; 3], [f64; 3]))> for Exertion {
             moment: m.into(),
             cop: Some(c.into()),
         }
+    }
+}
+impl From<&Exertion> for Option<Vec<f64>> {
+    fn from(e: &Exertion) -> Self {
+        let f: Option<Vec<f64>> = (&e.force).into();
+        let m: Option<Vec<f64>> = (&e.moment).into();
+        f.zip(m)
+            .map(|(f, m): (Vec<f64>, Vec<f64>)| f.into_iter().chain(m.into_iter()).collect())
     }
 }
 
@@ -188,7 +196,7 @@ impl MonitorsLoader<2021> {
         let mut contents = String::new();
         let csv_file = File::open(Path::new(&self.path).with_extension("csv.bz2"))?;
         log::info!("Loading {:?}...", csv_file);
-        let buf = bzip2::BufReader::new(csv_file);
+        let buf = std::io::BufReader::new(csv_file);
         let mut bz2 = bzip2::bufread::BzDecoder::new(buf);
         bz2.read_to_string(&mut contents)?;
         Ok(contents)
@@ -552,14 +560,31 @@ impl Monitors {
     }
     /// Return a latex table with force monitors summary
     pub fn force_latex_table(&self, stats_duration: f64) -> Option<String> {
-        let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
-        let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
-        let minmax = |x: &[f64]| (min_value(x), max_value(x));
-        let stats = |x: &[f64]| {
+        let max_value = |x: &[Vector]| {
+            x.iter()
+                .filter_map(|x| x.magnitude())
+                .fold(std::f64::NEG_INFINITY, f64::max)
+        };
+        let min_value = |x: &[Vector]| {
+            x.iter()
+                .filter_map(|x| x.magnitude())
+                .fold(std::f64::INFINITY, f64::min)
+        };
+        let minmax = |x: &[Vector]| (min_value(x), max_value(x));
+        let stats = |x: &[Vector]| {
             let n = x.len() as f64;
-            let mean = x.iter().sum::<f64>() / n;
-            let std = (x.iter().map(|x| x - mean).fold(0f64, |s, x| s + x * x) / n).sqrt();
-            (mean, std)
+            if let Some(mean) = x.iter().fold(Vector::zero(), |s, x| s + x) / n {
+                let std = (x
+                    .iter()
+                    .filter_map(|x| x - mean.clone())
+                    .filter_map(|x| x.norm_squared())
+                    .sum::<f64>()
+                    / n)
+                    .sqrt();
+                Some((mean.magnitude(), std))
+            } else {
+                None
+            }
         };
         if self.forces_and_moments.is_empty() {
             None
@@ -574,16 +599,15 @@ impl Monitors {
                 .forces_and_moments
                 .iter()
                 .map(|(key, value)| {
-                    let force_magnitude: Option<Vec<f64>> = value
+                    let force: Vec<Vector> = value
                         .iter()
                         .zip(time_filter.iter())
                         .filter(|(_, t)| **t)
-                        .map(|(e, _)| e.force.magnitude())
+                        .map(|(e, _)| e.force.clone())
                         .collect();
-                    match force_magnitude {
-                        Some(ref value) => {
-                            let (mean, std) = stats(value);
-                            let (min, max) = minmax(value);
+                    match stats(&force) {
+                        Some((Some(mean), std)) => {
+                            let (min, max) = minmax(&force);
                             format!(
                                 " {:} & {:.3} & {:.3} & {:.3} & {:.3} \\\\",
                                 key.replace("_", " "),
@@ -593,7 +617,7 @@ impl Monitors {
                                 max
                             )
                         }
-                        None => format!(" {:} \\\\", key.replace("_", " ")),
+                        _ => format!(" {:} \\\\", key.replace("_", " ")),
                     }
                 })
                 .collect();
@@ -602,14 +626,31 @@ impl Monitors {
     }
     /// Return a latex table with moment monitors summary
     pub fn moment_latex_table(&self, stats_duration: f64) -> Option<String> {
-        let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
-        let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
-        let minmax = |x: &[f64]| (min_value(x), max_value(x));
-        let stats = |x: &[f64]| {
+        let max_value = |x: &[Vector]| {
+            x.iter()
+                .filter_map(|x| x.magnitude())
+                .fold(std::f64::NEG_INFINITY, f64::max)
+        };
+        let min_value = |x: &[Vector]| {
+            x.iter()
+                .filter_map(|x| x.magnitude())
+                .fold(std::f64::INFINITY, f64::min)
+        };
+        let minmax = |x: &[Vector]| (min_value(x), max_value(x));
+        let stats = |x: &[Vector]| {
             let n = x.len() as f64;
-            let mean = x.iter().sum::<f64>() / n;
-            let std = (x.iter().map(|x| x - mean).fold(0f64, |s, x| s + x * x) / n).sqrt();
-            (mean, std)
+            if let Some(mean) = x.iter().fold(Vector::zero(), |s, x| s + x) / n {
+                let std = (x
+                    .iter()
+                    .filter_map(|x| x - mean.clone())
+                    .filter_map(|x| x.norm_squared())
+                    .sum::<f64>()
+                    / n)
+                    .sqrt();
+                Some((mean.magnitude(), std))
+            } else {
+                None
+            }
         };
         if self.forces_and_moments.is_empty() {
             None
@@ -624,16 +665,15 @@ impl Monitors {
                 .forces_and_moments
                 .iter()
                 .map(|(key, value)| {
-                    let moment_magnitude: Option<Vec<f64>> = value
+                    let moment: Vec<Vector> = value
                         .iter()
                         .zip(time_filter.iter())
                         .filter(|(_, t)| **t)
-                        .map(|(e, _)| e.moment.magnitude())
+                        .map(|(e, _)| e.moment.clone())
                         .collect();
-                    match moment_magnitude {
-                        Some(ref value) => {
-                            let (mean, std) = stats(value);
-                            let (min, max) = minmax(value);
+                    match stats(&moment) {
+                        Some((Some(mean), std)) => {
+                            let (min, max) = minmax(&moment);
                             format!(
                                 " {:} & {:.3} & {:.3} & {:.3} & {:.3} \\\\",
                                 key.replace("_", " "),
@@ -643,7 +683,7 @@ impl Monitors {
                                 max
                             )
                         }
-                        None => format!(" {:} \\\\", key.replace("_", " ")),
+                        _ => format!(" {:} \\\\", key.replace("_", " ")),
                     }
                 })
                 .collect();
@@ -1014,6 +1054,77 @@ impl Monitors {
             .position(SeriesLabelPosition::UpperRight)
             .draw()
             .unwrap();
+    }
+    #[cfg(feature = "plot")]
+    pub fn plot_this_forces(&self, values: &[Vector], filename: Option<&str>) {
+        let max_value = |x: &[f64]| -> f64 {
+            x.iter()
+                .cloned()
+                .rev()
+                .take(400 * 20)
+                .fold(std::f64::NEG_INFINITY, f64::max)
+        };
+        let min_value = |x: &[f64]| -> f64 {
+            x.iter()
+                .cloned()
+                .rev()
+                .take(400 * 20)
+                .fold(std::f64::INFINITY, f64::min)
+        };
+
+        let plot =
+            BitMapBackend::new(filename.unwrap_or("FORCES.png"), (768, 512)).into_drawing_area();
+        plot.fill(&WHITE).unwrap();
+
+        let force_magnitude: Option<Vec<f64>> = values.iter().map(|e| e.magnitude()).collect();
+
+        let (min_val, max_val) = (
+            min_value(force_magnitude.as_ref().unwrap()),
+            max_value(force_magnitude.as_ref().unwrap()),
+        );
+        dbg!((min_val, max_val));
+        let xrange = *self.time.last().unwrap() - self.time[0];
+        let minmax_padding = 0.1;
+        let mut chart = ChartBuilder::on(&plot)
+            .set_label_area_size(LabelAreaPosition::Left, 60)
+            .set_label_area_size(LabelAreaPosition::Bottom, 40)
+            .margin(10)
+            .build_cartesian_2d(
+                -xrange * 1e-2..xrange * (1. + 1e-2),
+                min_val * (1. - minmax_padding)..max_val * (1. + minmax_padding),
+            )
+            .unwrap();
+        chart
+            .configure_mesh()
+            .x_desc("Time [s]")
+            .y_desc("Force [N]")
+            .draw()
+            .unwrap();
+
+        let mut colors = colorous::TABLEAU10.iter().cycle();
+
+        let color = colors.next().unwrap();
+        let rgb = RGBColor(color.r, color.g, color.b);
+        chart
+            .draw_series(LineSeries::new(
+                self.time
+                    .iter()
+                    .zip(values.iter())
+                    //.skip(10 * 20)
+                    .map(|(&x, y)| (x - self.time[0], y.magnitude().unwrap())),
+                &rgb,
+            ))
+            .unwrap();
+        //.legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &rgb));
+        /*
+                chart
+                    .configure_series_labels()
+                    .border_style(&BLACK)
+                    .background_style(&WHITE.mix(0.8))
+                    .position(SeriesLabelPosition::UpperRight)
+                    .draw()
+                    .unwrap();
+        */
     }
     #[cfg(feature = "plot")]
     pub fn plot_moments(&self, filename: Option<&str>) {
