@@ -1,5 +1,6 @@
 //! M1 and M2 segments center of pressure, forces and moments
 
+use crate::Vector;
 use crate::{Exertion, Monitors, MonitorsLoader};
 #[cfg(feature = "plot")]
 use plotters::prelude::*;
@@ -181,14 +182,10 @@ impl Mirror {
             time.front().unwrap(),
             time.back().unwrap()
         );
-        println!(
-            "    {:^16}: ({:^12}, {:^12})  ({:^12}, {:^12})",
-            "ELEMENT", "MEAN", "STD", "MIN", "MAX"
-        );
+        println!("    {:^16}: [{:^12}], [{:^12}])", "ELEMENT", "MEAN", "STD");
         for (key, value) in force.iter() {
-            let force_magnitude: Option<Vec<f64>> =
-                value.iter().map(|e| e.force.magnitude()).collect();
-            Monitors::display(key, force_magnitude);
+            let force: Vec<Vector> = value.iter().map(|e| e.force.clone()).collect();
+            Monitors::display(key, &force);
         }
     }
     pub fn len(&self) -> usize {

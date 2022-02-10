@@ -1,11 +1,8 @@
 use super::PressureError;
 use flate2::read::GzDecoder;
-use itertools::Itertools;
-use itertools::MinMaxResult::MinMax;
+use itertools::{Itertools, MinMaxResult::MinMax};
 use serde::Deserialize;
-use std::cmp::Ordering;
-use std::fmt::Display;
-use std::{fs::File, io::Read, path::Path};
+use std::{cmp::Ordering, fmt::Display, fs::File, io::Read, path::Path};
 
 fn partition(data: &[f64]) -> Option<(Vec<f64>, f64, Vec<f64>)> {
     match data.len() {
@@ -95,6 +92,37 @@ pub struct Telescope {
     // the (x,y,z) coordinate where the pressure is applied
     pub xyz: Vec<[f64; 3]>,
 }
+#[cfg(feature = "rstar")]
+pub mod rtree {
+    use rstar::{RTreeObject, AABB};
+    #[allow(dead_code)]
+    #[derive(Debug)]
+    pub struct Node {
+        pub pressure: f64,
+        pub area_ijk: [f64; 3],
+        pub xyz: [f64; 3],
+    }
+    impl RTreeObject for Node {
+        type Envelope = AABB<[f64; 3]>;
+
+        fn envelope(&self) -> Self::Envelope {
+            AABB::from_point(self.xyz)
+        }
+    }
+    impl super::Telescope {
+        pub fn to_rtree(self) -> rstar::RTree<Node> {
+            let mut tree = rstar::RTree::new();
+            for i in 0..self.len() {
+                tree.insert(Node {
+                    pressure: self.pressure[i],
+                    area_ijk: self.area_ijk[i],
+                    xyz: self.xyz[i],
+                });
+            }
+            tree
+        }
+    }
+}
 impl Telescope {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let data_path = Path::new(path.as_ref());
@@ -103,9 +131,10 @@ impl Telescope {
         let mut gz = GzDecoder::new(csv_file);
         gz.read_to_string(&mut contents)?;
         let mut rdr = csv::Reader::from_reader(contents.as_bytes());
-        let mut telescope: Telescope = Default::default();
-        telescope.filename =
-            String::from(data_path.file_name().map(|x| x.to_str()).flatten().unwrap());
+        let mut telescope: Telescope = Telescope {
+            filename: String::from(data_path.file_name().map(|x| x.to_str()).flatten().unwrap()),
+            ..Default::default()
+        };
         for result in rdr.deserialize() {
             let row: Record = result?;
             telescope.pressure.push(row.pressure);

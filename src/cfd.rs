@@ -584,7 +584,7 @@ impl Baseline<2021> {
                     ),
                     WindSpeed::Seven => Some(
                         Azimuth::iter()
-                            .take(3)
+                            .take(4)
                             .map(|azimuth| {
                                 CfdCase::new(
                                     ZenithAngle::Thirty,

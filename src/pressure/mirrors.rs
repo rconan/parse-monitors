@@ -219,6 +219,13 @@ where
         });
         Ok(this)
     }
+    pub fn len(&self) -> usize {
+        self.pressure.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     /// Iterator over the x coordinate
     fn xyz_iter(&self, axis: usize) -> impl Iterator<Item = f64> + '_ {
         self.xyz.iter().map(move |v| v[axis])

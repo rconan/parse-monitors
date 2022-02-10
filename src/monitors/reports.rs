@@ -7,10 +7,11 @@ use std::{
     collections::BTreeMap,
     fs::File,
     io::{BufReader, Read},
-    ops::{Deref, DerefMut},
+    ops::{Add, Deref, DerefMut, Div},
     path::Path,
     time::Instant,
 };
+use welch_sde::{Build, PowerSpectrum};
 
 type Result<T> = std::result::Result<T, super::MonitorsError>;
 
@@ -112,9 +113,9 @@ impl Exertion {
             ..Default::default()
         }
     }
-    pub fn into_local(&mut self, node: &Vector) -> &mut Self {
+    pub fn into_local(&mut self, node: Vector) -> &mut Self {
         if let Some(v) = node.cross(&self.force) {
-            self.moment = (&self.moment - v).unwrap();
+            self.moment = (&self.moment - v).expect("into_local failed");
         }
         self
     }
@@ -129,12 +130,54 @@ impl From<([f64; 3], ([f64; 3], [f64; 3]))> for Exertion {
         }
     }
 }
+impl From<Exertion> for Option<Vec<f64>> {
+    fn from(e: Exertion) -> Self {
+        let f: Option<Vec<f64>> = (&e.force).into();
+        let m: Option<Vec<f64>> = (&e.moment).into();
+        f.zip(m)
+            .map(|(f, m): (Vec<f64>, Vec<f64>)| f.into_iter().chain(m.into_iter()).collect())
+    }
+}
 impl From<&Exertion> for Option<Vec<f64>> {
     fn from(e: &Exertion) -> Self {
         let f: Option<Vec<f64>> = (&e.force).into();
         let m: Option<Vec<f64>> = (&e.moment).into();
         f.zip(m)
             .map(|(f, m): (Vec<f64>, Vec<f64>)| f.into_iter().chain(m.into_iter()).collect())
+    }
+}
+impl From<&mut Exertion> for Option<Vec<f64>> {
+    fn from(e: &mut Exertion) -> Self {
+        let f: Option<Vec<f64>> = (&e.force).into();
+        let m: Option<Vec<f64>> = (&e.moment).into();
+        f.zip(m)
+            .map(|(f, m): (Vec<f64>, Vec<f64>)| f.into_iter().chain(m.into_iter()).collect())
+    }
+}
+impl Add for &Exertion {
+    type Output = Exertion;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Exertion {
+            force: self.force.clone() + rhs.force.clone(),
+            moment: self.moment.clone() + rhs.moment.clone(),
+            cop: None,
+        }
+    }
+}
+impl Div<f64> for &Exertion {
+    type Output = Option<Exertion>;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        if let (Some(force), Some(moment)) = (self.force.clone() / rhs, self.moment.clone() / rhs) {
+            Some(Exertion {
+                force,
+                moment,
+                cop: None,
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -225,6 +268,7 @@ impl MonitorsLoader<2021> {
         let re_htc = Regex::new(
             r"(\w+) Monitor: Surface Average of Heat Transfer Coefficient \(W/m\^2-K\)",
         )?;
+        //Cabs_X Monitor 2: Force (N)
         let re_force = Regex::new(r"(\w+)_([XYZ]) Monitor: Force \(N\)")?;
         let re_moment = Regex::new(r"(\w+)Mom_([XYZ]) Monitor: Moment \(N-m\)")?;
 
@@ -293,7 +337,12 @@ impl MonitorsLoader<2021> {
                 }
                 // MOMENT
                 if let Some(capts) = re_moment.captures(header) {
-                    let key = capts.get(1).unwrap().as_str().to_owned();
+                    let key = capts
+                        .get(1)
+                        .unwrap()
+                        .as_str()
+                        .trim_end_matches('_')
+                        .to_owned();
                     let value = data.parse::<f64>()?;
                     let exertions = monitors
                         .forces_and_moments
@@ -488,7 +537,7 @@ impl Monitors {
     }
     /// Keeps only the last `period` seconds of the monitors
     pub fn keep_last(&mut self, period: usize) -> &mut Self {
-        let n_sample = period * crate::FORCE_SAMPLING_FREQUENCY as usize;
+        let n_sample = 1 + period * crate::FORCE_SAMPLING_FREQUENCY as usize;
         let i = if self.len() > n_sample {
             self.len() - n_sample
         } else {
@@ -511,7 +560,7 @@ impl Monitors {
         for (key, value) in self.forces_and_moments.iter_mut() {
             if let Some(node) = nodes.get(key) {
                 value.iter_mut().for_each(|v| {
-                    (*v).into_local(node);
+                    (*v).into_local(node.clone());
                 });
             }
         }
@@ -746,32 +795,22 @@ impl Monitors {
                         (fa, ma)
                     },
                 );
-            let total_force_magnitude: Option<Vec<f64>> =
-                total_force.iter().map(|x| x.magnitude()).collect();
-            let total_moment_magnitude: Option<Vec<f64>> =
-                total_moment.iter().map(|x| x.magnitude()).collect();
+            let total_force: Vec<Vector> = total_force.iter().map(|x| x.clone()).collect();
+            let total_moment: Vec<Vector> = total_moment.iter().map(|x| x.clone()).collect();
             println!(" - Forces magnitude [N]:");
-            println!(
-                "    {:^16}: ({:^12}, {:^12})  ({:^12}, {:^12})",
-                "ELEMENT", "MEAN", "STD", "MIN", "MAX"
-            );
+            println!("    {:^16}: [{:^12}]   [{:^12}]", "ELEMENT", "MEAN", "STD");
             self.forces_and_moments.iter().for_each(|(key, value)| {
-                let force_magnitude: Option<Vec<f64>> =
-                    value.iter().map(|e| e.force.magnitude()).collect();
-                Self::display(key, force_magnitude);
+                let force: Vec<Vector> = value.iter().map(|e| e.force.clone()).collect();
+                Self::display(key, &force);
             });
-            Self::display("TOTAL", total_force_magnitude);
+            Self::display("TOTAL", &total_force);
             println!(" - Moments magnitude [N-m]:");
-            println!(
-                "    {:^16}: ({:^12}, {:^12})  ({:^12}, {:^12})",
-                "ELEMENT", "MEAN", "STD", "MIN", "MAX"
-            );
+            println!("    {:^16}: [{:^12}]   [{:^12}]", "ELEMENT", "MEAN", "STD");
             self.forces_and_moments.iter().for_each(|(key, value)| {
-                let moment_magnitude: Option<Vec<f64>> =
-                    value.iter().map(|e| e.moment.magnitude()).collect();
-                Self::display(key, moment_magnitude);
+                let moment: Vec<Vector> = value.iter().map(|e| e.moment.clone()).collect();
+                Self::display(key, &moment);
             });
-            Self::display("TOTAL", total_moment_magnitude);
+            Self::display("TOTAL", &total_moment);
             self.total_forces_and_moments = total_force
                 .into_iter()
                 .zip(total_moment.into_iter())
@@ -810,25 +849,43 @@ impl Monitors {
             .collect();
         self
     }
-    pub fn display(key: &str, data: Option<Vec<f64>>) {
-        let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
-        let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
-        let stats = |x: &[f64]| {
+    pub fn display(key: &str, data: &[Vector]) {
+        /*
+            let max_value = |x: &[f64]| x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max);
+            let min_value = |x: &[f64]| x.iter().cloned().fold(std::f64::INFINITY, f64::min);
+            let stats = |x: &[f64]| {
+                let n = x.len() as f64;
+                let mean = x.iter().sum::<f64>() / n;
+                let std = (x.iter().map(|x| x - mean).fold(0f64, |s, x| s + x * x) / n).sqrt();
+                (mean, std)
+            };
+        */
+        let stats = |x: &[Vector]| -> Option<(Vec<f64>, Vec<f64>)> {
             let n = x.len() as f64;
-            let mean = x.iter().sum::<f64>() / n;
-            let std = (x.iter().map(|x| x - mean).fold(0f64, |s, x| s + x * x) / n).sqrt();
-            (mean, std)
+            if let Some(mean) = x.iter().fold(Vector::zero(), |s, x| s + x) / n {
+                let std = x
+                    .iter()
+                    .filter_map(|x| x - mean.clone())
+                    .filter_map(|x| -> Option<Vec<f64>> { x.into() })
+                    .fold(vec![0f64; 3], |mut a, x| {
+                        a.iter_mut().zip(x.iter()).for_each(|(a, &x)| *a += x * x);
+                        a
+                    });
+                let mean: Option<Vec<f64>> = mean.into();
+                Some((
+                    mean.unwrap(),
+                    std.iter()
+                        .map(|x| (*x / n as f64).sqrt())
+                        .collect::<Vec<_>>(),
+                ))
+            } else {
+                None
+            }
         };
-        match data {
-            Some(value) => {
-                let data_min = min_value(&value);
-                let data_max = max_value(&value);
-                println!(
-                    "  - {:16}: {:>12.3?}  {:>12.3?}",
-                    key,
-                    stats(&value),
-                    (data_min, data_max)
-                );
+
+        match stats(data) {
+            Some((mean, std)) => {
+                println!("  - {:16}: {:>12.3?}  {:>12.3?}", key, mean, std);
             }
             None => println!("  - {:16}: {:?}", key, None::<f64>),
         }
@@ -1056,75 +1113,106 @@ impl Monitors {
             .unwrap();
     }
     #[cfg(feature = "plot")]
-    pub fn plot_this_forces(&self, values: &[Vector], filename: Option<&str>) {
-        let max_value = |x: &[f64]| -> f64 {
-            x.iter()
-                .cloned()
-                .rev()
-                .take(400 * 20)
-                .fold(std::f64::NEG_INFINITY, f64::max)
-        };
-        let min_value = |x: &[f64]| -> f64 {
-            x.iter()
-                .cloned()
-                .rev()
-                .take(400 * 20)
-                .fold(std::f64::INFINITY, f64::min)
-        };
-
-        let plot =
-            BitMapBackend::new(filename.unwrap_or("FORCES.png"), (768, 512)).into_drawing_area();
-        plot.fill(&WHITE).unwrap();
-
-        let force_magnitude: Option<Vec<f64>> = values.iter().map(|e| e.magnitude()).collect();
-
-        let (min_val, max_val) = (
-            min_value(force_magnitude.as_ref().unwrap()),
-            max_value(force_magnitude.as_ref().unwrap()),
-        );
-        dbg!((min_val, max_val));
-        let xrange = *self.time.last().unwrap() - self.time[0];
-        let minmax_padding = 0.1;
-        let mut chart = ChartBuilder::on(&plot)
-            .set_label_area_size(LabelAreaPosition::Left, 60)
-            .set_label_area_size(LabelAreaPosition::Bottom, 40)
-            .margin(10)
-            .build_cartesian_2d(
-                -xrange * 1e-2..xrange * (1. + 1e-2),
-                min_val * (1. - minmax_padding)..max_val * (1. + minmax_padding),
-            )
-            .unwrap();
-        chart
-            .configure_mesh()
-            .x_desc("Time [s]")
-            .y_desc("Force [N]")
-            .draw()
-            .unwrap();
-
-        let mut colors = colorous::TABLEAU10.iter().cycle();
-
-        let color = colors.next().unwrap();
-        let rgb = RGBColor(color.r, color.g, color.b);
-        chart
-            .draw_series(LineSeries::new(
-                self.time
-                    .iter()
-                    .zip(values.iter())
-                    //.skip(10 * 20)
-                    .map(|(&x, y)| (x - self.time[0], y.magnitude().unwrap())),
-                &rgb,
-            ))
-            .unwrap();
-        //.legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &rgb));
-        /*
-                chart
-                    .configure_series_labels()
-                    .border_style(&BLACK)
-                    .background_style(&WHITE.mix(0.8))
-                    .position(SeriesLabelPosition::UpperRight)
-                    .draw()
-                    .unwrap();
+    pub fn plot_this_forces(values: &[Vector], config: Option<complot::Config>) {
+        /*fn minmax<'a>(x: impl Iterator<Item = &'a f64>) -> (f64, f64) {
+                    x.cloned()
+                        .fold((std::f64::NEG_INFINITY, std::f64::INFINITY), |(a, b), x| {
+                            (f64::max(a, x), f64::min(b, x))
+                        })
+                }
+                let max_value =
+                    |x: &[f64]| -> f64 { x.iter().cloned().fold(std::f64::NEG_INFINITY, f64::max) };
+                let min_value = |x: &[f64]| -> f64 { x.iter().cloned().fold(std::f64::INFINITY, f64::min) };
         */
+        let (fx, (fy, fz)): (Vec<_>, (Vec<_>, Vec<_>)) = values
+            .iter()
+            .filter_map(|v| {
+                if let Vector {
+                    x: Some(x),
+                    y: Some(y),
+                    z: Some(z),
+                } = v
+                {
+                    Some((x, (y, z)))
+                } else {
+                    None
+                }
+            })
+            .unzip();
+
+        let tau = 20f64.recip();
+        let _: complot::Plot = (
+            (0..fx.len())
+                .into_iter()
+                .zip(&(*fx))
+                .zip(&(*fy))
+                .zip(&(*fz))
+                .skip(1)
+                .map(|(((i, &x), &y), &z)| (i as f64 * tau, vec![x, y, z])),
+            config,
+        )
+            .into();
+    }
+    #[cfg(feature = "plot")]
+    pub fn plot_this_forces_psds(values: &[Vector], config: Option<complot::Config>) {
+        let (mut fx, (mut fy, mut fz)): (Vec<_>, (Vec<_>, Vec<_>)) = values
+            .iter()
+            .filter_map(|v| {
+                if let Vector {
+                    x: Some(x),
+                    y: Some(y),
+                    z: Some(z),
+                } = v
+                {
+                    Some((x, (y, z)))
+                } else {
+                    None
+                }
+            })
+            .unzip();
+        let n = fx.len() as f64;
+        let fx_mean = fx.iter().sum::<f64>() / n;
+        let fy_mean = fy.iter().sum::<f64>() / n;
+        let fz_mean = fz.iter().sum::<f64>() / n;
+        fx.iter_mut().for_each(|x| *x -= fx_mean);
+        fy.iter_mut().for_each(|x| *x -= fy_mean);
+        fz.iter_mut().for_each(|x| *x -= fz_mean);
+        let fs = 20f64;
+        let psdx = {
+            let welch: PowerSpectrum<f64> = PowerSpectrum::builder(&fx)
+                .sampling_frequency(fs)
+                .dft_log2_max_size(10)
+                .build();
+            welch.periodogram()
+        };
+        let psdy = {
+            let welch: PowerSpectrum<f64> = PowerSpectrum::builder(&fy)
+                .sampling_frequency(fs)
+                .dft_log2_max_size(10)
+                .build();
+            welch.periodogram()
+        };
+        let psdz = {
+            let welch: PowerSpectrum<f64> = PowerSpectrum::builder(&fz)
+                .sampling_frequency(fs)
+                .dft_log2_max_size(10)
+                .build();
+            /*let welch: SpectralDensity<f64> = SpectralDensity::builder(&fz, fs)
+            .dft_log2_max_size(10)
+            .build();*/
+            welch.periodogram()
+        };
+        let _: complot::LogLog = (
+            psdx.frequency()
+                .into_iter()
+                .zip(&(*psdx))
+                .zip(&(*psdy))
+                .zip(&(*psdz))
+                .skip(1)
+                .map(|(((t, &x), &y), &z)| (t, vec![x, y, z])),
+            config,
+        )
+            .into();
     }
     #[cfg(feature = "plot")]
     pub fn plot_moments(&self, filename: Option<&str>) {
