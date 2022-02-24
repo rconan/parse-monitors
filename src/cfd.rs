@@ -143,6 +143,7 @@ impl fmt::Display for Azimuth {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Enclosure {
     OpenStowed,
+    NewMeshOpenStowed,
     ClosedDeployed,
     ClosedStowed,
 }
@@ -152,6 +153,7 @@ impl Enclosure {
         use Enclosure::*;
         match enclosure {
             "os" => Ok(OpenStowed),
+            "nos" => Ok(NewMeshOpenStowed),
             "cd" => Ok(ClosedDeployed),
             "cs" => Ok(ClosedStowed),
             _ => Err(CfdError::Enclosure(enclosure.into())),
@@ -160,6 +162,7 @@ impl Enclosure {
     pub fn to_pretty_string(&self) -> String {
         match self {
             Enclosure::OpenStowed => "Open vents/Stowed wind screen".to_string(),
+            Enclosure::NewMeshOpenStowed => "New mesh/Open vents/Stowed wind screen".to_string(),
             Enclosure::ClosedDeployed => "Closed vents/Deployed wind screen".to_string(),
             Enclosure::ClosedStowed => "Closed vents/Stowed wind screen".to_string(),
         }
@@ -169,6 +172,7 @@ impl fmt::Display for Enclosure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Enclosure::OpenStowed => write!(f, "OS"),
+            Enclosure::NewMeshOpenStowed => write!(f, "NOS"),
             Enclosure::ClosedDeployed => write!(f, "CD"),
             Enclosure::ClosedStowed => write!(f, "CS"),
         }
@@ -504,7 +508,7 @@ impl Baseline<2020> {
 }
 impl Baseline<2021> {
     pub fn default_path() -> PathBuf {
-        Path::new("/fsx").to_path_buf()
+        Path::new("/fsx/MOUNT").to_path_buf()
     }
     pub fn path() -> PathBuf {
         env::var("CFD_REPO").map_or_else(
@@ -577,7 +581,7 @@ impl Baseline<2021> {
                                     ZenithAngle::Thirty,
                                     azimuth,
                                     Enclosure::OpenStowed,
-                                    wind_speed.clone(),
+                                    wind_speed,
                                 )
                             })
                             .collect::<Vec<CfdCase<2021>>>(),
@@ -590,7 +594,7 @@ impl Baseline<2021> {
                                     ZenithAngle::Thirty,
                                     azimuth,
                                     Enclosure::OpenStowed,
-                                    wind_speed.clone(),
+                                    wind_speed,
                                 )
                             })
                             .collect::<Vec<CfdCase<2021>>>(),
@@ -598,12 +602,13 @@ impl Baseline<2021> {
                     WindSpeed::Twelve => Some(
                         Azimuth::iter()
                             .filter(|azimuth| *azimuth != Azimuth::OneThirtyFive)
+                            .filter(|azimuth| *azimuth != Azimuth::Ninety)
                             .map(|azimuth| {
                                 CfdCase::new(
                                     ZenithAngle::Thirty,
                                     azimuth,
                                     Enclosure::ClosedDeployed,
-                                    wind_speed.clone(),
+                                    wind_speed,
                                 )
                             })
                             .collect::<Vec<CfdCase<2021>>>(),

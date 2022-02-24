@@ -11,6 +11,7 @@ pub struct WindLoads {
     detrend: bool,
     last_time_range: Option<usize>,
     show_pressure: bool,
+    cfd_case: Option<cfd::CfdCase<2021>>,
 }
 impl WindLoads {
     pub fn new(part: u8, stats_time_range: f64) -> Self {
@@ -41,6 +42,12 @@ impl WindLoads {
     pub fn show_m12_pressure(self) -> Self {
         Self {
             show_pressure: true,
+            ..self
+        }
+    }
+    pub fn cfd_case(self, cfd_case: cfd::CfdCase<2021>) -> Self {
+        Self {
+            cfd_case: Some(cfd_case),
             ..self
         }
     }
@@ -267,6 +274,8 @@ impl super::Report<2021> for WindLoads {
 {}
 \bottomrule
 \end{{longtable}}
+\subsection{{M1 pressure snapshot}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 
 "#,
                 &cfd_case.to_pretty_string(),
@@ -291,6 +300,7 @@ impl super::Report<2021> for WindLoads {
                 monitors
                     .moment_latex_table(self.stats_time_range)
                     .unwrap_or_default(),
+                path_to_case.join("m1_pressure_map"),
             ))
         }
     }
@@ -341,9 +351,13 @@ impl WindLoads {
     /// Mount chapter assembly
     pub fn mount_chapter(&self, chapter_filename: Option<&str>) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
-        let cfd_cases = cfd::Baseline::<2021>::mount()
-            .into_iter()
-            .collect::<Vec<cfd::CfdCase<2021>>>();
+        let cfd_cases = if let Some(cfd_case) = self.cfd_case {
+            vec![cfd_case]
+        } else {
+            cfd::Baseline::<2021>::mount()
+                .into_iter()
+                .collect::<Vec<cfd::CfdCase<2021>>>()
+        };
         let results: Vec<_> = cfd_cases
             .into_par_iter()
             .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())

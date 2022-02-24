@@ -33,24 +33,23 @@ impl Config for geotrans::M2 {
 }
 
 fn main() -> anyhow::Result<()> {
-    type M12 = geotrans::M2;
+    type M12 = geotrans::M1;
 
     cfd::Baseline::<2021>::default()
-        .extras()
         .into_iter()
         .collect::<Vec<cfd::CfdCase<2021>>>()
         .into_par_iter()
         .for_each(|cfd_case| {
             let now = Instant::now();
             let case_path = cfd::Baseline::<2021>::path().join(cfd_case.to_string());
-            let (geometry, files) = M12::configure(cfd_case).unwrap();
+            let (_geometry, files) = M12::configure(cfd_case).unwrap();
 
             let _ = files.last().map(|file| {
                 let path = Path::new(file);
                 let csv_pressure = Pressure::<M12>::decompress(path.to_path_buf()).unwrap();
-                let csv_geometry =
-                    Pressure::<M12>::decompress(path.with_file_name(geometry)).unwrap();
-                let mut pressures = Pressure::<M12>::load(csv_pressure, csv_geometry).unwrap();
+                //let csv_geometry =
+                //    Pressure::<M12>::decompress(path.with_file_name(geometry)).unwrap();
+                let mut pressures = Pressure::<M12>::load(csv_pressure).unwrap();
                 pressures.pressure_map(case_path);
             });
 

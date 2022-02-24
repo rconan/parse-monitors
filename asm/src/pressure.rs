@@ -6,6 +6,7 @@ use std::{
     fs::File,
     io::{BufReader, Cursor, Read},
     path::PathBuf,
+    time::Instant,
 };
 
 pub fn stats(
@@ -56,4 +57,44 @@ pub fn stats(
             })
         })
         .collect()
+}
+
+pub fn process(duration: usize, radius: f64) -> anyhow::Result<()> {
+    let now = Instant::now();
+    let cfd_cases: Vec<cfd::CfdCase<2021>> = cfd::Baseline::<2021>::default().into_iter().collect();
+    let pressure = cfd_cases
+        .clone()
+        .into_iter()
+        //.progress_count(cfd_cases.len() as u64)
+        .map(|cfd_case| {
+            Ok(stats(duration, cfd_case, radius)?
+                .into_iter()
+                .collect::<Result<DataFrame>>()?
+                .column("var")?
+                .f64()?
+                .mean()
+                .map(|x| x.sqrt())
+                .unwrap())
+        })
+        .collect::<anyhow::Result<Vec<f64>>>()?;
+    println!(
+        "{} CFD cases processed in: {}s",
+        &cfd_cases.len(),
+        now.elapsed().as_secs()
+    );
+    let mut cases = cfd_cases
+        .into_iter()
+        .map(|c| c.to_string())
+        .collect::<Series>();
+    cases.rename("case");
+    let df = DataFrame::new(vec![cases, Series::new("pressure std [Pa]", &pressure)])?;
+    print!("{}", df);
+
+    let mut file = File::create("pressure_std.csv")?;
+    CsvWriter::new(&mut file)
+        .has_header(true)
+        .with_delimiter(b',')
+        .finish(&df)?;
+
+    Ok(())
 }

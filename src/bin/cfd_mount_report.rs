@@ -1,5 +1,5 @@
 //use chrono::Local;
-use parse_monitors::{report, report::Report};
+use parse_monitors::{cfd, report, report::Report};
 use std::error::Error; //, fs::File, io::Write};
 use std::time::Instant;
 use structopt::StructOpt;
@@ -21,8 +21,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let now = Instant::now();
     println!("Building the report ...");
     report::WindLoads::new(0, opt.stats_duration)
-        .exclude_monitors("floor|enclosure|screen|shutter")
+        .exclude_monitors("floor|enclosure|screen|shutter|M1level")
         .keep_last(400)
+        .cfd_case(cfd::CfdCase::colloquial(30, 135, "nos", 7)?)
         //.detrend()
         .mount_chapter(Some("mount.chapter.tex"))?;
     println!(" ... report build in {}s", now.elapsed().as_secs());

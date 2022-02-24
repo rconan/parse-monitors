@@ -47,6 +47,9 @@ struct Opt {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
+    #[cfg(feature = "b2020")]
+    let mut loader = MonitorsLoader::<2020>::default();
+    #[cfg(not(feature = "b2020"))]
     let mut loader = MonitorsLoader::<2021>::default();
     loader = loader.data_path(&opt.path);
     if let Some(arg) = opt.monitor {

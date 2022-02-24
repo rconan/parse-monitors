@@ -115,14 +115,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Err(e) => println!("{}: {:}", arg, e),
                     }
                 } else {
-                    let mut monitors = Monitors::loader::<String, CFD_YEAR>(arg.clone())
-                        .header_filter(filter.to_string())
-                        //.exclude_filter(xmon)
-                        .load()
-                        .unwrap();
-                    if let Some(arg) = opt.last {
-                        monitors.keep_last(arg);
-                    }
+                    let mut monitors = if arg.contains("zen30az135_OS7") {
+                        Monitors::loader::<String, CFD_YEAR>(arg.clone())
+                            .header_filter(filter.to_string())
+                            //.exclude_filter(xmon)
+                            .start_time(300.)
+                            .end_time(600.)
+                            .load()
+                            .unwrap()
+                    } else {
+                        let mut monitors = Monitors::loader::<String, CFD_YEAR>(arg.clone())
+                            .header_filter(filter.to_string())
+                            //.exclude_filter(xmon)
+                            .load()
+                            .unwrap();
+                        if let Some(arg) = opt.last {
+                            monitors.keep_last(arg);
+                        }
+                        monitors
+                    };
                     if opt.detrend {
                         monitors.detrend();
                         filename = format!("{}/{}-detrend.png", arg, name)

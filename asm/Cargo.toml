@@ -8,8 +8,17 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.51"
 bzip2 = "0.4.3"
+colorous = "1.0.5"
+csv = "1.1.6"
+geotrans = "0.2.1"
 glob = "0.3.0"
 indicatif = { version = "0.16.2", features = ["rayon"] }
 parse-monitors = { path = ".." }
-polars = { version = "0.18.0", features = ["decompress"] }
+polars = { version = "0.18.0", features = ["lazy"] }
 rayon = "1.5.1"
+strum = "0.23.0"
+strum_macros = "0.23.1"
+
+[dev-dependencies]
+geotrans = "0.2.1"
+plotters = "0.3.1"

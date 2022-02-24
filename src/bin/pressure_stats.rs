@@ -9,9 +9,36 @@ use parse_monitors::{cfd, pressure::Pressure};
 use rayon::prelude::*;
 use std::{error::Error, path::Path, time::Instant};
 
+trait Config {
+    fn configure(cfd_case: cfd::CfdCase<2021>) -> anyhow::Result<(String, Vec<String>)>;
+}
+impl Config for geotrans::M1 {
+    fn configure(cfd_case: cfd::CfdCase<2021>) -> anyhow::Result<(String, Vec<String>)> {
+        Ok((
+            "M1p.csv.z".to_string(),
+            cfd::CfdDataFile::<2021>::M1Pressure
+                .glob(cfd_case)?
+                .map(|p| p.unwrap().to_str().unwrap().to_string())
+                .collect(),
+        ))
+    }
+}
+impl Config for geotrans::M2 {
+    fn configure(cfd_case: cfd::CfdCase<2021>) -> anyhow::Result<(String, Vec<String>)> {
+        Ok((
+            "M2p.csv.z".to_string(),
+            cfd::CfdDataFile::<2021>::M2Pressure
+                .glob(cfd_case)?
+                .map(|p| p.unwrap().to_str().unwrap().to_string())
+                .collect(),
+        ))
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
+    type M12 = geotrans::M1;
     cfd::Baseline::<2021>::default()
-        .extras()
+        //.extras()
         .into_iter()
         /*
                    .filter(|c| {
@@ -24,21 +51,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                    })
         */
         //        .skip(1)
-        .collect::<Vec<cfd::CfdCase<2021>>>()
-        .into_par_iter()
+        //.collect::<Vec<cfd::CfdCase<2021>>>()
+        //.into_par_iter()
+        .nth(7)
+        .into_iter()
         .for_each(|cfd_case| {
+            println!("{cfd_case}");
             let now = Instant::now();
             let case_path = cfd::Baseline::<2021>::path().join(cfd_case.to_string());
-            let files: Vec<_> = glob(
-                case_path
-                    .join("pressures")
-                    .join("M2p_M2p_*.csv.bz2")
-                    .to_str()
-                    .unwrap(),
-            )
-            .unwrap()
-            .map(|p| p.unwrap().to_str().unwrap().to_string())
-            .collect();
+            let (_geometry, files) = M12::configure(cfd_case).unwrap();
             //let n_files = files.len();
 
             let records: Vec<_> = files
@@ -54,11 +75,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                         .to_str()
                         .unwrap();
                     let time = &stem[8..].parse::<f64>().unwrap();
-                    type M12 = geotrans::M2;
                     let csv_pressure = Pressure::<M12>::decompress(path.to_path_buf()).unwrap();
-                    let csv_geometry =
-                        Pressure::<M12>::decompress(path.with_file_name("M2p.csv.bz2")).unwrap();
-                    let mut pressures = Pressure::<M12>::load(csv_pressure, csv_geometry).unwrap();
+                    //let csv_geometry =
+                    //    Pressure::<M12>::decompress(path.with_file_name("M2p.csv.bz2")).unwrap();
+                    let mut pressures = Pressure::<M12>::load(csv_pressure).unwrap();
                     let segments_pressure = pressures.segments_average_pressure();
                     let segments_pressure_std = pressures.segments_pressure_std();
                     let average_pressure = pressures.mirror_average_pressure();
@@ -71,7 +91,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 })
                 .collect();
 
-            let filename = case_path.join("m2_pressure-stats.csv");
+            let filename = case_path.join("m1_pressure-stats.csv");
             let mut wtr = csv::WriterBuilder::new()
                 .has_headers(false)
                 .from_path(filename)
