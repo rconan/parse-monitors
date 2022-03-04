@@ -602,7 +602,6 @@ impl Baseline<2021> {
                     WindSpeed::Twelve => Some(
                         Azimuth::iter()
                             .filter(|azimuth| *azimuth != Azimuth::OneThirtyFive)
-                            .filter(|azimuth| *azimuth != Azimuth::Ninety)
                             .map(|azimuth| {
                                 CfdCase::new(
                                     ZenithAngle::Thirty,
