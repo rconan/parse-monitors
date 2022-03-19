@@ -508,7 +508,7 @@ impl Baseline<2020> {
 }
 impl Baseline<2021> {
     pub fn default_path() -> PathBuf {
-        Path::new("/fsx/MOUNT").to_path_buf()
+        Path::new("/fsx/CASES").to_path_buf()
     }
     pub fn path() -> PathBuf {
         env::var("CFD_REPO").map_or_else(
