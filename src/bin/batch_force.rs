@@ -2,6 +2,8 @@
 //!
 //! It must be run as root i.e. `sudo -E ./target/release/batch_force`
 
+use std::{fs::create_dir, path::Path};
+
 use parse_monitors::{cfd::Baseline, Mirror, Monitors};
 use rayon::prelude::*;
 use structopt::StructOpt;
@@ -103,42 +105,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _: Vec<_> = data_paths
             .par_iter()
             .map(|arg| {
-                let mut filename = format!("{}/report/{}.png", arg, name);
+                let path = Path::new(arg).join("report");
+                if !path.is_dir() {
+                    create_dir(&path).unwrap()
+                }
+                let mut filename = path.join(name).with_extension("png");
                 if name == "m1-segments" {
                     match Mirror::m1(arg).net_force().load() {
                         Ok(mut m1) => {
                             if let Some(arg) = opt.last {
                                 m1.keep_last(arg);
                             }
-                            m1.plot_forces(Some(filename.as_str()))
+                            m1.plot_forces(filename.to_str())
                         }
                         Err(e) => println!("{}: {:}", arg, e),
                     }
                 } else {
-                    let mut monitors = if arg.contains("zen30az135_OS7") {
-                        Monitors::loader::<String, CFD_YEAR>(arg.clone())
-                            .header_filter(filter.to_string())
-                            //.exclude_filter(xmon)
-                            .start_time(300.)
-                            .end_time(600.)
-                            .load()
-                            .unwrap()
-                    } else {
-                        let mut monitors = Monitors::loader::<String, CFD_YEAR>(arg.clone())
-                            .header_filter(filter.to_string())
-                            //.exclude_filter(xmon)
-                            .load()
-                            .unwrap();
-                        if let Some(arg) = opt.last {
-                            monitors.keep_last(arg);
-                        }
-                        monitors
-                    };
+                    let mut monitors = Monitors::loader::<String, CFD_YEAR>(arg.clone())
+                        .header_filter(filter.to_string())
+                        //.exclude_filter(xmon)
+                        .load()
+                        .unwrap();
+                    if let Some(arg) = opt.last {
+                        monitors.keep_last(arg);
+                    }
                     if opt.detrend {
                         monitors.detrend();
-                        filename = format!("{}/{}-detrend.png", arg, name)
+                        filename = path
+                            .join(format!("{}-detrend.png", name))
+                            .with_extension("png");
                     }
-                    monitors.plot_forces(Some(filename.as_str()));
+                    monitors.plot_forces(filename.to_str());
                 }
             })
             .collect();

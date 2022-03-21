@@ -1,6 +1,6 @@
 //! Pressure maps
 //!
-//! Plot the pressure maps on M1 and M2 segments
+//! Plot the OPD maps
 
 use glob::glob;
 use npyz::npz::NpzArchive;

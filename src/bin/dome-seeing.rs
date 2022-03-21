@@ -54,7 +54,7 @@ fn main() {
     ));
     let n_cases = cfd_cases_21.len() as u64;
     let results: Vec<Option<((String, f64, f64), Option<(String, f64, f64)>)>> = cfd_cases_21
-        .into_iter()
+        .into_par_iter()
         //.progress_count(n_cases)
         .map(|cfd_case_21| {
             let path_to_case = root.join(format!("{}", cfd_case_21));

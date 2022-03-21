@@ -49,7 +49,9 @@
 
 \begin{revisions}
   1.0 & 11.17.21 & All & None & Initial version & R. Conan \\  
-  1.0 & \today & All & None & Add mount wind loads cases definition and M1 segments net forces and moments & R. Conan \\  
+  1.0 & 02.24.22 & All & None & Add mount wind loads cases definition and M1 segments net forces and moments & R. Conan \\  
+  1.0 & 03.10.22 & All & None & Add optical metrics performance table & R. Conan \\  
+  1.0 & \today & All & None & Fix PMT nodes  & R. Conan \\  
 \end{revisions}
 
 \clearpage
@@ -95,6 +97,109 @@ Each section in  chapter~\ref{cfd-wind-loads} includes time series plots of the 
 Both, forces and moments are sampled at 20Hz.
 Forces and moments vectors are given with respect to the OSS coordinates system. 
 
+The wind loads have been applied to the detailed Integrated Modeling FEM with
+the mount controller turned on.
+At each time step, the rigid body motions of M1 and M2 segments and the node
+displacements at the PMT interfaces are recorded.
+
+The rigid body motions are converted into wavefront error subject to the LTAO
+rejection transfer functions.
+From the wavefront, the focal plane tip-tilt and segment piston are derived.
+The results are reported in Table~\ref{im-loads}.
+
+The PMT transformation matrices (PMT1 and PMT2) are applied to the PMT nodes and
+the results are filtered with the LTAO rejection transfer functions.
+The resulting segment tip-tilts and segment pistons are further converted into
+WFE RMS.
+The results are reported in Table~\ref{mount-pmts}.
+
+
+\begin{longtable}{cccr||rrrrr}
+  %\centering
+  %\begin{tabular}{cccr|rrr}
+  \caption{Optical performance under wind load disturbances for the LTAO
+ Observing Performance Mode.} \label{tab:long} \\\hline\hline
+ % \multicolumn{4}{c|}{-} & \multicolumn{3}{|c}{\textbf{Natural Seeing Observing
+ %     Performance Mode}} \\
+ % \multicolumn{4}{c|}{\textbf{CFD cases}}  &
+  \multicolumn{7}{|c}{\textbf{LTAO OPM}}
+  \\\hline\hline
+  Zen. & Azi. & Cfg. & Wind  & WFE & TT & Piston \\
+  - & -    & -    &  -   &  RMS & RSS  & RMS  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& $[mas]$&
+  $[nm]$ \\\hline\hline
+  \endfirsthead
+
+  Zen. & Azi. & Cfg.  & WFE & TT & Piston \\
+  - & -    & -    &  -   &  RMS & RSS  & RMS  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& $[mas]$&
+  $[nm]$ \\\hline\hline
+  
+  \endhead
+
+%  \multicolumn{7}{r}{{\emph{Continued on next page}}} \\ 
+  \endfoot
+  \hline \hline
+  \endlastfoot
+  30 & 0 & o.s. & 2    &     7 & 0 &    9 \\\hline  
+  30 & 45 & o.s. & 2   &     5 & 0 &    7 \\\hline  
+  30 & 90 & o.s. & 2   &     5 & 0 &    7 \\\hline\hline  
+  30 & 0 & o.s. & 7    &   122 & 1 &  167 \\\hline  
+  30 & 45 & o.s. & 7   &    61 & 1 &   85 \\\hline  
+  30 & 90 & o.s. & 7   &    93 & 1 &  126 \\\hline  
+  30 & 135 & o.s. & 7  &    91 & 0 &  130 \\\hline\hline  
+  30 & 0 & c.d. & 12   &   132 & 1 &  176 \\\hline  
+  30 & 45 & c.d. & 12  &    82 & 0 &  100 \\\hline  
+  30 & 90 & c.d. & 12  &    99 & 0 &  107 \\\hline  
+  30 & 180 & c.d. & 12 &   240 & 0 &  342 \\  
+  
+  %\end{tabular}
+  %\caption{Wind loadind optical performance}
+  \label{im-loads}
+\end{longtable}
+
+\begin{longtable}{cccr||rrrrr}
+  %\centering
+  %\begin{tabular}{cccr|rrr}
+  \caption{Mount PMTs.} \label{tab:long} \\\hline\hline
+ % \multicolumn{4}{c|}{-} & \multicolumn{3}{|c}{\textbf{Natural Seeing Observing
+ %     Performance Mode}} \\
+ % \multicolumn{4}{c|}{\textbf{CFD cases}}  &
+  \multicolumn{7}{|c}{\textbf{LTAO OPM}}
+  \\\hline\hline
+  Zen. & Azi. & Cfg. & Wind  & WFE & TT & Piston \\
+  - & -    & -    &  -   &  RMS & RSS  & RMS  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& $[nm]$&
+  $[nm]$ \\\hline\hline
+  \endfirsthead
+
+  Zen. & Azi. & Cfg.  & WFE & TT & Piston \\
+  - & -    & -    &  -   &  RMS & RMS  & RMS  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& $[nm]$&
+  $[nm]$ \\\hline\hline
+  
+  \endhead
+
+%  \multicolumn{7}{r}{{\emph{Continued on next page}}} \\ 
+  \endfoot
+  \hline \hline
+  \endlastfoot
+  30 & 0 & o.s. & 2    &   7 &  0 &   7 \\\hline  
+  30 & 45 & o.s. & 2   &   8 &  0 &   8 \\\hline  
+  30 & 90 & o.s. & 2   &   8 &  0 &   8 \\\hline\hline  
+  30 & 0 & o.s. & 7    &  92 &  8 &  92  \\\hline  
+  30 & 45 & o.s. & 7   &  74 &  3 &  74 \\\hline  
+  30 & 90 & o.s. & 7   &  83 &  4 &  83 \\\hline  
+  30 & 135 & o.s. & 7  &  92 &  4 &  92 \\\hline\hline  
+  30 & 0 & c.d. & 12   & 233 & 22 & 232  \\\hline  
+  30 & 45 & c.d. & 12  & 280 & 10 & 280  \\\hline  
+  30 & 90 & c.d. & 12  & 361 & 14 & 361  \\\hline  
+  30 & 180 & c.d. & 12 & 365 & 10 & 365  \\  
+  
+  %\end{tabular}
+  %\caption{Wind loadind optical performance}
+  \label{mount-pmts}
+\end{longtable}
 
 
 \input{mount.groups.table}

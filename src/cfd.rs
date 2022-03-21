@@ -413,12 +413,65 @@ impl Default for Baseline<2020> {
 }
 impl Default for Baseline<2021> {
     fn default() -> Self {
-        /*Self(
-                ZenithAngle::iter()
-                    .flat_map(|zenith_angle| Self::at_zenith(zenith_angle).0)
-                    .collect(),
-        )*/
-        Self::mount()
+        Self(
+            ZenithAngle::iter()
+                .flat_map(|zenith| {
+                    Azimuth::iter()
+                        .map(|azimuth| {
+                            CfdCase::new(zenith, azimuth, Enclosure::OpenStowed, WindSpeed::Two)
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .chain(
+                    WindSpeed::iter()
+                        .skip(1)
+                        .take(2)
+                        .filter_map(|wind_speed| match wind_speed {
+                            WindSpeed::Two => Some(
+                                Azimuth::iter()
+                                    .take(3)
+                                    .map(|azimuth| {
+                                        CfdCase::new(
+                                            ZenithAngle::Thirty,
+                                            azimuth,
+                                            Enclosure::OpenStowed,
+                                            wind_speed,
+                                        )
+                                    })
+                                    .collect::<Vec<CfdCase<2021>>>(),
+                            ),
+                            WindSpeed::Seven => Some(
+                                Azimuth::iter()
+                                    .take(4)
+                                    .map(|azimuth| {
+                                        CfdCase::new(
+                                            ZenithAngle::Thirty,
+                                            azimuth,
+                                            Enclosure::OpenStowed,
+                                            wind_speed,
+                                        )
+                                    })
+                                    .collect::<Vec<CfdCase<2021>>>(),
+                            ),
+                            WindSpeed::Twelve => Some(
+                                Azimuth::iter()
+                                    .filter(|azimuth| *azimuth != Azimuth::OneThirtyFive)
+                                    .map(|azimuth| {
+                                        CfdCase::new(
+                                            ZenithAngle::Thirty,
+                                            azimuth,
+                                            Enclosure::ClosedDeployed,
+                                            wind_speed,
+                                        )
+                                    })
+                                    .collect::<Vec<CfdCase<2021>>>(),
+                            ),
+                            _ => None,
+                        })
+                        .flatten(),
+                )
+                .collect::<Vec<CfdCase<2021>>>(),
+        )
     }
 }
 impl<const YEAR: u32> IntoIterator for Baseline<YEAR> {

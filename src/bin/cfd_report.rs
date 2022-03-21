@@ -57,6 +57,8 @@ fn main() -> anyhow::Result<()> {
         let cases = cases.clone();
         tjh.push(thread::spawn(move || {
             report::WindLoads::new(2 + parts_base, 400f64)
+                .exclude_monitors("floor|enclosure|screen|shutter|M1level")
+                .keep_last(400)
                 //.show_m12_pressure()
                 .part_with(cases.as_deref())
                 .unwrap();
