@@ -46,6 +46,22 @@ xcase = []
 #dos-prqt = ["dosio/prqt"]
 b2020 = []
 
+[[bin]]
+name = "batch_force"
+required-features = ["plot"]
+
+[[bin]]
+name = "group-force"
+required-features = ["plot"]
+
+[[bin]]
+name = "opd_maps"
+required-features = ["plot"]
+
+[[bin]]
+name = "dome-seeing"
+required-features = ["plot"]
+
 [dev-dependencies]
 rand = "0.8.4"
 

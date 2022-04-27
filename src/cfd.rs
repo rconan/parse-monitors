@@ -420,11 +420,14 @@ impl Default for Baseline<2021> {
                         .map(|azimuth| {
                             CfdCase::new(zenith, azimuth, Enclosure::OpenStowed, WindSpeed::Two)
                         })
+                        .chain(Azimuth::iter().map(|azimuth| {
+                            CfdCase::new(zenith, azimuth, Enclosure::OpenStowed, WindSpeed::Seven)
+                        }))
                         .collect::<Vec<_>>()
                 })
                 .chain(
                     WindSpeed::iter()
-                        .skip(1)
+                        .skip(2)
                         .take(2)
                         .filter_map(|wind_speed| match wind_speed {
                             WindSpeed::Two => Some(

@@ -1,6 +1,6 @@
 //! Make all the wind forces plots
 //!
-//! It must be run as root i.e. `sudo -E ./target/release/batch_force`
+//! It must be run as root i.e. `sudo -E ./../target/release/batch_force --all`
 
 use std::{fs::create_dir, path::Path};
 
