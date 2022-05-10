@@ -467,6 +467,18 @@ impl Default for Baseline<2021> {
                                             wind_speed,
                                         )
                                     })
+                                    .chain(
+                                        Azimuth::iter()
+                                            .filter(|azimuth| *azimuth != Azimuth::Zero)
+                                            .map(|azimuth| {
+                                                CfdCase::new(
+                                                    ZenithAngle::Zero,
+                                                    azimuth,
+                                                    Enclosure::ClosedDeployed,
+                                                    wind_speed,
+                                                )
+                                            }),
+                                    )
                                     .collect::<Vec<CfdCase<2021>>>(),
                             ),
                             _ => None,

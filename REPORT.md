@@ -13,15 +13,17 @@ Here are the steps to build a CFD report:
 		  * sudo -E ./../target/release/opd_maps
 
      4. pressure_maps:
-          * cargo build --release --bin pressure*maps --features plot
-		  * sudo -E ./../target/release/pressure*maps
+          * cargo build --release --bin pressure_maps --features plot
+		  * sudo -E ./../target/release/pressure_maps
 
      5. dome-seeing:
+	* ls -1 | xargs -n1 -I {} sh -c "cd {} && [ -f domeseeing_PSSN.pickle ] && [ ! -f domeseeing_PSSN.rs.pkl ] && sudo /home/ubuntu/anaconda/bin/python /home/ubuntu/projects/parse-monitors/src/py2rs.py"
           * cargo build --release --bin dome-seeing --features plot
 		  * sudo -E ./../target/release/dome-seeing
 	 
 	 6. cfd_report:
 		  * cargo run --release --bin cfd_report -- --full 
 		  * cd report
+		  * pdflatex gmto.cfd2021.tex
 		  * pdflatex gmto.cfd2021.tex
 		  * pdflatex gmto.cfd2021.tex
