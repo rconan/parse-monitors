@@ -52,7 +52,7 @@ fn main() -> anyhow::Result<()> {
             let time = &stem[8..].parse::<f64>().unwrap();
             let csv_pressure = Pressure::<M12>::decompress(path.to_path_buf()).unwrap();
             let csv_geometry = Pressure::<M12>::decompress(path.with_file_name(geometry)).unwrap();
-            let pressures = Pressure::<M12>::load(csv_pressure, csv_geometry).unwrap();
+            let pressures = Pressure::<M12>::load(csv_pressure).unwrap();
 
             let mut pressure_mean = Vec::<f64>::new();
             for i in 0..12 {

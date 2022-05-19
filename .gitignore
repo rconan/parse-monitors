@@ -1,3 +1,4 @@
+Cargo.lock
 *target
 *.svg
 *.png
@@ -24,4 +25,5 @@ report/mount.chapter*
 *.xml
 *.jpg
 *.pdf
-report/gmt*.bib
+/report
+/asms
