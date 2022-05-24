@@ -362,13 +362,25 @@ where
             .collect())
     }
     /// Returns the average pressure over a given segment
-    pub fn average_pressure(&mut self, sid: usize) -> f64 {
+    pub fn average_pressure(&self, sid: usize) -> f64 {
         let (pa, aa) = self
             .pa_iter()
             .zip(self.segment_filter.get(sid - 1).unwrap().iter())
             .filter(|(_, &f)| f)
             .fold((0f64, 0f64), |(pa, aa), ((p, a), _)| (pa + p * a, aa + a));
         pa / aa
+    }
+    /// Returns the average ASM different pressure over a given segment
+    pub fn asm_differential_pressure(&self, sid: usize) -> (f64, Vec<f64>) {
+        let p_mean = self.average_pressure(sid);
+        (
+            p_mean,
+            self.pressure
+                .iter()
+                .zip(self.segment_filter.get(sid - 1).unwrap().iter())
+                .filter_map(|(&p, &f)| f.then(|| (p - 1.1 * p_mean) / 3.))
+                .collect::<Vec<f64>>(),
+        )
     }
     /// Returns the pressure variance over a given segment
     pub fn pressure_var(&mut self, sid: usize) -> f64 {

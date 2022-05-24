@@ -400,6 +400,7 @@ impl fmt::Display for CfdCase<2020> {
     }
 }
 /// The whole CFD baseline  for a given year: 2020 or 2021
+#[derive(Debug)]
 pub struct Baseline<const YEAR: u32>(Vec<CfdCase<YEAR>>);
 use strum::IntoEnumIterator;
 impl Default for Baseline<2020> {
