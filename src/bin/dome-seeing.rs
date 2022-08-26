@@ -58,7 +58,10 @@ fn main() {
         //.progress_count(n_cases)
         .map(|cfd_case_21| {
             let path_to_case = root.join(format!("{}", cfd_case_21));
-            let mut ds_21 = DomeSeeing::load(path_to_case.clone()).unwrap();
+            let mut ds_21 = DomeSeeing::load(path_to_case.clone()).expect(&format!(
+                "Failed to load dome seeing data from {:?}",
+                path_to_case.clone()
+            ));
             match &truncate {
                 Some((Some(cfd_case), len)) => {
                     if cfd_case_21 == *cfd_case {

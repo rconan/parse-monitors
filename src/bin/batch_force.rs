@@ -107,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|arg| {
                 let path = Path::new(arg).join("report");
                 if !path.is_dir() {
-                    create_dir(&path).unwrap()
+                    create_dir(&path).expect(&format!("Failed to create dir: {:?}",path))
                 }
                 let mut filename = path.join(name).with_extension("png");
                 if name == "m1-segments" {

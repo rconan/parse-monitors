@@ -87,8 +87,8 @@ fn main() -> anyhow::Result<()> {
                 let segment: Vec<MatStruct> = mean_press
                     .iter()
                     .zip(&diff_press)
-                    .map(|(m, dp)| {
-                        MatStruct::new(format!("S{}", k + 1))
+                    .map(|(m, dpMatStruct::new(format!("S{}", k + 1)))| {
+                        
                             .field("mean_pressure", &m[k])
                             .expect("failed to convert mean pressure to MatVar")
                             .field("diff_pressure", &dp[k])

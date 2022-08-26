@@ -333,6 +333,18 @@ where
             .zip(self.xyz.iter())
             .map(|((a, b), c)| (a, b, c))
     }
+    /// Iterator over the pressures, area vectors and coordinates for the given segment
+    pub fn segment_p_aijk_xyz(
+        &self,
+        sid: usize,
+    ) -> impl Iterator<Item = (&f64, &[f64; 3], &[f64; 3])> {
+        self.pressure
+            .iter()
+            .zip(self.area_ijk.iter())
+            .zip(self.xyz.iter())
+            .zip(self.segment_filter.get(sid - 1).unwrap().iter())
+            .filter_map(|(((a, b), c), f)| f.then(|| (a, b, c)))
+    }
     /// Return the area of a given segment
     pub fn segment_area(&self, sid: usize) -> f64 {
         self.area

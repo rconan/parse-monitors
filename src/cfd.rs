@@ -416,77 +416,8 @@ impl Default for Baseline<2021> {
     fn default() -> Self {
         Self(
             ZenithAngle::iter()
-                .flat_map(|zenith| {
-                    Azimuth::iter()
-                        .map(|azimuth| {
-                            CfdCase::new(zenith, azimuth, Enclosure::OpenStowed, WindSpeed::Two)
-                        })
-                        .chain(Azimuth::iter().map(|azimuth| {
-                            CfdCase::new(zenith, azimuth, Enclosure::OpenStowed, WindSpeed::Seven)
-                        }))
-                        .collect::<Vec<_>>()
-                })
-                .chain(
-                    WindSpeed::iter()
-                        .skip(2)
-                        .take(2)
-                        .filter_map(|wind_speed| match wind_speed {
-                            WindSpeed::Two => Some(
-                                Azimuth::iter()
-                                    .take(3)
-                                    .map(|azimuth| {
-                                        CfdCase::new(
-                                            ZenithAngle::Thirty,
-                                            azimuth,
-                                            Enclosure::OpenStowed,
-                                            wind_speed,
-                                        )
-                                    })
-                                    .collect::<Vec<CfdCase<2021>>>(),
-                            ),
-                            WindSpeed::Seven => Some(
-                                Azimuth::iter()
-                                    .take(4)
-                                    .map(|azimuth| {
-                                        CfdCase::new(
-                                            ZenithAngle::Thirty,
-                                            azimuth,
-                                            Enclosure::OpenStowed,
-                                            wind_speed,
-                                        )
-                                    })
-                                    .collect::<Vec<CfdCase<2021>>>(),
-                            ),
-                            WindSpeed::Twelve => Some(
-                                Azimuth::iter()
-                                    .filter(|azimuth| *azimuth != Azimuth::OneThirtyFive)
-                                    .map(|azimuth| {
-                                        CfdCase::new(
-                                            ZenithAngle::Thirty,
-                                            azimuth,
-                                            Enclosure::ClosedDeployed,
-                                            wind_speed,
-                                        )
-                                    })
-                                    .chain(
-                                        Azimuth::iter()
-                                            .filter(|azimuth| *azimuth != Azimuth::Zero)
-                                            .map(|azimuth| {
-                                                CfdCase::new(
-                                                    ZenithAngle::Zero,
-                                                    azimuth,
-                                                    Enclosure::ClosedDeployed,
-                                                    wind_speed,
-                                                )
-                                            }),
-                                    )
-                                    .collect::<Vec<CfdCase<2021>>>(),
-                            ),
-                            _ => None,
-                        })
-                        .flatten(),
-                )
-                .collect::<Vec<CfdCase<2021>>>(),
+                .flat_map(|zenith_angle| Self::at_zenith(zenith_angle).0)
+                .collect(),
         )
     }
 }
@@ -604,14 +535,14 @@ impl Baseline<2021> {
             ZenithAngle::Sixty => vec![
                 (WindSpeed::Two, Enclosure::OpenStowed),
                 (WindSpeed::Seven, Enclosure::OpenStowed),
-                (WindSpeed::Seven, Enclosure::ClosedStowed),
+                //(WindSpeed::Seven, Enclosure::ClosedStowed),
                 (WindSpeed::Twelve, Enclosure::ClosedStowed),
                 (WindSpeed::Seventeen, Enclosure::ClosedStowed),
             ],
             _ => vec![
                 (WindSpeed::Two, Enclosure::OpenStowed),
                 (WindSpeed::Seven, Enclosure::OpenStowed),
-                (WindSpeed::Seven, Enclosure::ClosedDeployed),
+                //(WindSpeed::Seven, Enclosure::ClosedDeployed),
                 (WindSpeed::Twelve, Enclosure::ClosedDeployed),
                 (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
             ],
