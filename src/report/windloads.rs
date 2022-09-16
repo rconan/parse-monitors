@@ -276,7 +276,10 @@ impl super::Report<2021> for WindLoads {
 \end{{longtable}}
 \subsection{{M1 pressure snapshot}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
-
+\subsection{{M2 pressure snapshot}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsection{{Rigid body motion \& segment piston, tip and tilt standard deviation}}
+\input{{{:?}}}
 "#,
                 &cfd_case.to_pretty_string(),
                 &cfd_case.to_string(),
@@ -301,6 +304,8 @@ impl super::Report<2021> for WindLoads {
                     .moment_latex_table(self.stats_time_range)
                     .unwrap_or_default(),
                 path_to_case.join("m1_pressure_map"),
+                path_to_case.join("m2_pressure_map"),
+                path_to_case.join("rbm_tables.tex")
             ))
         }
     }

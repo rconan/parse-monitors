@@ -33,7 +33,7 @@ impl Config for geotrans::M2 {
 }
 
 fn main() -> anyhow::Result<()> {
-    type M12 = geotrans::M1;
+    type M12 = geotrans::M2;
 
     cfd::Baseline::<2021>::default()
         .into_iter()
