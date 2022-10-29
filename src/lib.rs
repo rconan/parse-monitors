@@ -1,18 +1,6 @@
-//! GMT Computation Fluid Dynamic API
+//! GMT Computation Fluid Dynamic Post Processing API
 //!
 //! A library to query and to process the GMT CFD Baseline databases.
-//!
-//! CFD repository default to "/fsx/Baseline2021/Baseline2021/Baseline2021/CASES" or
-//! set with the environment variable `CFD_REPO
-//!
-//! ## Binaries
-//!  - *pressure_stats": computes the average pressure per segment and for the whole mirror as well as
-//! the pressure standart deviation per segment
-//!  - *integral_pressure*: computes center of pressure and associated force and moment
-//!  - *batch_force*: makes all the wind forces plots
-//!  - *pressure-stats_plots*: make the pressure plots:
-//!   - segment average pressure
-//!   - segment std. pressure
 
 use nalgebra as na;
 

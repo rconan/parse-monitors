@@ -1,4 +1,4 @@
-use crate::{cfd, report::Report, Mirror, MonitorsLoader};
+use crate::{cfd, cfd::BaselineTrait, report::Report, Mirror, MonitorsLoader};
 use glob::glob;
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};

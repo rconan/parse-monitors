@@ -1,5 +1,5 @@
 use crate::{
-    cfd::{self, Baseline, CfdCase},
+    cfd::{self, Baseline, BaselineTrait, CfdCase},
     report::Report,
     Band, DomeSeeing,
 };

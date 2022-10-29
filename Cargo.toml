@@ -46,9 +46,7 @@ rstar = { version = "0.9.2", optional = true }
 complot = { version = "0.3.3", optional = true }
 matio-rs = { version = "0.1.4", optional = true }
 linya = "0.3.0"
-lom = { version = "1.0.1", path = "../gmt-lom", package = "gmt-lom", features = [
-    "apache",
-] }
+lom = { version = "1.0.1", package = "gmt-lom", features = ["apache"] }
 
 [features]
 plot = ["plotters", "complot"]
