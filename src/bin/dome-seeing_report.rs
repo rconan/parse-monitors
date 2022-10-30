@@ -1,7 +1,7 @@
 use std::f64::consts;
 
 use colorous;
-use parse_monitors::{cfd, Band, DomeSeeing};
+use parse_monitors::{cfd, cfd::BaselineTrait, Band, DomeSeeing};
 use plotters::prelude::*;
 use rayon::prelude::*;
 
