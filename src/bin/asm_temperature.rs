@@ -1,6 +1,8 @@
 //use asm::{pressure, refraction_index};
 use geotrans::{Segment, SegmentTrait, Transform, M2};
-use parse_monitors::{cfd, temperature::Temperature, TEMPERATURE_SAMPLING_FREQUENCY};
+use parse_monitors::{
+    cfd, cfd::BaselineTrait, temperature::Temperature, TEMPERATURE_SAMPLING_FREQUENCY,
+};
 use rayon::prelude::*;
 use std::{env, iter::once, path::Path, time::Instant};
 

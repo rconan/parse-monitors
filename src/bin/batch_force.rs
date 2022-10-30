@@ -4,7 +4,7 @@
 
 use std::{fs::create_dir, path::Path};
 
-use parse_monitors::{cfd::Baseline, Mirror, Monitors};
+use parse_monitors::{cfd::Baseline, cfd::BaselineTrait, Mirror, Monitors};
 use rayon::prelude::*;
 use structopt::StructOpt;
 
@@ -107,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|arg| {
                 let path = Path::new(arg).join("report");
                 if !path.is_dir() {
-                    create_dir(&path).expect(&format!("Failed to create dir: {:?}",path))
+                    create_dir(&path).expect(&format!("Failed to create dir: {:?}", path))
                 }
                 let mut filename = path.join(name).with_extension("png");
                 if name == "m1-segments" {

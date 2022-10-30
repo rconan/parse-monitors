@@ -1,4 +1,4 @@
-use parse_monitors::{cfd, Monitors, Vector};
+use parse_monitors::{cfd, cfd::BaselineTrait, Monitors, Vector};
 use rayon::prelude::*;
 use std::{
     fs::{create_dir, File},

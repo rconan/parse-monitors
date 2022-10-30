@@ -4,7 +4,7 @@
 
 use glob::glob;
 use npyz::npz::NpzArchive;
-use parse_monitors::cfd;
+use parse_monitors::{cfd, cfd::BaselineTrait};
 use rayon::prelude::*;
 use std::{error::Error, time::Instant};
 

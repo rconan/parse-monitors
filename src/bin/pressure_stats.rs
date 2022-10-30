@@ -5,7 +5,7 @@
 
 use glob::glob;
 //use indicatif::ParallelProgressIterator;
-use parse_monitors::{cfd, pressure::Pressure};
+use parse_monitors::{cfd, cfd::BaselineTrait, pressure::Pressure};
 use rayon::prelude::*;
 use std::{error::Error, path::Path, time::Instant};
 

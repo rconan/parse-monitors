@@ -2,7 +2,7 @@
 //!
 //! Plot the pressure maps on M1 and M2 segments
 
-use parse_monitors::{cfd, pressure::Pressure};
+use parse_monitors::{cfd, cfd::BaselineTrait, pressure::Pressure};
 use rayon::prelude::*;
 use std::{path::Path, time::Instant};
 

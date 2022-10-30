@@ -1,4 +1,4 @@
-use parse_monitors::cfd::Baseline;
+use parse_monitors::cfd::{Baseline, BaselineTrait};
 use std::{fs::File, io::Write};
 
 const CFD_YEAR: u32 = 2021;

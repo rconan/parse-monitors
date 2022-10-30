@@ -1,6 +1,6 @@
 //use asm::{pressure, refraction_index};
 //use indicatif::ParallelProgressIterator;
-use parse_monitors::{cfd, pressure::Pressure, FORCE_SAMPLING_FREQUENCY};
+use parse_monitors::{cfd, cfd::BaselineTrait, pressure::Pressure, FORCE_SAMPLING_FREQUENCY};
 use rayon::prelude::*;
 use std::{env, iter::once, path::Path, time::Instant};
 
