@@ -1,7 +1,7 @@
-use super::PressureError;
+
+use super::{Record, Result};
 use flate2::read::GzDecoder;
 use itertools::{Itertools, MinMaxResult::MinMax};
-use serde::Deserialize;
 use std::{cmp::Ordering, fmt::Display, fs::File, io::Read, path::Path};
 
 fn partition(data: &[f64]) -> Option<(Vec<f64>, f64, Vec<f64>)> {
@@ -61,27 +61,8 @@ fn median(data: &[f64]) -> Option<f64> {
     }
 }
 
-type Result<T> = std::result::Result<T, PressureError>;
-
-#[derive(Deserialize, Debug)]
-struct Record {
-    #[serde(rename = "Pressure (Pa)")]
-    pressure: f64,
-    #[serde(rename = "Area in TCS[i] (m^2)")]
-    area_i: f64,
-    #[serde(rename = "Area in TCS[j] (m^2)")]
-    area_j: f64,
-    #[serde(rename = "Area in TCS[k] (m^2)")]
-    area_k: f64,
-    #[serde(rename = "X (m)")]
-    x: f64,
-    #[serde(rename = "Y (m)")]
-    y: f64,
-    #[serde(rename = "Z (m)")]
-    z: f64,
-}
-
-#[derive(Default)]
+/// Telescope mount surface pressure
+#[derive(Default, Debug)]
 pub struct Telescope {
     // The pressure file
     pub filename: String,
@@ -94,9 +75,9 @@ pub struct Telescope {
 }
 #[cfg(feature = "rstar")]
 pub mod rtree {
-    use rstar::{RTreeObject, AABB};
+    use rstar::{PointDistance, RTreeObject, AABB};
     #[allow(dead_code)]
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq, Clone)]
     pub struct Node {
         pub pressure: f64,
         pub area_ijk: [f64; 3],
@@ -109,7 +90,18 @@ pub mod rtree {
             AABB::from_point(self.xyz)
         }
     }
+    impl PointDistance for Node {
+        fn distance_2(&self, point: &[f64; 3]) -> f64 {
+            self.xyz
+                .iter()
+                .zip(point)
+                .map(|(x, x0)| x - x0)
+                .map(|x| x * x)
+                .sum()
+        }
+    }
     impl super::Telescope {
+        /// Returns the [r-tree](https://docs.rs/rstar/latest/rstar/) of the all the pressure [Node]s
         pub fn to_rtree(self) -> rstar::RTree<Node> {
             let mut tree = rstar::RTree::new();
             for i in 0..self.len() {
@@ -124,6 +116,7 @@ pub mod rtree {
     }
 }
 impl Telescope {
+    /// Loads the pressure data
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let data_path = Path::new(path.as_ref());
         let mut contents = String::new();
@@ -151,60 +144,74 @@ impl Telescope {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+    /// Ierator over pressure
     pub fn pressure_iter(&self) -> impl Iterator<Item = &f64> {
         self.pressure.iter()
     }
+    /// Returns the mean pressure
     pub fn mean_pressure(&self) -> f64 {
         self.pressure_iter().sum::<f64>() / self.len() as f64
     }
+    /// Returns the median pressure
     pub fn median_pressure(&self) -> Option<f64> {
         median(&self.pressure)
     }
+    /// Returns the pressure minimum and maximum
     pub fn minmax_pressure(&self) -> Option<(f64, f64)> {
         match self.pressure_iter().minmax() {
             MinMax(x, y) => Some((*x, *y)),
             _ => None,
         }
     }
+    /// Iterator over pressure area projected onto normal to the surface a mode location
     pub fn area_ijk_iter(&self) -> impl Iterator<Item = &[f64; 3]> {
         self.area_ijk.iter()
     }
+    /// Iterator over pressure node coordinates
     pub fn xyz_iter(&self) -> impl Iterator<Item = &[f64; 3]> {
         self.xyz.iter()
     }
+    /// Iterator over pressure node x coordinates
     pub fn x_iter(&self) -> impl Iterator<Item = f64> + '_ {
         self.xyz.iter().map(|xyz| xyz[0])
     }
+    /// Iterator over pressure node y coordinates
     pub fn y_iter(&self) -> impl Iterator<Item = f64> + '_ {
         self.xyz.iter().map(|xyz| xyz[1])
     }
+    /// Iterator over pressure node z coordinates
     pub fn z_iter(&self) -> impl Iterator<Item = f64> + '_ {
         self.xyz.iter().map(|xyz| xyz[2])
     }
+    /// Returns the range of the x coordinates
     pub fn minmax_x(&self) -> Option<(f64, f64)> {
         match self.x_iter().minmax() {
             MinMax(x, y) => Some((x, y)),
             _ => None,
         }
     }
+    /// Returns the range of the y coordinates
     pub fn minmax_y(&self) -> Option<(f64, f64)> {
         match self.y_iter().minmax() {
             MinMax(x, y) => Some((x, y)),
             _ => None,
         }
     }
+    /// Returns the range of the z coordinates
     pub fn minmax_z(&self) -> Option<(f64, f64)> {
         match self.z_iter().minmax() {
             MinMax(x, y) => Some((x, y)),
             _ => None,
         }
     }
+    /// Returns the pressure areas
     pub fn area_mag(&self) -> Vec<f64> {
         self.area_ijk
             .iter()
             .map(|ijk| ijk.iter().map(|x| x * x).sum::<f64>().sqrt())
             .collect()
     }
+    /// Returns the total area
     pub fn total_area(&self) -> f64 {
         self.area_mag().into_iter().sum::<f64>()
     }
@@ -229,5 +236,40 @@ impl Display for Telescope {
         self.minmax_z()
             .ok_or(std::fmt::Error)
             .map(|x| write!(f, "  - z minmax: {:.3?}m", x))?
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Telescope;
+
+    #[test]
+    fn loading() {
+        let telescope =
+            Telescope::from_path("data/Telescope_p_telescope_7.000000e+02.csv.z").unwrap();
+        println!("{telescope}");
+    }
+
+    #[cfg(feature = "rstar")]
+    #[test]
+    fn rtree() {
+        use super::rtree::Node;
+        let telescope =
+            Telescope::from_path("data/Telescope_p_telescope_7.000000e+02.csv.z").unwrap();
+        println!("{telescope}");
+        let rtree = telescope.to_rtree();
+        let node = rtree.locate_at_point(&[-6.71743755562523, 1.18707466192993, -4.88465284781676]);
+        assert_eq!(
+            node.unwrap().clone(),
+            Node {
+                pressure: -7.29796930557952,
+                area_ijk: [
+                    1.81847333261638e-06,
+                    1.84800982152254e-06,
+                    0.0126174546658134,
+                ],
+                xyz: [-6.71743755562523, 1.18707466192993, -4.88465284781676],
+            }
+        );
     }
 }

@@ -1,38 +1,17 @@
-//! M1 and M2 segments surface pressure
+//! # M1 and M2 segments surface pressure
 //!
 //! Analyze segments surface wind pressure from pressure files either *M1p_M1p_\*.csv.bz2* or
 //! *M2p_M2p_\*.csv.bz2* for M1 or M2, respectively.
 
-use super::PressureError;
+use super::{Record, Result};
 use geotrans::{Segment, SegmentTrait, Transform, TransformMut, M1, M2};
 use serde::Deserialize;
 use std::{fs::File, io::Read, marker::PhantomData, path::PathBuf};
-
-type Result<T> = std::result::Result<T, PressureError>;
 
 fn norm(v: &[f64]) -> f64 {
     v.iter().map(|&x| x * x).sum::<f64>().sqrt()
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
-struct Record {
-    #[serde(rename = "Area in TCS[i] (m^2)")]
-    area_i: f64,
-    #[serde(rename = "Area in TCS[j] (m^2)")]
-    area_j: f64,
-    #[serde(rename = "Area in TCS[k] (m^2)")]
-    area_k: f64,
-    //#[serde(rename = "Area: Magnitude (m^2)")]
-    //area: f64,
-    #[serde(rename = "Pressure (Pa)")]
-    pressure: f64,
-    #[serde(rename = "X (m)")]
-    x: f64,
-    #[serde(rename = "Y (m)")]
-    y: f64,
-    #[serde(rename = "Z (m)")]
-    z: f64,
-}
 /*impl PartialOrd for Record {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.area.partial_cmp(&other.area)
@@ -63,7 +42,11 @@ impl PartialOrd for GeometryRecord {
         norm(&self.area_ijk()).partial_cmp(&norm(&other.area_ijk()))
     }
 }
-/// M1 segments surface pressure
+/// Mirror segments surface pressure
+///
+/// Analyze segments surface wind pressure from pressure files either
+/// *M1p_M1p_\*.csv.bz2* or
+/// *M2p_M2p_\*.csv.bz2* for M1 or M2, respectively.
 #[derive(Default)]
 pub struct Pressure<M>
 where
