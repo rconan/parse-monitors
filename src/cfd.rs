@@ -255,13 +255,10 @@ impl CfdDataFile<2021> {
             TelescopePressure => "Telescope_p_telescope_",
         })
     }
-    pub fn glob(
-        self,
-        cfd_case: CfdCase<2021>,
-    ) -> std::result::Result<impl Iterator<Item = glob::GlobResult>, CfdError> {
+    pub fn glob(self, cfd_case: CfdCase<2021>) -> Result<Vec<PathBuf>> {
         use CfdDataFile::*;
         let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
-        Ok(match self {
+        let paths = match self {
             M1Pressure => glob::glob(
                 cfd_path
                     .join("pressures")
@@ -297,7 +294,8 @@ impl CfdDataFile<2021> {
                     .to_str()
                     .unwrap(),
             ),
-        }?)
+        }?;
+        Ok(paths.collect::<std::result::Result<Vec<PathBuf>, glob::GlobError>>()?)
     }
 }
 impl CfdDataFile<2020> {
