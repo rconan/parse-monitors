@@ -268,36 +268,36 @@ impl CfdDataFile<2021> {
                     .join("M1p_M1p_*.csv.z")
                     .to_str()
                     .unwrap(),
-            )?,
+            ),
             M2Pressure => glob::glob(
                 cfd_path
                     .join("pressures")
                     .join("M2p_M2p_*.csv.z")
                     .to_str()
                     .unwrap(),
-            )?,
+            ),
             TemperatureField => glob::glob(
                 cfd_path
                     .join("optvol")
                     .join("optvol_optvol_*.csv.gz")
                     .to_str()
                     .unwrap(),
-            )?,
+            ),
             OpticalPathDifference => glob::glob(
                 cfd_path
                     .join("optvol")
                     .join("optvol_optvol_*.npz")
                     .to_str()
                     .unwrap(),
-            )?,
+            ),
             TelescopePressure => glob::glob(
                 cfd_path
                     .join("pressures")
                     .join("Telescope_p_telescope_*.csv.z")
                     .to_str()
                     .unwrap(),
-            )?,
-        })
+            ),
+        }?)
     }
 }
 impl CfdDataFile<2020> {
@@ -367,7 +367,7 @@ impl<const YEAR: u32> CfdCase<YEAR> {
         let z: f64 = self.zenith.clone().into();
         let a: f64 = self.azimuth.clone().into();
         format!(
-            "{} zenith - {} azimuth - {} - {}m/s",
+            "{} deg zenith - {} deg azimuth - {} - {}m/s",
             z,
             a,
             self.enclosure.to_pretty_string(),
