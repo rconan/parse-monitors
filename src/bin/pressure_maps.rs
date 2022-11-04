@@ -15,7 +15,8 @@ impl Config for geotrans::M1 {
             "M1p.csv.z".to_string(),
             cfd::CfdDataFile::<2021>::M1Pressure
                 .glob(cfd_case)?
-                .map(|p| p.unwrap().to_str().unwrap().to_string())
+                .into_iter()
+                .map(|p| p.to_str().unwrap().to_string())
                 .collect(),
         ))
     }
@@ -26,7 +27,8 @@ impl Config for geotrans::M2 {
             "M2p.csv.z".to_string(),
             cfd::CfdDataFile::<2021>::M2Pressure
                 .glob(cfd_case)?
-                .map(|p| p.unwrap().to_str().unwrap().to_string())
+                .into_iter()
+                .map(|p| p.to_str().unwrap().to_string())
                 .collect(),
         ))
     }

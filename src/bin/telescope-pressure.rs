@@ -7,10 +7,8 @@ use std::time::Instant;
 fn main() -> anyhow::Result<()> {
     let case = cfd::CfdCase::colloquial(30, 0, "os", 7)?;
     println!("{}", case);
-    let data_file = cfd::CfdDataFile::<2021>::TelescopePressure
-        .glob(case)?
-        .last()
-        .unwrap()?;
+    let paths = cfd::CfdDataFile::<2021>::TelescopePressure.glob(case)?;
+    let data_file = paths.last().unwrap();
     println!("{:?}", data_file);
     let now = Instant::now();
     let telp = pressure::Telescope::from_path(data_file)?;
