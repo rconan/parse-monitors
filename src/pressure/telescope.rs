@@ -76,7 +76,7 @@ pub struct Telescope {
 pub mod rtree {
     use rstar::{PointDistance, RTreeObject, AABB};
     #[allow(dead_code)]
-    #[derive(Debug, PartialEq, Clone, serde::Serialize)]
+    #[derive(Default, Debug, PartialEq, Clone, serde::Serialize)]
     pub struct Node {
         pub pressure: f64,
         pub area_ijk: [f64; 3],
