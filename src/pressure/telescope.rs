@@ -82,6 +82,17 @@ pub mod rtree {
         pub area_ijk: [f64; 3],
         pub xyz: [f64; 3],
     }
+    impl From<Vec<Node>> for super::Telescope {
+        fn from(nodes: Vec<Node>) -> Self {
+            let mut telescope: super::Telescope = Default::default();
+            nodes.into_iter().for_each(|node| {
+                telescope.pressure.push(node.pressure);
+                telescope.area_ijk.push(node.area_ijk);
+                telescope.xyz.push(node.xyz);
+            });
+            telescope
+        }
+    }
     impl RTreeObject for Node {
         type Envelope = AABB<[f64; 3]>;
 
