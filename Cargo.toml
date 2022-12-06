@@ -12,39 +12,51 @@ categories = ["science", "simulation"]
 keywords = ["telescope", "astronomy"]
 default-run = "main"
 
+[workspace]
+members = ["gmacs"]
+
+[workspace.dependencies]
+rayon = "1.5.1"
+serde-pickle = "1.1.0"
+polars = { version = "0.18.0", features = ["decompress"] }
+rstar = { version = "0.9.2" }
+indicatif = { version = "0.16.2", features = ["rayon"] }
+serde = { version = "1.0.126", features = ["derive"] }
+anyhow = "1.0.51"
+
 [dependencies]
 bzip2 = { version = "0.4.3", optional = true }
 colorous = "1.0.6"
 csv = "1.1.6"
-indicatif = { version = "0.16.2", features = ["rayon"] }
 nalgebra = { version = "0.31", features = ["rand"] }
 plotters = { version = "0.3.1", optional = true }
 regex = "1.5.4"
-serde = { version = "1.0.126", features = ["derive"] }
 structopt = "0.3.21"
 glob = "0.3.0"
 log = "0.4.14"
 env_logger = "0.9.0"
-rayon = "1.5.1"
 tectonic = { version = "0.8.0", optional = true }
 chrono = "0.4.19"
 strum = "0.22.0"
 strum_macros = "0.22.0"
-serde-pickle = "1.1.0"
 triangle-rs = { version = "0.*" }
-polars = { version = "0.18.0", features = ["decompress"], optional = true }
+polars = { workspace = true, optional = true }
 thiserror = ">=1.0.30"
 geotrans = { version = "^0.2.0" }
-anyhow = "1.0.51"
 npyz = { version = "0.6.1", features = ["npz"] }
 flate2 = "1.0.22"
 itertools = "0.10.3"
 welch-sde = "0.1.0"
-rstar = { version = "0.9.2", optional = true }
+rstar = { workspace = true, optional = true }
 complot = { version = "0.3.3", optional = true }
 matio-rs = { version = "0.1.4", optional = true }
 linya = "0.3.0"
 lom = { version = "1.0.1", package = "gmt-lom", features = ["apache"] }
+serde.workspace = true
+rayon.workspace = true
+serde-pickle.workspace = true
+indicatif.workspace = true
+anyhow.workspace = true
 
 [features]
 plot = ["plotters", "complot"]
