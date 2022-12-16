@@ -1,4 +1,4 @@
-use indicatif::ParallelProgressIterator;
+use indicatif::{ProgressIterator, ProgressStyle};
 use parse_monitors::{
     cfd::{self, BaselineTrait},
     pressure::{rtree::Node, Telescope},
@@ -40,6 +40,9 @@ impl GMACSWindLoads {
             .zip(panel.area_ijk_iter())
             .map(|(p, a)| [p * a[0], p * a[1], p * a[2]])
             .collect();
+        if forces.len() == 0 {
+            panic!("Empty forces")
+        }
         let mut forces_mag: Vec<f64> = forces
             .iter()
             .map(|f| f.iter().map(|&x| x * x).sum::<f64>().sqrt())
@@ -85,7 +88,7 @@ impl GMACSWindLoads {
 fn main() -> anyhow::Result<()> {
     let cfd_case = cfd::Baseline::<2021>::default()
         .into_iter()
-        .nth(37)
+        .nth(57)
         .unwrap();
     let data_file = cfd::CfdDataFile::<2021>::TelescopePressure;
     let telescope_pressure_files = data_file.glob(cfd_case)?;
@@ -95,13 +98,16 @@ fn main() -> anyhow::Result<()> {
         telescope_pressure_files.len()
     );
 
+    let style = ProgressStyle::with_template("[{eta}] {bar:40.cyan/blue} {pos:>3}/{len:3}")?;
+
     let data = telescope_pressure_files
-        .chunks(100)
+        .chunks(64)
+        // .progress_with_style(style)
         .flat_map(|files| {
             files
-                .into_par_iter()
-                .progress()
+                .into_iter()
                 .map(|file| {
+                    println!("{}", file.to_string_lossy());
                     let telescope = Telescope::from_path(file).unwrap();
                     // println!("{telescope}");
                     let telescope_mean_pressure = telescope.mean_pressure();
@@ -110,27 +116,31 @@ fn main() -> anyhow::Result<()> {
                     // let mut gir_panels = vec![]; // index: 0=>a , 1=>b, 2=>c
                     let data_path = std::path::Path::new("data");
 
-                    let df = CsvReader::from_path(data_path.join("GIRVol_aera.csv"))
-                        .unwrap()
-                        .has_header(true)
-                        .finish()
-                        .unwrap();
+                    let df = CsvReader::from_path(
+                        data_path.join(format!("{}_{}", cfd_case, "gir_vol.csv")),
+                    )
+                    .unwrap()
+                    .has_header(true)
+                    .finish()
+                    .unwrap();
                     let (n_sample, _) = df.shape();
-                    let gir: Telescope = df[3]
+                    let gir: Telescope = df
+                        .column("X (m)")
+                        .unwrap()
                         .f64()
                         .unwrap()
                         .into_iter()
-                        .zip(df[4].f64().unwrap())
-                        .zip(df[5].f64().unwrap())
+                        .zip(df.column("Y (m)").unwrap().f64().unwrap())
+                        .zip(df.column("Z (m)").unwrap().f64().unwrap())
                         .filter_map(|xyz| {
                             let node = if let ((Some(x), Some(y)), Some(z)) = xyz {
                                 rtree.locate_at_point(&[x, y, z]).map(|node| node.clone())
                             } else {
                                 None
                             };
-                            // if node.is_none() {
-                            // panic!("node not found")
-                            // }
+                            if node.is_none() {
+                                panic!("node not found")
+                            }
                             node
                         })
                         .collect::<Vec<Node>>()
@@ -149,11 +159,9 @@ fn main() -> anyhow::Result<()> {
                     let mut gmacs = GMACSWindLoads::new(gir_integrated_force);
 
                     for gir_csv in ["gir_a.csv", "gir_b.csv", "gir_c.csv"] {
-                        let df = CsvReader::from_path(data_path.join(format!(
-                            "{}_{}",
-                            cfd_case.to_string(),
-                            gir_csv
-                        )))
+                        let df = CsvReader::from_path(
+                            data_path.join(format!("{}_{}", cfd_case, gir_csv)),
+                        )
                         .unwrap()
                         .has_header(true)
                         .finish()
@@ -162,12 +170,14 @@ fn main() -> anyhow::Result<()> {
                         // println!("{}", df.head(Some(10)));
 
                         // let now = Instant::now();
-                        let gir_panel: Telescope = df[3]
+                        let gir_panel: Telescope = df
+                            .column("X (m)")
+                            .unwrap()
                             .f64()
                             .unwrap()
                             .into_iter()
-                            .zip(df[4].f64().unwrap())
-                            .zip(df[5].f64().unwrap())
+                            .zip(df.column("Y (m)").unwrap().f64().unwrap())
+                            .zip(df.column("Z (m)").unwrap().f64().unwrap())
                             .filter_map(|xyz| {
                                 if let ((Some(x), Some(y)), Some(z)) = xyz {
                                     rtree.locate_at_point(&[x, y, z]).map(|node| node.clone())
