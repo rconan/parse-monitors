@@ -13,7 +13,8 @@ keywords = ["telescope", "astronomy"]
 default-run = "main"
 
 [workspace]
-members = ["gmacs"]
+members = ["gmacs","htc-analysis"]
+
 
 [workspace.dependencies]
 rayon = "1.5.1"
