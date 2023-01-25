@@ -252,7 +252,7 @@ impl CfdDataFile<2021> {
             M2Pressure => "M2p_M2p_",
             TemperatureField => "optvol_optvol_",
             OpticalPathDifference => "optvol_optvol_",
-            TelescopePressure => "Telescope_p_telescope_",
+            TelescopePressure => "Telescope_p_table_",
         })
     }
     pub fn glob(self, cfd_case: CfdCase<2021>) -> Result<Vec<PathBuf>> {
@@ -290,7 +290,7 @@ impl CfdDataFile<2021> {
             TelescopePressure => glob::glob(
                 cfd_path
                     .join("pressures")
-                    .join("Telescope_p_telescope_*.csv.z")
+                    .join("Telescope_p_table_*.csv.z")
                     .to_str()
                     .unwrap(),
             ),
