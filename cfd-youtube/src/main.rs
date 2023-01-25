@@ -47,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
         .await;
     let client = s3::Client::new(&config);
 
-    for i in 6..60 {
+    for i in 56..60 {
         let cfd_case = cfd::Baseline::<2021>::default()
             .into_iter()
             .skip(i) // failed
