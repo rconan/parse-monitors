@@ -1,0 +1,11 @@
+[package]
+name = "gmt_cfd2youtube"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+oauth2 = "4.2.3"
+tokio = { version = "1.21.2", features = ["rt-multi-thread"] }
+youtube3 = { version = "4.0.1", package = "google-youtube3" }
