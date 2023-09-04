@@ -1,4 +1,4 @@
-use crate::{cfd, report::Report, Mirror, MonitorsLoader};
+use crate::{cfd, cfd::BaselineTrait, report::Report, Mirror, MonitorsLoader};
 use glob::glob;
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
@@ -11,6 +11,7 @@ pub struct WindLoads {
     detrend: bool,
     last_time_range: Option<usize>,
     show_pressure: bool,
+    cfd_case: Option<cfd::CfdCase<2021>>,
 }
 impl WindLoads {
     pub fn new(part: u8, stats_time_range: f64) -> Self {
@@ -41,6 +42,12 @@ impl WindLoads {
     pub fn show_m12_pressure(self) -> Self {
         Self {
             show_pressure: true,
+            ..self
+        }
+    }
+    pub fn cfd_case(self, cfd_case: cfd::CfdCase<2021>) -> Self {
+        Self {
+            cfd_case: Some(cfd_case),
             ..self
         }
     }
@@ -84,6 +91,7 @@ impl super::Report<2021> for WindLoads {
             Mirror::m1(path_to_case.clone()).load(),
             Mirror::m1(path_to_case.clone()).net_force().load(),
         ) {
+            let path_to_case = path_to_case.join("report");
             let m1_pressure_map = path_to_case.join("m1_pressure_map.png").with_extension("");
             let m1_pressure_mean = path_to_case
                 .join("m1_pressure-stats_mean.png")
@@ -218,6 +226,7 @@ impl super::Report<2021> for WindLoads {
                 m12_pressures
             ))
         } else {
+            let path_to_case = path_to_case.join("report");
             Ok(format!(
                 r#"
 \section{{{}}}
@@ -265,7 +274,12 @@ impl super::Report<2021> for WindLoads {
 {}
 \bottomrule
 \end{{longtable}}
-
+\subsection{{M1 pressure snapshot}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsection{{M2 pressure snapshot}}
+\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
+\subsection{{Rigid body motion \& segment piston, tip and tilt standard deviation}}
+\input{{{:?}}}
 "#,
                 &cfd_case.to_pretty_string(),
                 &cfd_case.to_string(),
@@ -289,6 +303,9 @@ impl super::Report<2021> for WindLoads {
                 monitors
                     .moment_latex_table(self.stats_time_range)
                     .unwrap_or_default(),
+                path_to_case.join("m1_pressure_map"),
+                path_to_case.join("m2_pressure_map"),
+                path_to_case.join("rbm_tables.tex")
             ))
         }
     }
@@ -339,9 +356,13 @@ impl WindLoads {
     /// Mount chapter assembly
     pub fn mount_chapter(&self, chapter_filename: Option<&str>) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
-        let cfd_cases = cfd::Baseline::<2021>::mount()
-            .into_iter()
-            .collect::<Vec<cfd::CfdCase<2021>>>();
+        let cfd_cases = if let Some(cfd_case) = self.cfd_case {
+            vec![cfd_case]
+        } else {
+            cfd::Baseline::<2021>::mount()
+                .into_iter()
+                .collect::<Vec<cfd::CfdCase<2021>>>()
+        };
         let results: Vec<_> = cfd_cases
             .into_par_iter()
             .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())

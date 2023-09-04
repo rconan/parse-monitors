@@ -1,6 +1,8 @@
 //use asm::{pressure, refraction_index};
 use geotrans::{Segment, SegmentTrait, Transform, M2};
-use parse_monitors::{cfd, temperature::Temperature, TEMPERATURE_SAMPLING_FREQUENCY};
+use parse_monitors::{
+    cfd, cfd::BaselineTrait, temperature::Temperature, TEMPERATURE_SAMPLING_FREQUENCY,
+};
 use rayon::prelude::*;
 use std::{env, iter::once, path::Path, time::Instant};
 
@@ -24,7 +26,8 @@ fn main() -> anyhow::Result<()> {
     let files: Vec<_> = cfd::CfdDataFile::<2021>::TemperatureField
         .glob(cfd_case)
         .unwrap()
-        .map(|p| p.unwrap().to_str().unwrap().to_string())
+        .into_iter()
+        .map(|p| p.to_str().unwrap().to_string())
         .collect();
     let n_sample = duration * TEMPERATURE_SAMPLING_FREQUENCY as usize;
     let n_skip = if files.len() < n_sample {

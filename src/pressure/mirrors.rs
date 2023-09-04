@@ -1,55 +1,22 @@
-//! M1 and M2 segments surface pressure
+//! # M1 and M2 segments surface pressure
 //!
 //! Analyze segments surface wind pressure from pressure files either *M1p_M1p_\*.csv.bz2* or
 //! *M2p_M2p_\*.csv.bz2* for M1 or M2, respectively.
 
-use std::{
-    fs::File,
-    io::{BufReader, Read},
-    marker::PhantomData,
-    path::PathBuf,
-};
-
-use bzip2::bufread::BzDecoder;
+use super::{Record, Result};
 use geotrans::{Segment, SegmentTrait, Transform, TransformMut, M1, M2};
 use serde::Deserialize;
-
-#[derive(thiserror::Error, Debug)]
-pub enum PressureError {
-    #[error("Failed to decompress the file")]
-    Decompress(#[from] bzip2::Error),
-    #[error("Failed to open the pressure file")]
-    Io(#[from] std::io::Error),
-    #[error("Failed to deserialize the CSV file")]
-    Csv(#[from] csv::Error),
-    #[error("Failed to apply geometric transformation")]
-    Geotrans(#[from] geotrans::Error),
-}
-
-type Result<T> = std::result::Result<T, PressureError>;
+use std::{fs::File, io::Read, marker::PhantomData, path::PathBuf};
 
 fn norm(v: &[f64]) -> f64 {
     v.iter().map(|&x| x * x).sum::<f64>().sqrt()
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
-struct Record {
-    #[serde(rename = "Area: Magnitude (m^2)")]
-    area: f64,
-    #[serde(rename = "Pressure (Pa)")]
-    pressure: f64,
-    #[serde(rename = "X (m)")]
-    x: f64,
-    #[serde(rename = "Y (m)")]
-    y: f64,
-    #[serde(rename = "Z (m)")]
-    z: f64,
-}
-impl PartialOrd for Record {
+/*impl PartialOrd for Record {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.area.partial_cmp(&other.area)
     }
-}
+}*/
 #[derive(Deserialize, Debug, PartialEq)]
 struct GeometryRecord {
     #[serde(rename = "Area in TCS[i] (m^2)")]
@@ -75,7 +42,11 @@ impl PartialOrd for GeometryRecord {
         norm(&self.area_ijk()).partial_cmp(&norm(&other.area_ijk()))
     }
 }
-/// M1 segments surface pressure
+/// Mirror segments surface pressure
+///
+/// Analyze segments surface wind pressure from pressure files either
+/// *M1p_M1p_\*.csv.bz2* or
+/// *M2p_M2p_\*.csv.bz2* for M1 or M2, respectively.
 #[derive(Default)]
 pub struct Pressure<M>
 where
@@ -130,9 +101,9 @@ where
     Pressure<M>: MirrorProperties,
 {
     /// Loads the pressure data
-    pub fn load(csv_pressure: String, csv_geometry: String) -> Result<Self> {
+    pub fn load(csv_pressure: String) -> Result<Self> {
         let this_pa = Self::load_pressure(csv_pressure)?;
-        let this_aijk = Self::load_geometry(csv_geometry)?;
+        /*let this_aijk = Self::load_geometry(csv_geometry)?;
         let max_diff_area = this_pa
             .area
             .iter()
@@ -143,12 +114,16 @@ where
             max_diff_area < 1e-14,
             "Area magnitude do no match area vector: {}",
             max_diff_area
-        );
+        );*/
         let mut this = Self {
             pressure: this_pa.pressure,
-            area: this_pa.area,
-            area_ijk: this_aijk.area_ijk,
-            xyz: this_aijk.xyz,
+            area: this_pa
+                .area_ijk
+                .iter()
+                .map(|a| a.iter().fold(0f64, |s, &a| s + a * a).sqrt())
+                .collect(),
+            area_ijk: this_pa.area_ijk,
+            xyz: this_pa.xyz,
             segment_filter: Vec::new(),
             segment_filter_size: Vec::new(),
             mirror: PhantomData,
@@ -178,12 +153,21 @@ where
         );
         Ok(this)
     }
+    #[cfg(feature = "bzip2")]
     pub fn decompress(path: PathBuf) -> Result<String> {
         let csv_file = File::open(path)?;
-        let buf = BufReader::new(csv_file);
-        let mut bz2 = BzDecoder::new(buf);
+        let buf = std::io::BufReader::new(csv_file);
+        let mut bz2 = bzip2::bufread::BzDecoder::new(buf);
         let mut contents = String::new();
         bz2.read_to_string(&mut contents)?;
+        Ok(contents)
+    }
+    #[cfg(not(feature = "bzip2"))]
+    pub fn decompress(path: PathBuf) -> Result<String> {
+        let csv_file = File::open(path)?;
+        let mut gz = flate2::read::GzDecoder::new(csv_file);
+        let mut contents = String::new();
+        gz.read_to_string(&mut contents)?;
         Ok(contents)
     }
     /// Loads the pressure from a csv bz2-compressed file
@@ -194,10 +178,12 @@ where
         for result in rdr.deserialize() {
             rows.push(result?);
         }
-        rows.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        //rows.sort_by(|a, b| a.partial_cmp(b).unwrap());
         rows.into_iter().for_each(|row| {
-            this.area.push(row.area);
+            //this.area.push(row.area);
             this.pressure.push(row.pressure);
+            this.area_ijk.push([row.area_i, row.area_j, row.area_k]);
+            this.xyz.push([row.x, row.y, row.z]);
         });
         Ok(this)
     }
@@ -215,6 +201,13 @@ where
             this.xyz.push([row.x, row.y, row.z]);
         });
         Ok(this)
+    }
+    pub fn len(&self) -> usize {
+        self.pressure.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
     /// Iterator over the x coordinate
     fn xyz_iter(&self, axis: usize) -> impl Iterator<Item = f64> + '_ {
@@ -323,6 +316,18 @@ where
             .zip(self.xyz.iter())
             .map(|((a, b), c)| (a, b, c))
     }
+    /// Iterator over the pressures, area vectors and coordinates for the given segment
+    pub fn segment_p_aijk_xyz(
+        &self,
+        sid: usize,
+    ) -> impl Iterator<Item = (&f64, &[f64; 3], &[f64; 3])> {
+        self.pressure
+            .iter()
+            .zip(self.area_ijk.iter())
+            .zip(self.xyz.iter())
+            .zip(self.segment_filter.get(sid - 1).unwrap().iter())
+            .filter_map(|(((a, b), c), f)| f.then(|| (a, b, c)))
+    }
     /// Return the area of a given segment
     pub fn segment_area(&self, sid: usize) -> f64 {
         self.area
@@ -352,13 +357,25 @@ where
             .collect())
     }
     /// Returns the average pressure over a given segment
-    pub fn average_pressure(&mut self, sid: usize) -> f64 {
+    pub fn average_pressure(&self, sid: usize) -> f64 {
         let (pa, aa) = self
             .pa_iter()
             .zip(self.segment_filter.get(sid - 1).unwrap().iter())
             .filter(|(_, &f)| f)
             .fold((0f64, 0f64), |(pa, aa), ((p, a), _)| (pa + p * a, aa + a));
         pa / aa
+    }
+    /// Returns the average ASM different pressure over a given segment
+    pub fn asm_differential_pressure(&self, sid: usize) -> (f64, Vec<f64>) {
+        let p_mean = self.average_pressure(sid);
+        (
+            p_mean,
+            self.pressure
+                .iter()
+                .zip(self.segment_filter.get(sid - 1).unwrap().iter())
+                .filter_map(|(&p, &f)| f.then(|| (p - 1.1 * p_mean) / 3.))
+                .collect::<Vec<f64>>(),
+        )
     }
     /// Returns the pressure variance over a given segment
     pub fn pressure_var(&mut self, sid: usize) -> f64 {
@@ -567,7 +584,9 @@ where
             }));
             triangles.extend(del.triangle_vertex_iter());
         }
-        let path = cfd_case_path.join(format!("{}_pressure_map.png", self.mirror().to_lowercase()));
+        let path = cfd_case_path
+            .join("report")
+            .join(format!("{}_pressure_map.png", self.mirror().to_lowercase()));
         let filename = format!("{}", path.as_path().display());
         let _: complot::tri::Heatmap = (
             triangles.into_iter().zip(tri_pressure.into_iter()),

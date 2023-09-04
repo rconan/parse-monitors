@@ -1,4 +1,14 @@
-//! CFD database model based on Rust types
+/*!
+# CFD database model based on Rust types
+
+## Examples
+
+Iterator that iterates over all the [CfdCase]s of CFD [Baseline] 2021
+```
+use parse_monitors::cfd;
+let cfd_cases_iter = cfd::Baseline::<2021>::default().into_iter();
+```
+*/
 
 use std::{
     env, fmt,
@@ -19,7 +29,9 @@ pub enum CfdError {
     #[error("Failed to read CFD data file")]
     ReadDataFile(#[from] glob::GlobError),
     #[error("Data file not recognized")]
-    DataFile(#[from] glob::PatternError),
+    DataFileGlob(#[from] glob::PatternError),
+    #[error("{0} data not available")]
+    DataFile(String),
 }
 
 type Result<T> = std::result::Result<T, CfdError>;
@@ -141,6 +153,7 @@ impl fmt::Display for Azimuth {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Enclosure {
     OpenStowed,
+    NewMeshOpenStowed,
     ClosedDeployed,
     ClosedStowed,
 }
@@ -150,6 +163,7 @@ impl Enclosure {
         use Enclosure::*;
         match enclosure {
             "os" => Ok(OpenStowed),
+            "nos" => Ok(NewMeshOpenStowed),
             "cd" => Ok(ClosedDeployed),
             "cs" => Ok(ClosedStowed),
             _ => Err(CfdError::Enclosure(enclosure.into())),
@@ -158,6 +172,7 @@ impl Enclosure {
     pub fn to_pretty_string(&self) -> String {
         match self {
             Enclosure::OpenStowed => "Open vents/Stowed wind screen".to_string(),
+            Enclosure::NewMeshOpenStowed => "New mesh/Open vents/Stowed wind screen".to_string(),
             Enclosure::ClosedDeployed => "Closed vents/Deployed wind screen".to_string(),
             Enclosure::ClosedStowed => "Closed vents/Stowed wind screen".to_string(),
         }
@@ -167,6 +182,7 @@ impl fmt::Display for Enclosure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Enclosure::OpenStowed => write!(f, "OS"),
+            Enclosure::NewMeshOpenStowed => write!(f, "NOS"),
             Enclosure::ClosedDeployed => write!(f, "CD"),
             Enclosure::ClosedStowed => write!(f, "CS"),
         }
@@ -207,12 +223,26 @@ impl fmt::Display for WindSpeed {
         }
     }
 }
+impl From<WindSpeed> for f64 {
+    fn from(wind_speed: WindSpeed) -> Self {
+        use WindSpeed::*;
+        (match wind_speed {
+            Two => 2,
+            Seven => 7,
+            Twelve => 12,
+            Seventeen => 17,
+            TwentyTwo => 22,
+        } as f64)
+    }
+}
 /// Data file collections available in the CFD database
+#[derive(Debug)]
 pub enum CfdDataFile<const YEAR: u32> {
     M1Pressure,
     M2Pressure,
     TemperatureField,
     OpticalPathDifference,
+    TelescopePressure,
 }
 impl CfdDataFile<2021> {
     pub fn pattern(self) -> String {
@@ -222,45 +252,50 @@ impl CfdDataFile<2021> {
             M2Pressure => "M2p_M2p_",
             TemperatureField => "optvol_optvol_",
             OpticalPathDifference => "optvol_optvol_",
+            TelescopePressure => "Telescope_p_table_",
         })
     }
-    pub fn glob(
-        self,
-        cfd_case: CfdCase<2021>,
-    ) -> std::result::Result<impl Iterator<Item = glob::GlobResult>, CfdError> {
+    pub fn glob(self, cfd_case: CfdCase<2021>) -> Result<Vec<PathBuf>> {
         use CfdDataFile::*;
-        let cfd_path = Baseline::<2021>::path().join(cfd_case.to_string());
-        dbg!(&cfd_path);
-        Ok(match self {
+        let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
+        let paths = match self {
             M1Pressure => glob::glob(
                 cfd_path
                     .join("pressures")
                     .join("M1p_M1p_*.csv.z")
                     .to_str()
                     .unwrap(),
-            )?,
+            ),
             M2Pressure => glob::glob(
                 cfd_path
                     .join("pressures")
-                    .join("M2p_M2p_*.csv.bz2")
+                    .join("M2p_M2p_*.csv.z")
                     .to_str()
                     .unwrap(),
-            )?,
+            ),
             TemperatureField => glob::glob(
                 cfd_path
                     .join("optvol")
                     .join("optvol_optvol_*.csv.gz")
                     .to_str()
                     .unwrap(),
-            )?,
+            ),
             OpticalPathDifference => glob::glob(
                 cfd_path
                     .join("optvol")
                     .join("optvol_optvol_*.npz")
                     .to_str()
                     .unwrap(),
-            )?,
-        })
+            ),
+            TelescopePressure => glob::glob(
+                cfd_path
+                    .join("pressures")
+                    .join("Telescope_p_table_*.csv.z")
+                    .to_str()
+                    .unwrap(),
+            ),
+        }?;
+        Ok(paths.collect::<std::result::Result<Vec<PathBuf>, glob::GlobError>>()?)
     }
 }
 impl CfdDataFile<2020> {
@@ -270,16 +305,21 @@ impl CfdDataFile<2020> {
     ) -> std::result::Result<impl Iterator<Item = glob::GlobResult>, CfdError> {
         use CfdDataFile::*;
         let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
-        Ok(match self {
-            M1Pressure => glob::glob(cfd_path.join("M1_data_Mod_M1_Data_*.csv").to_str().unwrap())?,
-            M2Pressure => glob::glob(cfd_path.join("M2_data_Mod_M2_Data_*.csv").to_str().unwrap())?,
-            TemperatureField => {
-                glob::glob(cfd_path.join("OPDData_OPD_Data_*.csv.gz").to_str().unwrap())?
-            }
-            OpticalPathDifference => {
-                glob::glob(cfd_path.join("OPDData_OPD_Data_*.npz").to_str().unwrap())?
-            }
-        })
+        match self {
+            M1Pressure => Ok(glob::glob(
+                cfd_path.join("M1_data_Mod_M1_Data_*.csv").to_str().unwrap(),
+            )?),
+            M2Pressure => Ok(glob::glob(
+                cfd_path.join("M2_data_Mod_M2_Data_*.csv").to_str().unwrap(),
+            )?),
+            TemperatureField => Ok(glob::glob(
+                cfd_path.join("OPDData_OPD_Data_*.csv.gz").to_str().unwrap(),
+            )?),
+            OpticalPathDifference => Ok(glob::glob(
+                cfd_path.join("OPDData_OPD_Data_*.npz").to_str().unwrap(),
+            )?),
+            _ => Err(CfdError::DataFile(format!("{:?}", self))),
+        }
     }
 }
 
@@ -320,18 +360,19 @@ impl<const YEAR: u32> CfdCase<YEAR> {
             WindSpeed::new(wind_speed)?,
         ))
     }
-    ///
+    /// Pretty print the CFD case
     pub fn to_pretty_string(&self) -> String {
         let z: f64 = self.zenith.clone().into();
         let a: f64 = self.azimuth.clone().into();
         format!(
-            "{} zenith - {} azimuth - {} - {}m/s",
+            "{} deg zenith - {} deg azimuth - {} - {}m/s",
             z,
             a,
             self.enclosure.to_pretty_string(),
             self.wind_speed,
         )
     }
+    /// Format the CFD case as a Latex tabular row
     pub fn to_latex_string(&self) -> String {
         let z: f64 = self.zenith.clone().into();
         let a: f64 = self.azimuth.clone().into();
@@ -368,7 +409,13 @@ impl fmt::Display for CfdCase<2020> {
     }
 }
 /// The whole CFD baseline  for a given year: 2020 or 2021
+#[derive(Debug)]
 pub struct Baseline<const YEAR: u32>(Vec<CfdCase<YEAR>>);
+impl<const YEAR: u32> From<Vec<CfdCase<YEAR>>> for Baseline<YEAR> {
+    fn from(cfd_cases: Vec<CfdCase<YEAR>>) -> Self {
+        Baseline::<YEAR>(cfd_cases)
+    }
+}
 use strum::IntoEnumIterator;
 impl Default for Baseline<2020> {
     fn default() -> Self {
@@ -424,18 +471,24 @@ impl<const YEAR: u32> IntoIterator for Baseline<YEAR> {
         .into_iter()
     }
 }
-impl Baseline<2020> {
-    pub fn default_path() -> PathBuf {
-        Path::new("/fsx/Baseline2020").to_path_buf()
+pub trait BaselineTrait<const YEAR: u32>:
+    Default + From<Vec<CfdCase<YEAR>>> + IntoIterator<Item = CfdCase<YEAR>>
+{
+    /// Returns the default path to the CFD cases repository
+    fn default_path() -> PathBuf;
+    /// Return the path from the "CFD_REPO" environment variable if it is set,
+    /// otherwise returns the default path
+    fn path() -> PathBuf {
+        env::var("CFD_REPO").map_or_else(|_| Self::default_path(), |p| Path::new(&p).to_path_buf())
     }
-    pub fn path() -> PathBuf {
-        Baseline::<2020>::default_path()
-    }
-    pub fn at_zenith(zenith_angle: ZenithAngle) -> Self {
+    /// Returns pairs of [WindSpeed] and [Enclosure] configuration for the given [ZenithAngle]
+    fn configuration(zenith_angle: ZenithAngle) -> Vec<(WindSpeed, Enclosure)>;
+    /// Returns a CFD baseline reduced to the given [ZenithAngle]
+    fn at_zenith(zenith_angle: ZenithAngle) -> Self {
         let mut cfd_cases = vec![];
         for (wind_speed, enclosure) in Self::configuration(zenith_angle.clone()) {
             for azimuth in Azimuth::iter() {
-                cfd_cases.push(CfdCase::<2020>::new(
+                cfd_cases.push(CfdCase::<YEAR>::new(
                     zenith_angle.clone(),
                     azimuth,
                     enclosure.clone(),
@@ -443,18 +496,10 @@ impl Baseline<2020> {
                 ));
             }
         }
-        Self(cfd_cases)
+        cfd_cases.into()
     }
-    pub fn configuration(_: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
-        vec![
-            (WindSpeed::Two, Enclosure::OpenStowed),
-            (WindSpeed::Seven, Enclosure::OpenStowed),
-            (WindSpeed::Twelve, Enclosure::ClosedDeployed),
-            (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
-        ]
-    }
-    /// Finds the CFD 2020 case that matches a CFD 2021 case
-    pub fn find(cfd_case_21: CfdCase<2021>) -> Option<CfdCase<2020>> {
+    /// Finds the CFD case from `OTHER_YEAR` that matches a CFD baseline case in `YEAR`
+    fn find<const OTHER_YEAR: u32>(cfd_case_21: CfdCase<OTHER_YEAR>) -> Option<CfdCase<YEAR>> {
         Self::default().into_iter().find(|cfd_case_20| {
             match (cfd_case_21.zenith.clone(), cfd_case_21.wind_speed.clone()) {
                 (ZenithAngle::Sixty, WindSpeed::Twelve | WindSpeed::Seventeen) => {
@@ -473,67 +518,54 @@ impl Baseline<2020> {
         })
     }
 }
-impl Baseline<2021> {
-    pub fn default_path() -> PathBuf {
-        Path::new("/fsx/Baseline2021/Baseline2021/Baseline2021/CASES").to_path_buf()
+impl BaselineTrait<2020> for Baseline<2020> {
+    fn default_path() -> PathBuf {
+        Path::new("/fsx/Baseline2020").to_path_buf()
     }
-    pub fn path() -> PathBuf {
+    fn path() -> PathBuf {
+        Baseline::<2020>::default_path()
+    }
+
+    fn configuration(_: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
+        vec![
+            (WindSpeed::Two, Enclosure::OpenStowed),
+            (WindSpeed::Seven, Enclosure::OpenStowed),
+            (WindSpeed::Twelve, Enclosure::ClosedDeployed),
+            (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
+        ]
+    }
+}
+impl BaselineTrait<2021> for Baseline<2021> {
+    fn default_path() -> PathBuf {
+        Path::new("/fsx/CASES").to_path_buf()
+    }
+    fn path() -> PathBuf {
         env::var("CFD_REPO").map_or_else(
             |_| Baseline::<2021>::default_path(),
             |p| Path::new(&p).to_path_buf(),
         )
     }
-    pub fn at_zenith(zenith_angle: ZenithAngle) -> Self {
-        let mut cfd_cases = vec![];
-        for (wind_speed, enclosure) in Self::configuration(zenith_angle.clone()) {
-            for azimuth in Azimuth::iter() {
-                cfd_cases.push(CfdCase::<2021>::new(
-                    zenith_angle.clone(),
-                    azimuth,
-                    enclosure.clone(),
-                    wind_speed.clone(),
-                ));
-            }
-        }
-        Self(cfd_cases)
-    }
-    pub fn configuration(zenith_angle: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
+
+    fn configuration(zenith_angle: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
         match zenith_angle {
             ZenithAngle::Sixty => vec![
                 (WindSpeed::Two, Enclosure::OpenStowed),
                 (WindSpeed::Seven, Enclosure::OpenStowed),
-                (WindSpeed::Seven, Enclosure::ClosedStowed),
+                //(WindSpeed::Seven, Enclosure::ClosedStowed),
                 (WindSpeed::Twelve, Enclosure::ClosedStowed),
                 (WindSpeed::Seventeen, Enclosure::ClosedStowed),
             ],
             _ => vec![
                 (WindSpeed::Two, Enclosure::OpenStowed),
                 (WindSpeed::Seven, Enclosure::OpenStowed),
-                (WindSpeed::Seven, Enclosure::ClosedDeployed),
+                //(WindSpeed::Seven, Enclosure::ClosedDeployed),
                 (WindSpeed::Twelve, Enclosure::ClosedDeployed),
                 (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
             ],
         }
     }
-    /// Finds the CFD 2021 case that matches the given CFD case
-    pub fn find(cfd_case_21: CfdCase<2021>) -> Option<CfdCase<2021>> {
-        Self::default().into_iter().find(|cfd_case_20| {
-            match (cfd_case_21.zenith.clone(), cfd_case_21.wind_speed.clone()) {
-                (ZenithAngle::Sixty, WindSpeed::Twelve | WindSpeed::Seventeen) => {
-                    cfd_case_20.zenith == cfd_case_21.zenith
-                        && cfd_case_20.azimuth == cfd_case_21.azimuth
-                        && cfd_case_20.wind_speed == cfd_case_21.wind_speed
-                        && cfd_case_20.enclosure == Enclosure::ClosedDeployed
-                }
-                _ => {
-                    cfd_case_20.zenith == cfd_case_21.zenith
-                        && cfd_case_20.azimuth == cfd_case_21.azimuth
-                        && cfd_case_20.wind_speed == cfd_case_21.wind_speed
-                        && cfd_case_20.enclosure == cfd_case_21.enclosure
-                }
-            }
-        })
-    }
+}
+impl Baseline<2021> {
     /// Mount cases
     pub fn mount() -> Self {
         Self(
@@ -548,7 +580,7 @@ impl Baseline<2021> {
                                     ZenithAngle::Thirty,
                                     azimuth,
                                     Enclosure::OpenStowed,
-                                    wind_speed.clone(),
+                                    wind_speed,
                                 )
                             })
                             .collect::<Vec<CfdCase<2021>>>(),
@@ -561,7 +593,7 @@ impl Baseline<2021> {
                                     ZenithAngle::Thirty,
                                     azimuth,
                                     Enclosure::OpenStowed,
-                                    wind_speed.clone(),
+                                    wind_speed,
                                 )
                             })
                             .collect::<Vec<CfdCase<2021>>>(),
@@ -574,7 +606,7 @@ impl Baseline<2021> {
                                     ZenithAngle::Thirty,
                                     azimuth,
                                     Enclosure::ClosedDeployed,
-                                    wind_speed.clone(),
+                                    wind_speed,
                                 )
                             })
                             .collect::<Vec<CfdCase<2021>>>(),

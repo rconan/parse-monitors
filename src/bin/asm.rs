@@ -1,6 +1,6 @@
 //use asm::{pressure, refraction_index};
 //use indicatif::ParallelProgressIterator;
-use parse_monitors::{cfd, pressure::Pressure, FORCE_SAMPLING_FREQUENCY};
+use parse_monitors::{cfd, cfd::BaselineTrait, pressure::Pressure, FORCE_SAMPLING_FREQUENCY};
 use rayon::prelude::*;
 use std::{env, iter::once, path::Path, time::Instant};
 
@@ -29,7 +29,8 @@ fn main() -> anyhow::Result<()> {
     let files: Vec<_> = cfd::CfdDataFile::<2021>::M2Pressure
         .glob(cfd_case)
         .unwrap()
-        .map(|p| p.unwrap().to_str().unwrap().to_string())
+        .into_iter()
+        .map(|p| p.to_str().unwrap().to_string())
         .collect();
     let n_sample = duration * FORCE_SAMPLING_FREQUENCY as usize;
     let n_skip = if files.len() < n_sample {
@@ -52,7 +53,7 @@ fn main() -> anyhow::Result<()> {
             let time = &stem[8..].parse::<f64>().unwrap();
             let csv_pressure = Pressure::<M12>::decompress(path.to_path_buf()).unwrap();
             let csv_geometry = Pressure::<M12>::decompress(path.with_file_name(geometry)).unwrap();
-            let pressures = Pressure::<M12>::load(csv_pressure, csv_geometry).unwrap();
+            let pressures = Pressure::<M12>::load(csv_pressure).unwrap();
 
             let mut pressure_mean = Vec::<f64>::new();
             for i in 0..12 {

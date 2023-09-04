@@ -1,4 +1,4 @@
-use parse_monitors::{cfd, Band, DomeSeeing};
+use parse_monitors::{cfd, cfd::BaselineTrait, Band, DomeSeeing};
 use rayon::prelude::*;
 
 // MAIN

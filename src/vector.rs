@@ -24,8 +24,6 @@ impl Vector {
             None
         }
     }
-}
-impl Vector {
     pub fn from_x(value: f64) -> Self {
         Self {
             x: Some(value),
@@ -94,7 +92,22 @@ impl Vector {
         }
     }
 }
-impl Sub for &Vector {
+impl Sub<Vector> for &Vector {
+    type Output = Option<Vector>;
+
+    fn sub(self, rhs: Vector) -> Self::Output {
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), rhs.as_tuple()) {
+            Some(Vector {
+                x: Some(a1 - b1),
+                y: Some(a2 - b2),
+                z: Some(a3 - b3),
+            })
+        } else {
+            None
+        }
+    }
+}
+impl Sub for Vector {
     type Output = Option<Vector>;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -110,22 +123,63 @@ impl Sub for &Vector {
     }
 }
 impl Add for &Vector {
-    type Output = Option<Vector>;
+    type Output = Vector;
 
     fn add(self, rhs: Self) -> Self::Output {
         if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), rhs.as_tuple()) {
-            Some(Vector {
+            Vector {
                 x: Some(a1 + b1),
                 y: Some(a2 + b2),
                 z: Some(a3 + b3),
-            })
+            }
         } else {
-            None
+            self.clone()
+        }
+    }
+}
+impl Add for Vector {
+    type Output = Vector;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), rhs.as_tuple()) {
+            Vector {
+                x: Some(a1 + b1),
+                y: Some(a2 + b2),
+                z: Some(a3 + b3),
+            }
+        } else {
+            self
+        }
+    }
+}
+impl Add<&Vector> for Vector {
+    type Output = Vector;
+
+    fn add(self, rhs: &Vector) -> Self::Output {
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), rhs.as_tuple()) {
+            Vector {
+                x: Some(a1 + b1),
+                y: Some(a2 + b2),
+                z: Some(a3 + b3),
+            }
+        } else {
+            self
         }
     }
 }
 impl AddAssign<&Vector> for &mut Vector {
     fn add_assign(&mut self, other: &Vector) {
+        if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), other.as_tuple()) {
+            **self = Vector {
+                x: Some(a1 + b1),
+                y: Some(a2 + b2),
+                z: Some(a3 + b3),
+            }
+        }
+    }
+}
+impl AddAssign<Vector> for &mut Vector {
+    fn add_assign(&mut self, other: Vector) {
         if let (Some((a1, a2, a3)), Some((b1, b2, b3))) = (self.as_tuple(), other.as_tuple()) {
             **self = Vector {
                 x: Some(a1 + b1),
@@ -198,6 +252,98 @@ impl From<[f64; 3]> for Vector {
             x: Some(v[0]),
             y: Some(v[1]),
             z: Some(v[2]),
+        }
+    }
+}
+impl From<&[f64; 3]> for Vector {
+    fn from(v: &[f64; 3]) -> Self {
+        Vector {
+            x: Some(v[0]),
+            y: Some(v[1]),
+            z: Some(v[2]),
+        }
+    }
+}
+impl From<Vec<f64>> for Vector {
+    fn from(v: Vec<f64>) -> Self {
+        Vector {
+            x: Some(v[0]),
+            y: Some(v[1]),
+            z: Some(v[2]),
+        }
+    }
+}
+impl From<&Vec<f64>> for Vector {
+    fn from(v: &Vec<f64>) -> Self {
+        Vector {
+            x: Some(v[0]),
+            y: Some(v[1]),
+            z: Some(v[2]),
+        }
+    }
+}
+impl From<&[f64]> for Vector {
+    fn from(v: &[f64]) -> Self {
+        Vector {
+            x: Some(v[0]),
+            y: Some(v[1]),
+            z: Some(v[2]),
+        }
+    }
+}
+impl From<Vector> for Option<[f64; 3]> {
+    fn from(v: Vector) -> Self {
+        if let Vector {
+            x: Some(x),
+            y: Some(y),
+            z: Some(z),
+        } = v
+        {
+            Some([x, y, z])
+        } else {
+            None
+        }
+    }
+}
+impl From<&Vector> for Option<[f64; 3]> {
+    fn from(v: &Vector) -> Self {
+        if let Vector {
+            x: Some(x),
+            y: Some(y),
+            z: Some(z),
+        } = v
+        {
+            Some([*x, *y, *z])
+        } else {
+            None
+        }
+    }
+}
+impl From<&Vector> for Option<Vec<f64>> {
+    fn from(v: &Vector) -> Self {
+        if let Vector {
+            x: Some(x),
+            y: Some(y),
+            z: Some(z),
+        } = v
+        {
+            Some(vec![*x, *y, *z])
+        } else {
+            None
+        }
+    }
+}
+impl From<Vector> for Option<Vec<f64>> {
+    fn from(v: Vector) -> Self {
+        if let Vector {
+            x: Some(x),
+            y: Some(y),
+            z: Some(z),
+        } = v
+        {
+            Some(vec![x, y, z])
+        } else {
+            None
         }
     }
 }

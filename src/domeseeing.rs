@@ -1,11 +1,10 @@
+use serde::Deserialize;
+use serde_pickle as pickle;
 use std::{
     fs::File,
     ops::{Deref, DerefMut},
     path::Path,
 };
-
-use serde::Deserialize;
-use serde_pickle as pickle;
 
 #[derive(thiserror::Error, Debug)]
 pub enum DomeSeeingError {

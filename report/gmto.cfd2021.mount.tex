@@ -49,7 +49,9 @@
 
 \begin{revisions}
   1.0 & 11.17.21 & All & None & Initial version & R. Conan \\  
-  1.0 & \today & All & None & Add mount wind loads cases definition and M1 segments net forces and moments & R. Conan \\  
+  1.0 & 02.24.22 & All & None & Add mount wind loads cases definition and M1 segments net forces and moments & R. Conan \\  
+  1.0 & 03.10.22 & All & None & Add optical metrics performance table & R. Conan \\  
+  1.0 & \today & All & None & Fix PMT nodes  & R. Conan \\  
 \end{revisions}
 
 \clearpage
@@ -65,8 +67,161 @@
 
 \input{mount.introduction}
 
-\input{mount.chapter}
+%\input{mount.chapter}
+\chapter{Wind loads}
+\label{cfd-wind-loads}
+
+The wind loads on the telescope have been gathered in 8 groups:
+\begin{itemize}
+\item C-Rings
+\item GIR
+\item LGS
+\item M1 assembly: the M1 7 segments and the M1 cell
+\item M1 covers: the 6 outer and inner deployable segment covers
+\item M2 \& Top-End
+\item Trusses: inluding the cable truss
+\item Platforms \& Trays
+\end{itemize}
+
+The simulations take time to converge to a stationary solution and this convergence time is a function of the initial conditions but strongly depends on the wind speed and the enclosure configuration.
+The duration of the simulations have been set to 1200s, 700s and 900s for the 2m/s, 7m/s and 12m/s CFD runs, respectively.
+It is usually the case that the last 400s of the simulations are stationary and
+the statistical quantity reported in the forces and moments table (Table~\ref{tab:windloads}) have been derived from
+the last 400s of the corresponding time series.
+
+The chapter is divided into 11 sections, one section for each CFD case.
+Each case is defined according to a telescope zenith and azimuth angles, a wind
+speed and an enclosure configuration as defined in Table~\ref{tab:cases} and Table~\ref{tab:mount-cases}.
+
+Each section in  chapter~\ref{cfd-wind-loads} includes time series plots of the total forces and total moments and the power spectrum densities of the total forces and total moments.
+Both, forces and moments are sampled at 20Hz.
+Forces and moments vectors are given with respect to the OSS coordinates system. 
+
+The wind loads have been applied to the detailed Integrated Modeling FEM with
+the mount controller turned on.
+At each time step, the rigid body motions of M1 and M2 segments and the node
+displacements at the PMT interfaces are recorded.
+
+The rigid body motions are converted into wavefront error subject to the LTAO
+rejection transfer functions.
+From the wavefront, the focal plane tip-tilt and segment piston are derived.
+The results are reported in Table~\ref{im-loads}.
+
+The PMT transformation matrices (PMT1 and PMT2) are applied to the PMT nodes and
+the results are filtered with the LTAO rejection transfer functions.
+The resulting segment tip-tilts and segment pistons are further converted into
+WFE RMS.
+The results are reported in Table~\ref{mount-pmts}.
+
+
+\begin{longtable}{cccr||rrrrr}
+  %\centering
+  %\begin{tabular}{cccr|rrr}
+  \caption{Optical performance under wind load disturbances for the LTAO
+ Observing Performance Mode.} \label{tab:long} \\\hline\hline
+ % \multicolumn{4}{c|}{-} & \multicolumn{3}{|c}{\textbf{Natural Seeing Observing
+ %     Performance Mode}} \\
+ % \multicolumn{4}{c|}{\textbf{CFD cases}}  &
+  \multicolumn{7}{|c}{\textbf{LTAO OPM}}
+  \\\hline\hline
+  Zen. & Azi. & Cfg. & Wind  & WFE & TT & Piston \\
+  - & -    & -    &  -   &  RMS & RSS  & RMS  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& $[mas]$&
+  $[nm]$ \\\hline\hline
+  \endfirsthead
+
+  Zen. & Azi. & Cfg.  & WFE & TT & Piston \\
+  - & -    & -    &  -   &  RMS & RSS  & RMS  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& $[mas]$&
+  $[nm]$ \\\hline\hline
+  
+  \endhead
+
+%  \multicolumn{7}{r}{{\emph{Continued on next page}}} \\ 
+  \endfoot
+  \hline \hline
+  \endlastfoot
+  30 & 0 & o.s. & 2    &     7 & 0 &    9 \\\hline  
+  30 & 45 & o.s. & 2   &     5 & 0 &    7 \\\hline  
+  30 & 90 & o.s. & 2   &     5 & 0 &    7 \\\hline\hline  
+  30 & 0 & o.s. & 7    &   122 & 1 &  167 \\\hline  
+  30 & 45 & o.s. & 7   &    61 & 1 &   85 \\\hline  
+  30 & 90 & o.s. & 7   &    93 & 1 &  126 \\\hline  
+  30 & 135 & o.s. & 7  &    91 & 0 &  130 \\\hline\hline  
+  30 & 0 & c.d. & 12   &   132 & 1 &  176 \\\hline  
+  30 & 45 & c.d. & 12  &    82 & 0 &  100 \\\hline  
+  30 & 90 & c.d. & 12  &    99 & 0 &  107 \\\hline  
+  30 & 180 & c.d. & 12 &   240 & 0 &  342 \\  
+  
+  %\end{tabular}
+  %\caption{Wind loadind optical performance}
+  \label{im-loads}
+\end{longtable}
+
+\begin{longtable}{cccr||rrrrr}
+  %\centering
+  %\begin{tabular}{cccr|rrr}
+  \caption{Mount PMTs.} \label{tab:long} \\\hline\hline
+ % \multicolumn{4}{c|}{-} & \multicolumn{3}{|c}{\textbf{Natural Seeing Observing
+ %     Performance Mode}} \\
+ % \multicolumn{4}{c|}{\textbf{CFD cases}}  &
+  \multicolumn{7}{|c}{\textbf{LTAO OPM}}
+  \\\hline\hline
+  Zen. & Azi. & Cfg. & Wind  & WFE & TT & Piston \\
+  - & -    & -    &  -   &  RMS & RSS  & RMS  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& $[nm]$&
+  $[nm]$ \\\hline\hline
+  \endfirsthead
+
+  Zen. & Azi. & Cfg.  & WFE & TT & Piston \\
+  - & -    & -    &  -   &  RMS & RMS  & RMS  \\
+  $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& $[nm]$&
+  $[nm]$ \\\hline\hline
+  
+  \endhead
+
+%  \multicolumn{7}{r}{{\emph{Continued on next page}}} \\ 
+  \endfoot
+  \hline \hline
+  \endlastfoot
+  30 & 0 & o.s. & 2    &   7 &  0 &   7 \\\hline  
+  30 & 45 & o.s. & 2   &   8 &  0 &   8 \\\hline  
+  30 & 90 & o.s. & 2   &   8 &  0 &   8 \\\hline\hline  
+  30 & 0 & o.s. & 7    &  92 &  8 &  92  \\\hline  
+  30 & 45 & o.s. & 7   &  74 &  3 &  74 \\\hline  
+  30 & 90 & o.s. & 7   &  83 &  4 &  83 \\\hline  
+  30 & 135 & o.s. & 7  &  92 &  4 &  92 \\\hline\hline  
+  30 & 0 & c.d. & 12   & 233 & 22 & 232  \\\hline  
+  30 & 45 & c.d. & 12  & 280 & 10 & 280  \\\hline  
+  30 & 90 & c.d. & 12  & 361 & 14 & 361  \\\hline  
+  30 & 180 & c.d. & 12 & 365 & 10 & 365  \\  
+  
+  %\end{tabular}
+  %\caption{Wind loadind optical performance}
+  \label{mount-pmts}
+\end{longtable}
+
+
+\input{mount.groups.table}
+\input{mount.time-series}
+
+\appendix
+
+%\chapter{50s total forces time series}
+%\input{mount.50s-plots}
+
+\chapter{Group PSDs}
+\input{mount.psds.appendix}
+
+\chapter{Wind load groups}
+\input{mount.groups}
+
 
 \printbibliography
 
 \end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "gmto.cfd2021.mount"
+%%% End:

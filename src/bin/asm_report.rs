@@ -1,7 +1,7 @@
 use std::{fs::File, io::Write, path::Path};
 use strum::IntoEnumIterator;
 
-use parse_monitors::cfd;
+use parse_monitors::{cfd, cfd::BaselineTrait};
 
 fn main() -> anyhow::Result<()> {
     for zenith_angle in cfd::ZenithAngle::iter() {

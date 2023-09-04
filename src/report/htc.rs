@@ -1,4 +1,4 @@
-use crate::{cfd, MonitorsLoader};
+use crate::{cfd, cfd::BaselineTrait, MonitorsLoader};
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
 

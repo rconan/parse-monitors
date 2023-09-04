@@ -1,4 +1,4 @@
-use parse_monitors::cfd;
+use parse_monitors::{cfd, cfd::BaselineTrait};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -16,9 +16,10 @@ fn main() {
     let opt = Opt::from_args();
 
     let file = opt.file.unwrap_or_default();
-    let cfd_cases: Vec<_> = cfd::Baseline::<2021>::at_zenith(cfd::ZenithAngle::new(opt.zenith))
-        .into_iter()
-        .map(|case| format!("{}/{}", case.to_string(), file))
-        .collect();
+    let cfd_cases: Vec<_> =
+        cfd::Baseline::<2021>::at_zenith(cfd::ZenithAngle::new(opt.zenith).unwrap())
+            .into_iter()
+            .map(|case| format!("{}/{}", case.to_string(), file))
+            .collect();
     println!("{}", cfd_cases.join(" "))
 }

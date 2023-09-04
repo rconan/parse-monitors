@@ -1,4 +1,4 @@
-use parse_monitors::{Mirror, MonitorsLoader};
+use parse_monitors::{Mirror, Monitors, MonitorsLoader};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -30,9 +30,9 @@ struct Opt {
     /// Evaluates the moments at the part location instead of the OSS
     #[structopt(long)]
     local: bool,
-    /// Write M1 mirror covers loads to `windloads.pkl`
-    #[structopt(long = "m1-covers")]
-    m1_covers: bool,
+    ///// Write M1 mirror covers loads to `windloads.pkl`
+    //#[structopt(long = "m1-covers")]
+    //m1_covers: bool,
     /// Display M1 force table summary
     #[structopt(long)]
     m1_table: bool,
@@ -47,6 +47,9 @@ struct Opt {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
+    #[cfg(feature = "b2020")]
+    let mut loader = MonitorsLoader::<2020>::default();
+    #[cfg(not(feature = "b2020"))]
     let mut loader = MonitorsLoader::<2021>::default();
     loader = loader.data_path(&opt.path);
     if let Some(arg) = opt.monitor {
@@ -73,10 +76,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         monitors.into_local();
     }
     monitors.summary();
+
     if opt.plot {
-        monitors.plot_htc();
-        monitors.plot_forces(None);
-        monitors.plot_moments();
+        //monitors.plot_htc();
+        let values: Vec<_> = monitors
+            .total_forces_and_moments
+            .iter()
+            .map(|e| e.force.clone())
+            .collect();
+        let plot = complot::Config::new()
+            .filename("SUM_FORCES.png")
+            .xaxis(complot::Axis::new().label("Time [s]"))
+            .yaxis(complot::Axis::new().label("FORCE [N]"))
+            .legend(vec!["Fx", "Fy", "Fz"]);
+        Monitors::plot_this_forces(&values, Some(plot));
+        //monitors.plot_moments(None);
     }
 
     if let Some(filename) = opt.csv {

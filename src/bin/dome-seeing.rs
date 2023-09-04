@@ -4,11 +4,11 @@
 //! It must be run as root i.e. `sudo -E ./target/release/dome-seeing`
 
 use indicatif::ParallelProgressIterator;
-use parse_monitors::{cfd, Band, DomeSeeing};
+use parse_monitors::{cfd, cfd::BaselineTrait, Band, DomeSeeing};
 use rayon::prelude::*;
 use std::env;
 
-const OTHER_YEAR: u32 = 2021;
+const OTHER_YEAR: u32 = 2020;
 
 fn make_figure(data: Vec<Vec<(f64, Vec<f64>)>>, labels: Vec<&str>, filename: &str, ylabel: &str) {
     let cfd_plots = env::var("CFD_PLOTS").unwrap_or_else(|_| "YES".to_string());
@@ -36,23 +36,13 @@ fn make_figure(data: Vec<Vec<(f64, Vec<f64>)>>, labels: Vec<&str>, filename: &st
 }
 // MAIN
 fn main() {
-    /*
     let cfd_cases_21 = cfd::Baseline::<2021>::default()
-        .extras()
+        //.extras()
         .into_iter()
         .collect::<Vec<cfd::CfdCase<2021>>>();
     let root = cfd::Baseline::<2021>::path();
-     */
-    let cfd_cases_21 = cfd::Baseline::<2021>::thbound2()
-        .into_iter()
-        .collect::<Vec<cfd::CfdCase<2021>>>();
-    let root = cfd::Baseline::<2021>::path();
-    let wfe_labels = Some(vec!["Updated TBC", "Default TBC"]);
-    let pssn_labels = Some(vec![
-        "Updated TBC (SE)",
-        "Updated TBC (LE)",
-        "Default TBC (LE)",
-    ]);
+    let wfe_labels = None;
+    let pssn_labels = None;
     let truncate = Some((
         Some(cfd::CfdCase::new(
             cfd::ZenithAngle::Thirty,
@@ -64,11 +54,14 @@ fn main() {
     ));
     let n_cases = cfd_cases_21.len() as u64;
     let results: Vec<Option<((String, f64, f64), Option<(String, f64, f64)>)>> = cfd_cases_21
-        .into_iter()
+        .into_par_iter()
         //.progress_count(n_cases)
         .map(|cfd_case_21| {
             let path_to_case = root.join(format!("{}", cfd_case_21));
-            let mut ds_21 = DomeSeeing::load(path_to_case.clone()).unwrap();
+            let mut ds_21 = DomeSeeing::load(path_to_case.clone()).expect(&format!(
+                "Failed to load dome seeing data from {:?}",
+                path_to_case.clone()
+            ));
             match &truncate {
                 Some((Some(cfd_case), len)) => {
                     if cfd_case_21 == *cfd_case {
@@ -100,6 +93,7 @@ fn main() {
                                     .unwrap_or(&vec!["2021", "2020"])
                                     .to_vec(),
                                 path_to_case
+                                    .join("report")
                                     .join("dome-seeing_wfe-rms.png")
                                     .to_str()
                                     .unwrap(),
@@ -116,6 +110,7 @@ fn main() {
                                     .unwrap_or(&vec!["2021 (SE)", "2021 (LE)", "2020 (LE)"])
                                     .to_vec(),
                                 path_to_case
+                                    .join("report")
                                     .join("dome-seeing_v-pssn.png")
                                     .to_str()
                                     .unwrap(),
@@ -132,6 +127,7 @@ fn main() {
                                     .unwrap_or(&vec!["2021 (SE)", "2021 (LE)", "2020 (LE)"])
                                     .to_vec(),
                                 path_to_case
+                                    .join("report")
                                     .join("dome-seeing_h-pssn.png")
                                     .to_str()
                                     .unwrap(),

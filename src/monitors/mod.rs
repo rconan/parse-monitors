@@ -7,6 +7,7 @@ pub use reports::{Exertion, Monitors, MonitorsLoader};
 #[derive(thiserror::Error, Debug)]
 pub enum MonitorsError {
     #[error("Failed to decompress the monitor file")]
+    #[cfg(feature = "bzip2")]
     Decompress(#[from] bzip2::Error),
     #[error("Failed to open the monitor file")]
     Io(#[from] std::io::Error),
