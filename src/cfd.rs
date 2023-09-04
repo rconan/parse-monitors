@@ -229,12 +229,13 @@ impl CfdDataFile<2021> {
         cfd_case: CfdCase<2021>,
     ) -> std::result::Result<impl Iterator<Item = glob::GlobResult>, CfdError> {
         use CfdDataFile::*;
-        let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
+        let cfd_path = Baseline::<2021>::path().join(cfd_case.to_string());
+        dbg!(&cfd_path);
         Ok(match self {
             M1Pressure => glob::glob(
                 cfd_path
                     .join("pressures")
-                    .join("M1p_M1p_*.csv.bz2")
+                    .join("M1p_M1p_*.csv.z")
                     .to_str()
                     .unwrap(),
             )?,
