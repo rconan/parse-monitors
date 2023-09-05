@@ -148,7 +148,7 @@ where
         assert!(
             n == this.pressure.len(),
             "Data length ({}) and segment filter length ({}) do not match",
-            this.pressure.len(),
+            dbg!(this.pressure.len()),
             n
         );
         Ok(this)
@@ -365,6 +365,16 @@ where
             .fold((0f64, 0f64), |(pa, aa), ((p, a), _)| (pa + p * a, aa + a));
         pa / aa
     }
+    /// Returns the average pressure over a given segment with the average pressure over all segments removed
+    pub fn average_dynamic_pressure(&self, sid: usize) -> f64 {
+        let m = self.mirror_average_pressure();
+        let (pa, aa) = self
+            .pa_iter()
+            .zip(self.segment_filter.get(sid - 1).unwrap().iter())
+            .filter(|(_, &f)| f)
+            .fold((0f64, 0f64), |(pa, aa), ((p, a), _)| (pa + p * a, aa + a));
+        pa / aa - m
+    }
     /// Returns the average ASM different pressure over a given segment
     pub fn asm_differential_pressure(&self, sid: usize) -> (f64, Vec<f64>) {
         let p_mean = self.average_pressure(sid);
@@ -398,6 +408,12 @@ where
     pub fn segments_average_pressure(&mut self) -> Vec<f64> {
         (1..=7).map(|sid| self.average_pressure(sid)).collect()
     }
+    /// Returns the average pressure over each segment with the average pressure over all segments removed
+    pub fn segments_average_dynamic_pressure(&mut self) -> Vec<f64> {
+        (1..=7)
+            .map(|sid| self.average_dynamic_pressure(sid))
+            .collect()
+    }
     /// Returns the pressure variance over each segment
     pub fn segments_pressure_var(&mut self) -> Vec<f64> {
         (1..=7).map(|sid| self.pressure_var(sid)).collect()
@@ -407,7 +423,7 @@ where
         (1..=7).map(|sid| self.pressure_std(sid)).collect()
     }
     /// Returns the average mean pressure over all segment
-    pub fn mirror_average_pressure(&mut self) -> f64 {
+    pub fn mirror_average_pressure(&self) -> f64 {
         let (pa, aa) = self
             .pa_iter()
             .fold((0f64, 0f64), |(pa, aa), (p, a)| (pa + p * a, aa + a));

@@ -1,0 +1,12 @@
+[package]
+name = "m1-dyn-pressure"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+geotrans = "0.2.2"
+indicatif.workspace = true
+parse-monitors = { version = "0.2.3", path = ".." }
+rayon.workspace = true
+

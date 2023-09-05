@@ -257,7 +257,7 @@ impl CfdDataFile<2021> {
     }
     pub fn glob(self, cfd_case: CfdCase<2021>) -> Result<Vec<PathBuf>> {
         use CfdDataFile::*;
-        let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
+        let cfd_path = Baseline::<2021>::path().join(cfd_case.to_string());
         let paths = match self {
             M1Pressure => glob::glob(
                 cfd_path
@@ -304,7 +304,7 @@ impl CfdDataFile<2020> {
         cfd_case: CfdCase<2021>,
     ) -> std::result::Result<impl Iterator<Item = glob::GlobResult>, CfdError> {
         use CfdDataFile::*;
-        let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
+        let cfd_path = Baseline::<2021>::path().join(cfd_case.to_string());
         match self {
             M1Pressure => Ok(glob::glob(
                 cfd_path.join("M1_data_Mod_M1_Data_*.csv").to_str().unwrap(),
