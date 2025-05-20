@@ -257,7 +257,7 @@ impl CfdDataFile<2021> {
     }
     pub fn glob(self, cfd_case: CfdCase<2021>) -> Result<Vec<PathBuf>> {
         use CfdDataFile::*;
-        let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
+        let cfd_path = Baseline::<2021>::path().join(cfd_case.to_string());
         let paths = match self {
             M1Pressure => glob::glob(
                 cfd_path
@@ -304,7 +304,7 @@ impl CfdDataFile<2020> {
         cfd_case: CfdCase<2021>,
     ) -> std::result::Result<impl Iterator<Item = glob::GlobResult>, CfdError> {
         use CfdDataFile::*;
-        let cfd_path = Baseline::<2021>::default_path().join(cfd_case.to_string());
+        let cfd_path = Baseline::<2021>::path().join(cfd_case.to_string());
         match self {
             M1Pressure => Ok(glob::glob(
                 cfd_path.join("M1_data_Mod_M1_Data_*.csv").to_str().unwrap(),
@@ -475,11 +475,13 @@ pub trait BaselineTrait<const YEAR: u32>:
     Default + From<Vec<CfdCase<YEAR>>> + IntoIterator<Item = CfdCase<YEAR>>
 {
     /// Returns the default path to the CFD cases repository
-    fn default_path() -> PathBuf;
+    // fn path() -> PathBuf;
     /// Return the path from the "CFD_REPO" environment variable if it is set,
     /// otherwise returns the default path
     fn path() -> PathBuf {
-        env::var("CFD_REPO").map_or_else(|_| Self::default_path(), |p| Path::new(&p).to_path_buf())
+        env::var("CFD_REPO")
+            .map(|p| Path::new(&p).to_path_buf())
+            .expect(r#""CFD_REPO" is not set"#)
     }
     /// Returns pairs of [WindSpeed] and [Enclosure] configuration for the given [ZenithAngle]
     fn configuration(zenith_angle: ZenithAngle) -> Vec<(WindSpeed, Enclosure)>;
@@ -519,11 +521,9 @@ pub trait BaselineTrait<const YEAR: u32>:
     }
 }
 impl BaselineTrait<2020> for Baseline<2020> {
-    fn default_path() -> PathBuf {
-        Path::new("/fsx/Baseline2020").to_path_buf()
-    }
     fn path() -> PathBuf {
-        Baseline::<2020>::default_path()
+        // Path::new("/fsx/Baseline2020").to_path_buf()
+        Path::new(&env::var("CFD_REPO_2020").expect("CFD_REPO_2020 is not set")).to_path_buf()
     }
 
     fn configuration(_: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
@@ -536,14 +536,10 @@ impl BaselineTrait<2020> for Baseline<2020> {
     }
 }
 impl BaselineTrait<2021> for Baseline<2021> {
-    fn default_path() -> PathBuf {
-        Path::new("/fsx/CASES").to_path_buf()
-    }
     fn path() -> PathBuf {
-        env::var("CFD_REPO").map_or_else(
-            |_| Baseline::<2021>::default_path(),
-            |p| Path::new(&p).to_path_buf(),
-        )
+        env::var("CFD_REPO")
+            .map(|p| Path::new(&p).to_path_buf())
+            .expect(r#""CFD_REPO is not set""#)
     }
 
     fn configuration(zenith_angle: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
