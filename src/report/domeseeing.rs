@@ -50,7 +50,7 @@ impl DomeSeeingPart {
                         (cfd_case_21, wfe_rms, v_pssn, h_pssn),
                         if let Some(cfd_case_20) = cfd::Baseline::<OTHER_YEAR>::find(cfd_case_21) {
                             let ds_20 = DomeSeeing::load(
-                                cfd::Baseline::<OTHER_YEAR>::default_path()
+                                cfd::Baseline::<OTHER_YEAR>::path()
                                     .join(format!("{}", cfd_case_20)),
                             )
                             .unwrap();
