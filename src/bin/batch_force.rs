@@ -68,7 +68,8 @@ const CFD_YEAR: u32 = 2021;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
     let cfd_root = Baseline::<CFD_YEAR>::path();
-    let data_paths: Vec<_> = Baseline::<CFD_YEAR>::default()
+    let data_paths: Vec<_> = Baseline::<CFD_YEAR>::from_env()
+        .unwrap_or_default()
         .into_iter()
         .map(|cfd_case| {
             cfd_root
