@@ -4,69 +4,70 @@
 
 use std::{fs::create_dir, path::Path};
 
+use clap::Parser;
 use parse_monitors::{cfd::Baseline, cfd::BaselineTrait, Mirror, Monitors};
 use rayon::prelude::*;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-struct Opt {
+#[derive(Debug, Parser)]
+struct Cli {
     /// Truncate monitors to the `last` seconds
-    #[structopt(short, long)]
+    #[arg(short, long)]
     last: Option<usize>,
     /// Make all the plots
-    #[structopt(long)]
+    #[arg(long)]
     all: bool,
     /// Make C-Rings force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     crings: bool,
     /// Make M1 cell force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     m1_cell: bool,
     /// Make upper truss force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     upper_truss: bool,
     /// Make lower truss force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     lower_truss: bool,
     /// Make top-end force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     top_end: bool,
     /// Make M1 segments force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     m1_segments: bool,
     /// Make M2 segments force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     m2_segments: bool,
     /// Make M1 and M2 baffles force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     m12_baffles: bool,
     /// Make M1 inner mirror covers force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     m1_inner_covers: bool,
     /// Make M1 outer mirror covers force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     m1_outer_covers: bool,
     /// Make GIR force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     gir: bool,
     /// Make PFA arms force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     pfa_arms: bool,
     /// Make Laser Guide Stars assemblies force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     lgsa: bool,
     /// Make platforms and cables force magnitude plot
-    #[structopt(long)]
+    #[arg(long)]
     platforms_cables: bool,
     /// Remove linear trends from monitors
-    #[structopt(long)]
+    #[arg(long)]
     detrend: bool,
 }
 
-const CFD_YEAR: u32 = 2021;
+const CFD_YEAR: u32 = 2025;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let opt = Opt::from_args();
+fn main() -> anyhow::Result<()> {
+    env_logger::init();
+    let opt = Cli::parse();
     let cfd_root = Baseline::<CFD_YEAR>::path();
     let data_paths: Vec<_> = Baseline::<CFD_YEAR>::from_env()
         .unwrap_or_default()
@@ -84,7 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let parts = vec![
         (opt.crings || opt.all).then(|| Some(("c-ring_parts", "Cring"))),
-        (opt.m1_cell || opt.all).then(|| Some(("m1-cell", "M1cell"))),
+        // (opt.m1_cell || opt.all).then(|| Some(("m1-cell", "M1cell"))),
         (opt.upper_truss || opt.all).then(|| Some(("upper-truss", "Tu"))),
         (opt.lower_truss || opt.all).then(|| Some(("lower-truss", "Tb"))),
         (opt.top_end || opt.all).then(|| Some(("top-end", "Top"))),
@@ -111,6 +112,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     create_dir(&path).expect(&format!("Failed to create dir: {:?}", path))
                 }
                 let mut filename = path.join(name).with_extension("png");
+                log::info!("{filename:?}");
                 if name == "m1-segments" {
                     match Mirror::m1(arg).net_force().load() {
                         Ok(mut m1) => {
@@ -123,7 +125,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 } else {
                     let mut monitors = Monitors::loader::<String, CFD_YEAR>(arg.clone())
-                        .header_filter(filter.to_string())
+                        .header_filter(filter)
                         //.exclude_filter(xmon)
                         .load()
                         .unwrap();
@@ -136,7 +138,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .join(format!("{}-detrend.png", name))
                             .with_extension("png");
                     }
-                    monitors.plot_forces(filename.to_str());
+                    monitors.plot_forces(filename.to_str()).unwrap();
                 }
             })
             .collect();

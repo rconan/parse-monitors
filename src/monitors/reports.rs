@@ -285,8 +285,8 @@ where
             r"(\w+) Monitor: Surface Average of Heat Transfer Coefficient \(W/m\^2-K\)",
         )?;
         //Cabs_X Monitor 2: Force (N)
-        let re_force = Regex::new(r"(.+)_([XYZ]) Monitor: Force \(N\)")?;
-        let re_moment = Regex::new(r"(.+)Mom_([XYZ]) Monitor: Moment \(N-m\)")?;
+        let re_force = Regex::new(r"(.+)_([XYZ]) Monitor(?:: Force)? \(N\)")?;
+        let re_moment = Regex::new(r"(.+)Mom_([XYZ]) Monitor(?:: Moment)? \(N-m\)")?;
 
         let re_header = Regex::new(&self.header_regex)?;
         let re_x_header = if let Some(re) = self.header_exclude_regex {
@@ -396,7 +396,6 @@ where
 impl MonitorsLoader<2020> {
     pub fn load(self) -> Result<Monitors> {
         let csv_file = Path::new(&self.path).with_file_name("monitors-2020.csv");
-        dbg!(&csv_file);
         log::info!("Loading {:?}...", csv_file);
         let now = Instant::now();
         let mut rdr = csv::Reader::from_path(csv_file)?;
@@ -1048,9 +1047,11 @@ impl Monitors {
             .unwrap();
     }
     #[cfg(feature = "plot")]
-    pub fn plot_forces(&self, filename: Option<&str>) {
+    pub fn plot_forces(&self, filename: Option<&str>) -> Result<()> {
         if self.forces_and_moments.is_empty() {
-            return;
+            return Err(MonitorsError::PlotForces(
+                filename.unwrap_or("FORCES.png").to_string(),
+            ));
         }
 
         let max_value = |x: &[f64]| -> f64 {
@@ -1128,6 +1129,7 @@ impl Monitors {
             .position(SeriesLabelPosition::UpperRight)
             .draw()
             .unwrap();
+        Ok(())
     }
     #[cfg(feature = "plot")]
     pub fn plot_this_forces(values: &[Vector], config: Option<complot::Config>) {

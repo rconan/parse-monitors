@@ -1,6 +1,8 @@
 //! GMT Computation Fluid Dynamic Post Processing API
 //!
 //! A library to query and to process the GMT CFD Baseline databases.
+//!
+//! The path to the CFD database is set with the env variable: `CFD_REPO`
 
 use nalgebra as na;
 

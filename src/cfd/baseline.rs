@@ -25,6 +25,9 @@ type Result<T> = std::result::Result<T, BaselineError>;
 #[derive(Debug)]
 pub struct Baseline<const YEAR: u32>(Vec<CfdCase<YEAR>>);
 impl<const YEAR: u32> Baseline<YEAR> {
+    /// Read a list of cases from a file which path is given by the env variable `CFD_CASES`
+    ///
+    /// The file must have one case per line
     pub fn from_env() -> Result<Self> {
         let filename = env::var("CFD_CASES")?;
         let contents =

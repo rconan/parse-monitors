@@ -281,27 +281,37 @@ impl<const YEAR: u32> CfdCase<YEAR> {
         )
     }
 }
-impl fmt::Display for CfdCase<2021> {
+impl<const YEAR: u32> fmt::Display for CfdCase<YEAR> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}{}_{}{}",
-            self.zenith, self.azimuth, self.enclosure, self.wind_speed
-        )
-    }
-}
-impl fmt::Display for CfdCase<2020> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let z: f64 = self.zenith.clone().into();
-        let a: f64 = self.azimuth.clone().into();
-        write!(
-            f,
-            "b2019_{}z_{}az_{}_{}ms",
-            z,
-            a,
-            self.enclosure.to_string().to_lowercase(),
-            self.wind_speed
-        )
+        match YEAR {
+            2020 => {
+                let z: f64 = self.zenith.clone().into();
+                let a: f64 = self.azimuth.clone().into();
+                write!(
+                    f,
+                    "b2019_{}z_{}az_{}_{}ms",
+                    z,
+                    a,
+                    self.enclosure.to_string().to_lowercase(),
+                    self.wind_speed
+                )
+            }
+            2021 => {
+                write!(
+                    f,
+                    "{}{}_{}{}",
+                    self.zenith, self.azimuth, self.enclosure, self.wind_speed
+                )
+            }
+            2025 => {
+                write!(
+                    f,
+                    "{}{}_{}_{}ms",
+                    self.zenith, self.azimuth, self.enclosure, self.wind_speed
+                )
+            }
+            _ => Err(fmt::Error),
+        }
     }
 }
 impl<const YEAR: u32> TryFrom<&str> for CfdCase<YEAR> {
