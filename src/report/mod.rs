@@ -23,7 +23,7 @@ pub trait Report<const CFD_YEAR: u32>: Send + Sync {
     fn chapter(
         &self,
         zenith_angle: cfd::ZenithAngle,
-        cfd_cases_subset: Option<&[cfd::CfdCase<2021>]>,
+        cfd_cases_subset: Option<&[cfd::CfdCase<CFD_YEAR>]>,
     ) -> Result<(), Box<dyn Error>>;
     fn part(&self) -> Result<(), Box<dyn Error>> {
         cfd::ZenithAngle::iter()
@@ -37,7 +37,7 @@ pub trait Report<const CFD_YEAR: u32>: Send + Sync {
     }
     fn part_with(
         &self,
-        may_be_cfd_cases_subset: Option<&[cfd::CfdCase<2021>]>,
+        may_be_cfd_cases_subset: Option<&[cfd::CfdCase<CFD_YEAR>]>,
     ) -> Result<(), Box<dyn Error>> {
         if let Some(cfd_cases_subset) = may_be_cfd_cases_subset {
             cfd::ZenithAngle::iter()

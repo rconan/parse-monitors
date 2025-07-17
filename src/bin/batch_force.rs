@@ -106,6 +106,8 @@ fn main() -> anyhow::Result<()> {
 
         let _: Vec<_> = data_paths
             .par_iter()
+            .skip(20)
+            .take(18)
             .map(|arg| {
                 let path = Path::new(arg).join("report");
                 if !path.is_dir() {

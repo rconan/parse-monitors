@@ -7,14 +7,14 @@ use glob::glob;
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
 
-const OTHER_YEAR: u32 = 2020;
+const OTHER_YEAR: u32 = 2021;
 
-pub struct DomeSeeingPart {
+pub struct DomeSeeingPart<const CFD_YEAR: u32> {
     part: u8,
     #[allow(dead_code)]
     stats_time_range: f64,
 }
-impl DomeSeeingPart {
+impl<const CFD_YEAR: u32> DomeSeeingPart<CFD_YEAR> {
     pub fn new(part: u8, stats_time_range: f64) -> Self {
         Self {
             part,
@@ -22,17 +22,18 @@ impl DomeSeeingPart {
         }
     }
 }
-impl DomeSeeingPart {
+impl<const CFD_YEAR: u32> DomeSeeingPart<CFD_YEAR> {
     /// Chapter table
     fn chapter_table(
         &self,
-        cfd_cases_21: Vec<CfdCase<2021>>,
-        truncate: Option<(Option<CfdCase<2021>>, usize)>,
+        cfd_cases_21: Vec<CfdCase<CFD_YEAR>>,
+        truncate: Option<(Option<CfdCase<CFD_YEAR>>, usize)>,
     ) -> String {
         let results: Vec<_> = cfd_cases_21
             .into_par_iter()
             .map(|cfd_case_21| {
-                let path_to_case = cfd::Baseline::<2021>::path().join(format!("{}", cfd_case_21));
+                let path_to_case =
+                    cfd::Baseline::<CFD_YEAR>::path().join(format!("{}", cfd_case_21));
                 let mut ds_21 = DomeSeeing::load(path_to_case.clone()).unwrap();
                 match &truncate {
                     Some((Some(cfd_case), len)) => {
@@ -107,14 +108,14 @@ impl DomeSeeingPart {
         table_content.join("\n")
     }
 }
-impl super::Report<2021> for DomeSeeingPart {
+impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for DomeSeeingPart<CFD_YEAR> {
     /// Chapter section
     fn chapter_section(
         &self,
-        cfd_case: CfdCase<2021>,
+        cfd_case: CfdCase<CFD_YEAR>,
         ri_pic_idx: Option<usize>,
     ) -> Result<String, Box<dyn Error>> {
-        let path_to_case = Baseline::<2021>::path().join(&cfd_case.to_string());
+        let path_to_case = Baseline::<CFD_YEAR>::path().join(&cfd_case.to_string());
         let pattern = path_to_case
             .join("scenes")
             .join("RI_tel_RI_tel*.png")
@@ -159,7 +160,7 @@ impl super::Report<2021> for DomeSeeingPart {
     fn chapter(
         &self,
         zenith_angle: cfd::ZenithAngle,
-        cfd_cases_subset: Option<&[cfd::CfdCase<2021>]>,
+        cfd_cases_subset: Option<&[cfd::CfdCase<CFD_YEAR>]>,
     ) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
         let part = format!("part{}.", self.part);
@@ -174,7 +175,7 @@ impl super::Report<2021> for DomeSeeingPart {
             r#"
 \chapter{{{}}}
 \begin{{longtable}}{{*{{4}}{{c}}|*{{3}}{{r}}|*{{3}}{{r}}}}\toprule
- \multicolumn{{4}}{{c|}}{{\textbf{{CFD Cases}}}} & \multicolumn{{3}}{{|c|}}{{\textbf{{2021}}}} & \multicolumn{{3}}{{|c}}{{\textbf{{2020}}}} \\\midrule
+ \multicolumn{{4}}{{c|}}{{\textbf{{CFD Cases}}}} & \multicolumn{{3}}{{|c|}}{{\textbf{{CFD_YEAR}}}} & \multicolumn{{3}}{{|c}}{{\textbf{{2020}}}} \\\midrule
   Zen. & Azi. & Cfg. & Wind & WFE & PSSn & PSSn & WFE & PSSn & PSSn \\
   - & -    & -    &  -   & RMS & -  & - & RMS & - & -  \\
   $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& V & H & $[nm]$ & V & H \\\hline
@@ -185,17 +186,17 @@ impl super::Report<2021> for DomeSeeingPart {
 "#,
             zenith_angle.chapter_title(),
             self.chapter_table(
-                cfd::Baseline::<2021>::at_zenith(zenith_angle)
+                cfd::Baseline::<CFD_YEAR>::at_zenith(zenith_angle)
                     .into_iter()
                     .filter(|cfd_case| if let Some(cases) = cfd_cases_subset {
                         cases.contains(cfd_case)
                     } else {
                         true
                     })
-                    .collect::<Vec<cfd::CfdCase<2021>>>(),
+                    .collect::<Vec<cfd::CfdCase<CFD_YEAR>>>(),
                 None
             ),
-            cfd::Baseline::<2021>::at_zenith(zenith_angle)
+            cfd::Baseline::<CFD_YEAR>::at_zenith(zenith_angle)
                 .into_iter()
                 .filter(|cfd_case| if let Some(cases) = cfd_cases_subset {
                     cases.contains(cfd_case)
@@ -212,11 +213,11 @@ impl super::Report<2021> for DomeSeeingPart {
         String::from("Dome seeing")
     }
 }
-impl DomeSeeingPart {
+impl<const CFD_YEAR: u32> DomeSeeingPart<CFD_YEAR> {
     pub fn special(
         &self,
         name: &str,
-        cfd_cases: Vec<CfdCase<2021>>,
+        cfd_cases: Vec<CfdCase<CFD_YEAR>>,
     ) -> Result<String, Box<dyn Error>> {
         let report_path = Path::new("report");
         let chapter_filename = name.to_lowercase() + ".chapter.tex";

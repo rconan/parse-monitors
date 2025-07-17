@@ -4,16 +4,16 @@ use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
 
 #[derive(Default)]
-pub struct WindLoads {
+pub struct WindLoads<const CFD_YEAR: u32> {
     part: u8,
     stats_time_range: f64,
     xmon: Option<String>,
     detrend: bool,
     last_time_range: Option<usize>,
     show_pressure: bool,
-    cfd_case: Option<cfd::CfdCase<2021>>,
+    cfd_case: Option<cfd::CfdCase<CFD_YEAR>>,
 }
-impl WindLoads {
+impl<const CFD_YEAR: u32> WindLoads<CFD_YEAR> {
     pub fn new(part: u8, stats_time_range: f64) -> Self {
         Self {
             part,
@@ -45,21 +45,21 @@ impl WindLoads {
             ..self
         }
     }
-    pub fn cfd_case(self, cfd_case: cfd::CfdCase<2021>) -> Self {
+    pub fn cfd_case(self, cfd_case: cfd::CfdCase<CFD_YEAR>) -> Self {
         Self {
             cfd_case: Some(cfd_case),
             ..self
         }
     }
 }
-impl super::Report<2021> for WindLoads {
+impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for WindLoads<CFD_YEAR> {
     /// Chapter section
     fn chapter_section(
         &self,
-        cfd_case: cfd::CfdCase<2021>,
+        cfd_case: cfd::CfdCase<CFD_YEAR>,
         _: Option<usize>,
     ) -> Result<String, Box<dyn Error>> {
-        let path_to_case = cfd::Baseline::<2021>::path().join(&cfd_case.to_string());
+        let path_to_case = cfd::Baseline::<CFD_YEAR>::path().join(&cfd_case.to_string());
         let pattern = path_to_case
             .join("scenes")
             .join("vort_tel_vort_tel*.png")
@@ -69,12 +69,12 @@ impl super::Report<2021> for WindLoads {
         let paths = glob(&pattern).expect("Failed to read glob pattern");
         let vort_pic = paths.last().unwrap()?.with_extension("");
         let mut monitors = if let Some(xmon) = &self.xmon {
-            MonitorsLoader::<2021>::default()
+            MonitorsLoader::<CFD_YEAR>::default()
                 .data_path(path_to_case.clone())
                 .exclude_filter(xmon)
                 .load()?
         } else {
-            MonitorsLoader::<2021>::default()
+            MonitorsLoader::<CFD_YEAR>::default()
                 .data_path(path_to_case.clone())
                 .load()?
         };
@@ -157,8 +157,6 @@ impl super::Report<2021> for WindLoads {
 
 \subsubsection{{C-Rings}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
-\subsubsection{{M1 Cell}}
-\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{M1 segments}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{Lower trusses}}
@@ -205,7 +203,7 @@ impl super::Report<2021> for WindLoads {
                     .force_latex_table(self.stats_time_range)
                     .unwrap_or_default(),
                 path_to_case.join(format!("c-ring_parts{}", parts_suffix)),
-                path_to_case.join(format!("m1-cell{}", parts_suffix)),
+                // path_to_case.join(format!("m1-cell{}", parts_suffix)),
                 path_to_case.join(format!("m1-segments{}", "")),
                 path_to_case.join(format!("lower-truss{}", parts_suffix)),
                 path_to_case.join(format!("upper-truss{}", parts_suffix)),
@@ -242,8 +240,6 @@ impl super::Report<2021> for WindLoads {
 \end{{longtable}}
 
 \subsubsection{{C-Rings}}
-\includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
-\subsubsection{{M1 Cell}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsubsection{{Lower trusses}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
@@ -288,7 +284,7 @@ impl super::Report<2021> for WindLoads {
                     .force_latex_table(self.stats_time_range)
                     .unwrap_or_default(),
                 path_to_case.join("c-ring_parts"),
-                path_to_case.join("m1-cell"),
+                // path_to_case.join("m1-cell"),
                 path_to_case.join("lower-truss"),
                 path_to_case.join("upper-truss"),
                 path_to_case.join("top-end"),
@@ -313,7 +309,7 @@ impl super::Report<2021> for WindLoads {
     fn chapter(
         &self,
         zenith_angle: cfd::ZenithAngle,
-        cfd_cases_subset: Option<&[cfd::CfdCase<2021>]>,
+        cfd_cases_subset: Option<&[cfd::CfdCase<CFD_YEAR>]>,
     ) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
         let part = format!("part{}.", self.part);
@@ -322,7 +318,7 @@ impl super::Report<2021> for WindLoads {
             cfd::ZenithAngle::Thirty => part + "chapter2.tex",
             cfd::ZenithAngle::Sixty => part + "chapter3.tex",
         };
-        let cfd_cases = cfd::Baseline::<2021>::at_zenith(zenith_angle)
+        let cfd_cases = cfd::Baseline::<CFD_YEAR>::at_zenith(zenith_angle)
             .into_iter()
             .filter(|cfd_case| {
                 if let Some(cases) = cfd_cases_subset {
@@ -331,7 +327,7 @@ impl super::Report<2021> for WindLoads {
                     true
                 }
             })
-            .collect::<Vec<cfd::CfdCase<2021>>>();
+            .collect::<Vec<cfd::CfdCase<CFD_YEAR>>>();
         let results: Vec<_> = cfd_cases
             .into_par_iter()
             .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())
@@ -352,16 +348,16 @@ impl super::Report<2021> for WindLoads {
         String::from("Wind loads")
     }
 }
-impl WindLoads {
+impl<const CFD_YEAR: u32> WindLoads<CFD_YEAR> {
     /// Mount chapter assembly
     pub fn mount_chapter(&self, chapter_filename: Option<&str>) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
         let cfd_cases = if let Some(cfd_case) = self.cfd_case {
             vec![cfd_case]
         } else {
-            cfd::Baseline::<2021>::mount()
+            cfd::Baseline::<CFD_YEAR>::mount()
                 .into_iter()
-                .collect::<Vec<cfd::CfdCase<2021>>>()
+                .collect::<Vec<cfd::CfdCase<CFD_YEAR>>>()
         };
         let results: Vec<_> = cfd_cases
             .into_par_iter()

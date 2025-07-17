@@ -3,35 +3,41 @@
 //use chrono::Local;
 use parse_monitors::{cfd, report, report::Report};
 //, fs::File, io::Write};
+use clap::Parser;
 use std::{error::Error, sync::Arc, time::Instant};
-use structopt::StructOpt;
 //use tectonic;
 use std::thread;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "CFD 2021 Census", about = "Building 2021 CFD census report")]
-struct Opt {
-    #[structopt(long)]
+#[derive(Debug, Parser)]
+struct Cli {
+    // #[structopt(name = "CFD 2021 Census", about = "Building 2021 CFD census report")]
+    // struct Opt {
+    #[arg(long)]
     full: bool,
-    #[structopt(long)]
+    #[arg(long)]
     domeseeing: bool,
-    #[structopt(long)]
+    #[arg(long)]
     windloads: bool,
-    #[structopt(long)]
+    #[arg(long)]
     htc: bool,
 }
 
-//const CFD_YEAR: u32 = 2021;
+const CFD_YEAR: u32 = 2025;
 
 fn main() -> anyhow::Result<()> {
-    let opt = Opt::from_args();
+    let opt = Cli::parse();
 
     /*let cases: Arc<Option<Vec<cfd::CfdCase<2021>>>> =
     Arc::new(Some(vec![cfd::CfdCase::<2021>::colloquial(
         30, 45, "cd", 12,
     )?]));*/
-    let cases: Arc<Option<Vec<cfd::CfdCase<2021>>>> =
-        Arc::new(Some(cfd::Baseline::<2021>::default().into_iter().collect()));
+    let cases: Arc<Option<Vec<cfd::CfdCase<CFD_YEAR>>>> = Arc::new(Some(
+        cfd::Baseline::<CFD_YEAR>::default()
+            .into_iter()
+            .skip(20)
+            .take(18)
+            .collect(),
+    ));
     let parts_base = 0;
 
     let mut tjh = vec![];

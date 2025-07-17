@@ -24,6 +24,6 @@ Here are the steps to build a CFD report:
 	 6. cfd_report:
 		  * cargo run --release --bin cfd_report -- --full 
 		  * cd report
-		  * pdflatex gmto.cfd2021.tex
-		  * pdflatex gmto.cfd2021.tex
-		  * pdflatex gmto.cfd2021.tex
+		  * pdflatex gmto.cfd2025.tex
+		  * pdflatex gmto.cfd2025.tex
+		  * pdflatex gmto.cfd2025.tex

@@ -118,7 +118,7 @@ pub trait BaselineTrait<const YEAR: u32>:
                 (WindSpeed::Twelve, Enclosure::ClosedDeployed),
                 (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
             ],
-            2021 => match zenith_angle {
+            2021 | 2025 => match zenith_angle {
                 ZenithAngle::Sixty => vec![
                     (WindSpeed::Two, Enclosure::OpenStowed),
                     (WindSpeed::Seven, Enclosure::OpenStowed),
@@ -214,7 +214,7 @@ impl<const YEAR: u32> BaselineTrait<YEAR> for Baseline<YEAR> {}
 //     //     }
 //     // }
 // }
-impl Baseline<2021> {
+impl<const CFD_YEAR: u32> Baseline<CFD_YEAR> {
     /// Mount cases
     pub fn mount() -> Self {
         Self(
@@ -232,7 +232,7 @@ impl Baseline<2021> {
                                     wind_speed,
                                 )
                             })
-                            .collect::<Vec<CfdCase<2021>>>(),
+                            .collect::<Vec<CfdCase<CFD_YEAR>>>(),
                     ),
                     WindSpeed::Seven => Some(
                         Azimuth::iter()
@@ -245,7 +245,7 @@ impl Baseline<2021> {
                                     wind_speed,
                                 )
                             })
-                            .collect::<Vec<CfdCase<2021>>>(),
+                            .collect::<Vec<CfdCase<CFD_YEAR>>>(),
                     ),
                     WindSpeed::Twelve => Some(
                         Azimuth::iter()
@@ -258,12 +258,12 @@ impl Baseline<2021> {
                                     wind_speed,
                                 )
                             })
-                            .collect::<Vec<CfdCase<2021>>>(),
+                            .collect::<Vec<CfdCase<CFD_YEAR>>>(),
                     ),
                     _ => None,
                 })
                 .flatten()
-                .collect::<Vec<CfdCase<2021>>>(),
+                .collect::<Vec<CfdCase<CFD_YEAR>>>(),
         )
     }
     /// REDO cases

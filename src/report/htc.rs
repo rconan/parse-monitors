@@ -2,11 +2,11 @@ use crate::{cfd, cfd::BaselineTrait, MonitorsLoader};
 use rayon::prelude::*;
 use std::{error::Error, fs::File, io::Write, path::Path};
 
-pub struct HTC {
+pub struct HTC<const CFD_YEAR: u32> {
     part: u8,
     stats_time_range: f64,
 }
-impl HTC {
+impl<const CFD_YEAR: u32> HTC<CFD_YEAR> {
     pub fn new(part: u8, stats_time_range: f64) -> Self {
         Self {
             part,
@@ -14,15 +14,15 @@ impl HTC {
         }
     }
 }
-impl super::Report<2021> for HTC {
+impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for HTC<CFD_YEAR> {
     /// Chapter section
     fn chapter_section(
         &self,
-        cfd_case: cfd::CfdCase<2021>,
+        cfd_case: cfd::CfdCase<CFD_YEAR>,
         _: Option<usize>,
     ) -> Result<String, Box<dyn Error>> {
-        let path_to_case = cfd::Baseline::<2021>::path().join(&cfd_case.to_string());
-        let monitors = MonitorsLoader::<2021>::default()
+        let path_to_case = cfd::Baseline::<CFD_YEAR>::path().join(&cfd_case.to_string());
+        let monitors = MonitorsLoader::<CFD_YEAR>::default()
             .data_path(path_to_case)
             .load()?;
         Ok(format!(
@@ -44,7 +44,7 @@ impl super::Report<2021> for HTC {
     fn chapter(
         &self,
         zenith_angle: cfd::ZenithAngle,
-        cfd_cases_subset: Option<&[cfd::CfdCase<2021>]>,
+        cfd_cases_subset: Option<&[cfd::CfdCase<CFD_YEAR>]>,
     ) -> Result<(), Box<dyn Error>> {
         let report_path = Path::new("report");
         let part = format!("part{}.", self.part);
@@ -53,7 +53,7 @@ impl super::Report<2021> for HTC {
             cfd::ZenithAngle::Thirty => part + "chapter2.tex",
             cfd::ZenithAngle::Sixty => part + "chapter3.tex",
         };
-        let cfd_cases = cfd::Baseline::<2021>::at_zenith(zenith_angle)
+        let cfd_cases = cfd::Baseline::<CFD_YEAR>::at_zenith(zenith_angle)
             .into_iter()
             .filter(|cfd_case| {
                 if let Some(cases) = cfd_cases_subset {
@@ -62,7 +62,7 @@ impl super::Report<2021> for HTC {
                     true
                 }
             })
-            .collect::<Vec<cfd::CfdCase<2021>>>();
+            .collect::<Vec<cfd::CfdCase<CFD_YEAR>>>();
         let results: Vec<_> = cfd_cases
             .into_par_iter()
             .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())
