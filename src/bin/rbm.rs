@@ -1,7 +1,8 @@
-use parse_monitors::cfd::{Baseline, BaselineTrait};
+use parse_monitors::{
+    cfd::{Baseline, BaselineTrait},
+    CFD_YEAR,
+};
 use std::{fs::File, io::Write};
-
-const CFD_YEAR: u32 = 2021;
 
 fn main() -> anyhow::Result<()> {
     for (k, cfd_case) in Baseline::<CFD_YEAR>::default().into_iter().enumerate() {

@@ -60,11 +60,15 @@ serde-pickle.workspace = true
 clap = { version = "4.5.39", features = ["derive"] }
 
 [features]
+default = ["2025"]
 plot = ["plotters", "complot"]
 xcase = []
 b2020 = []
 dosio = []
 windloading = []
+2020 = []
+2021 = []
+2025 = []
 
 [[bin]]
 name = "batch_force"

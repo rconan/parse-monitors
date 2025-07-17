@@ -274,9 +274,10 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for WindLoads<CFD_YEAR> {
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
 \subsection{{M2 pressure snapshot}}
 \includegraphics[width=0.8\textwidth]{{{{{{{:?}}}}}}}
-\subsection{{Rigid body motion \& segment piston, tip and tilt standard deviation}}
-\input{{{:?}}}
 "#,
+                // \subsection{{Rigid body motion \& segment piston, tip and tilt standard deviation}}
+                // \input{{{:?}}}
+                // "#,
                 &cfd_case.to_pretty_string(),
                 &cfd_case.to_string(),
                 vort_pic,
@@ -301,7 +302,7 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for WindLoads<CFD_YEAR> {
                     .unwrap_or_default(),
                 path_to_case.join("m1_pressure_map"),
                 path_to_case.join("m2_pressure_map"),
-                path_to_case.join("rbm_tables.tex")
+                // path_to_case.join("rbm_tables.tex")
             ))
         }
     }
