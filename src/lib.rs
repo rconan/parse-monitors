@@ -18,11 +18,11 @@ pub mod pressure;
 pub mod report;
 pub mod temperature;
 
-#[cfg(feature = "2020")]
+#[cfg(all(feature = "2020", not(feature = "default")))]
 pub const CFD_YEAR: u32 = 2020;
-#[cfg(feature = "2021")]
+#[cfg(all(feature = "2021", not(feature = "default")))]
 pub const CFD_YEAR: u32 = 2021;
-#[cfg(feature = "2025")]
+#[cfg(feature = "default")]
 pub const CFD_YEAR: u32 = 2025;
 
 pub const FORCE_SAMPLING_FREQUENCY: f64 = 20_f64; // Hz
