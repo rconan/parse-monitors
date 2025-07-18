@@ -12,8 +12,11 @@ let cfd_cases_iter = cfd::Baseline::<2021>::default().into_iter();
 
 mod baseline;
 mod cfd_case;
+#[cfg(feature = "2020")]
 mod y2020;
+#[cfg(feature = "2021")]
 mod y2021;
+#[cfg(feature = "2025")]
 mod y2025;
 pub use baseline::{Baseline, BaselineError, BaselineTrait};
 pub use cfd_case::{Azimuth, CfdCase, CfdCaseError, Enclosure, WindSpeed, ZenithAngle};
