@@ -13,13 +13,13 @@ keywords = ["telescope", "astronomy"]
 default-run = "parse-monitors"
 
 [workspace]
-members = ["gmacs","htc-analysis"]
+members = ["domeseeing", "gmacs", "htc-analysis"]
 
 
 [workspace.dependencies]
 rayon = "1.10.0"
 serde-pickle = "1.2.0"
-polars = { version = "0.47.1", features = ["decompress"]}
+polars = { version = "0.47.1", features = ["decompress"] }
 rstar = { version = "0.12.2" }
 indicatif = { version = "0.17.11", features = ["rayon"] }
 serde = { version = "1.0.219", features = ["derive"] }
@@ -43,7 +43,7 @@ tectonic = { version = "0.8.0", optional = true }
 strum = "0.27.1"
 strum_macros = "0.27.1"
 triangle-rs = { version = "0.*" }
-polars = {workspace = true, optional = true }
+polars = { workspace = true, optional = true }
 thiserror = "2.0"
 geotrans = { version = "^0.2.0" }
 anyhow.workspace = true
@@ -121,3 +121,7 @@ rand = "0.8.4"
 
 [package.metadata.docs.rs]
 features = ["plot", "rstar"]
+
+[patch.crates-io]
+gmt_dos-clients_domeseeing = { path = "/home/ubuntu/projects/dos-actors/clients/domeseeing" }
+crseo = { path = "/home/ubuntu/projects/crseo" }

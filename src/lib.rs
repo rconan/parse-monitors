@@ -13,7 +13,7 @@ mod monitors;
 pub use monitors::{Exertion, Mirror, Monitors, MonitorsError, MonitorsLoader};
 pub mod cfd;
 pub mod domeseeing;
-pub use domeseeing::{Band, DomeSeeing};
+pub use domeseeing::{Band, Data, DomeSeeing};
 pub mod pressure;
 pub mod report;
 pub mod temperature;

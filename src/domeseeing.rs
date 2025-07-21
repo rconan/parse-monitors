@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_pickle as pickle;
 use std::{
     fs::File,
@@ -20,12 +20,12 @@ pub enum Band {
     H,
 }
 /// Dome seeing data
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default, Serialize)]
 pub struct Data {
     #[serde(rename = "Time")]
     pub time: f64,
     #[serde(rename = "V SE PSSn")]
-    v_se_pssn: f64,
+    pub v_se_pssn: f64,
     #[serde(rename = "H SE PSSn")]
     pub h_se_pssn: f64,
     #[serde(rename = "WFE RMS")]
@@ -46,7 +46,7 @@ pub struct Data {
     pub h_frame: Option<Vec<f64>>,
 }
 /// Time series of dome seeing data
-#[derive(Deserialize)]
+#[derive(Deserialize, Default, Serialize)]
 pub struct DomeSeeing(Vec<Data>);
 impl Deref for DomeSeeing {
     type Target = Vec<Data>;
@@ -60,7 +60,16 @@ impl DerefMut for DomeSeeing {
         &mut self.0
     }
 }
+impl From<Vec<Data>> for DomeSeeing {
+    fn from(value: Vec<Data>) -> Self {
+        Self(value)
+    }
+}
 impl DomeSeeing {
+    /// Creates an empty [DomeSeeing] instance
+    pub fn new() -> Self {
+        Default::default()
+    }
     /// Load the dome seeing time series from a "domeseeing_PSSN.rs.pkl" file
     pub fn load<P>(path: P) -> Result<Self, DomeSeeingError>
     where
@@ -68,6 +77,10 @@ impl DomeSeeing {
     {
         let mut file = File::open(Path::new(&path).join("domeseeing_PSSN.rs.pkl"))?;
         Ok(Self(pickle::from_reader(&mut file, Default::default())?))
+    }
+    /// Add another [Data] set to the record
+    pub fn push(&mut self, data: Data) {
+        self.0.push(data);
     }
     /// Truncates the records to the first `len` elements
     pub fn truncates(&mut self, len: usize) {
