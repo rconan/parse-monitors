@@ -39,17 +39,19 @@ impl Config for geotrans::M2 {
 }
 
 fn main() -> anyhow::Result<()> {
-    type M12 = geotrans::M1;
+    type M12 = geotrans::M2;
 
     cfd::Baseline::<CFD_YEAR>::default()
         .into_iter()
         .collect::<Vec<cfd::CfdCase<CFD_YEAR>>>()
         .into_par_iter()
-        .skip(20)
-        .take(18)
+        .skip(38)
+        .take(2)
         .for_each(|cfd_case| {
             let now = Instant::now();
-            let case_path = cfd::Baseline::<CFD_YEAR>::path().join(cfd_case.to_string());
+            let case_path = cfd::Baseline::<CFD_YEAR>::path()
+                .expect("undefined path to CFD repository")
+                .join(cfd_case.to_string());
             let (_geometry, files) = M12::configure(cfd_case).unwrap();
 
             let _ = files.last().map(|file| {

@@ -1,7 +1,20 @@
-use crate::{cfd, cfd::BaselineTrait, report::Report, Mirror, MonitorsLoader};
+use crate::{
+    cfd::{self, BaselineTrait},
+    report::Report,
+    Mirror, MonitorsLoader,
+};
 use glob::glob;
 use rayon::prelude::*;
-use std::{error::Error, fs::File, io::Write, path::Path};
+use std::{fs::File, io::Write, path::Path};
+
+use super::ReportError;
+
+#[derive(Debug, thiserror::Error)]
+pub enum WindLoadsError {
+    #[error("wind loads report error")]
+    Reporting(#[from] ReportError),
+}
+type Result<T> = std::result::Result<T, WindLoadsError>;
 
 #[derive(Default)]
 pub struct WindLoads<const CFD_YEAR: u32> {
@@ -53,31 +66,39 @@ impl<const CFD_YEAR: u32> WindLoads<CFD_YEAR> {
     }
 }
 impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for WindLoads<CFD_YEAR> {
+    type Error = WindLoadsError;
     /// Chapter section
     fn chapter_section(
         &self,
         cfd_case: cfd::CfdCase<CFD_YEAR>,
         _: Option<usize>,
-    ) -> Result<String, Box<dyn Error>> {
-        let path_to_case = cfd::Baseline::<CFD_YEAR>::path().join(&cfd_case.to_string());
+    ) -> Result<String> {
+        let path_to_case = cfd::Baseline::<CFD_YEAR>::path()
+            .map_err(|e| ReportError::Baseline(e))?
+            .join(&cfd_case.to_string());
         let pattern = path_to_case
             .join("scenes")
             .join("vort_tel_vort_tel*.png")
             .to_str()
             .unwrap()
             .to_owned();
-        let paths = glob(&pattern).expect("Failed to read glob pattern");
-        let vort_pic = paths.last().unwrap()?.with_extension("");
+        let paths = glob(&pattern).map_err(|e| ReportError::Pattern(e))?;
+        let vort_pic = paths
+            .last()
+            .unwrap()
+            .map_err(|e| ReportError::Glob(e))?
+            .with_extension("");
         let mut monitors = if let Some(xmon) = &self.xmon {
             MonitorsLoader::<CFD_YEAR>::default()
                 .data_path(path_to_case.clone())
                 .exclude_filter(xmon)
-                .load()?
+                .load()
         } else {
             MonitorsLoader::<CFD_YEAR>::default()
                 .data_path(path_to_case.clone())
-                .load()?
-        };
+                .load()
+        }
+        .map_err(|e| ReportError::Monitors(e))?;
         if let Some(period) = self.last_time_range {
             monitors.keep_last(period);
         }
@@ -311,7 +332,7 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for WindLoads<CFD_YEAR> {
         &self,
         zenith_angle: cfd::ZenithAngle,
         cfd_cases_subset: Option<&[cfd::CfdCase<CFD_YEAR>]>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<()> {
         let report_path = Path::new("report");
         let part = format!("part{}.", self.part);
         let chapter_filename = match zenith_angle {
@@ -333,7 +354,9 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for WindLoads<CFD_YEAR> {
             .into_par_iter()
             .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())
             .collect();
-        let mut file = File::create(report_path.join(chapter_filename))?;
+        let path = report_path.join(chapter_filename);
+        let mut file =
+            File::create(&path).map_err(|e| ReportError::Creating(e, path.to_path_buf()))?;
         write!(
             file,
             r#"
@@ -342,7 +365,8 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for WindLoads<CFD_YEAR> {
 "#,
             zenith_angle.chapter_title(),
             results.join("\n")
-        )?;
+        )
+        .map_err(|e| ReportError::Writing(e, path.to_path_buf()))?;
         Ok(())
     }
     fn part_name(&self) -> String {
@@ -351,7 +375,7 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for WindLoads<CFD_YEAR> {
 }
 impl<const CFD_YEAR: u32> WindLoads<CFD_YEAR> {
     /// Mount chapter assembly
-    pub fn mount_chapter(&self, chapter_filename: Option<&str>) -> Result<(), Box<dyn Error>> {
+    pub fn mount_chapter(&self, chapter_filename: Option<&str>) -> Result<()> {
         let report_path = Path::new("report");
         let cfd_cases = if let Some(cfd_case) = self.cfd_case {
             vec![cfd_case]
@@ -364,8 +388,9 @@ impl<const CFD_YEAR: u32> WindLoads<CFD_YEAR> {
             .into_par_iter()
             .map(|cfd_case| self.chapter_section(cfd_case, None).unwrap())
             .collect();
+        let path = report_path.join(chapter_filename.unwrap_or("mount.chapter.tex"));
         let mut file =
-            File::create(report_path.join(chapter_filename.unwrap_or("mount.chapter.tex")))?;
+            File::create(&path).map_err(|e| ReportError::Creating(e, path.to_path_buf()))?;
         write!(
             file,
             r#"
@@ -374,7 +399,8 @@ impl<const CFD_YEAR: u32> WindLoads<CFD_YEAR> {
 {}
 "#,
             results.join("\n")
-        )?;
+        )
+        .map_err(|e| ReportError::Writing(e, path.to_path_buf()))?;
         Ok(())
     }
 }

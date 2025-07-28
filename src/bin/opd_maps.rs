@@ -4,21 +4,28 @@
 
 use glob::glob;
 use npyz::npz::NpzArchive;
-use parse_monitors::{cfd, cfd::BaselineTrait};
+use parse_monitors::{
+    cfd::{self, BaselineTrait},
+    CFD_YEAR,
+};
 use rayon::prelude::*;
 use std::{error::Error, time::Instant};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let pattern = "optvol_optvol*.npz";
 
-    cfd::Baseline::<2021>::default()
+    cfd::Baseline::<CFD_YEAR>::default()
         //.extras()
         .into_iter()
-        .collect::<Vec<cfd::CfdCase<2021>>>()
+        .skip(20)
+        .take(20)
+        .collect::<Vec<cfd::CfdCase<CFD_YEAR>>>()
         .into_par_iter()
         .for_each(|cfd_case| {
             let now = Instant::now();
-            let case_path = cfd::Baseline::<2021>::path().join(cfd_case.to_string());
+            let case_path = cfd::Baseline::<CFD_YEAR>::path()
+                .expect("undefined path")
+                .join(cfd_case.to_string());
             let files: Vec<_> = glob(case_path.join("optvol").join(pattern).to_str().unwrap())
                 .unwrap()
                 .collect();

@@ -35,7 +35,7 @@ fn main() -> anyhow::Result<()> {
         cfd::Baseline::<CFD_YEAR>::default()
             .into_iter()
             .skip(20)
-            .take(18)
+            .take(20)
             .collect(),
     ));
     let parts_base = 0;

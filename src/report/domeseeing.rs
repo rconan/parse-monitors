@@ -5,9 +5,18 @@ use crate::{
 };
 use glob::glob;
 use rayon::prelude::*;
-use std::{error::Error, fs::File, io::Write, path::Path};
+use std::{fs::File, io::Write, path::Path};
+
+use super::ReportError;
 
 const OTHER_YEAR: u32 = 2021;
+
+#[derive(Debug, thiserror::Error)]
+pub enum DomeSeeingPartError {
+    #[error("dome seeing report error")]
+    Reporting(#[from] ReportError),
+}
+type Result<T> = std::result::Result<T, DomeSeeingPartError>;
 
 pub struct DomeSeeingPart<const CFD_YEAR: u32> {
     part: u8,
@@ -32,9 +41,10 @@ impl<const CFD_YEAR: u32> DomeSeeingPart<CFD_YEAR> {
         let results: Vec<_> = cfd_cases_21
             .into_par_iter()
             .map(|cfd_case_21| {
-                let path_to_case =
-                    cfd::Baseline::<CFD_YEAR>::path().join(format!("{}", cfd_case_21));
-                let mut ds_21 = DomeSeeing::load(path_to_case.clone()).unwrap();
+                let path_to_case = cfd::Baseline::<CFD_YEAR>::path()
+                    .ok()?
+                    .join(format!("{}", cfd_case_21));
+                let mut ds_21 = DomeSeeing::load(path_to_case.clone()).ok()?;
                 match &truncate {
                     Some((Some(cfd_case), len)) => {
                         if cfd_case_21 == *cfd_case {
@@ -52,9 +62,10 @@ impl<const CFD_YEAR: u32> DomeSeeingPart<CFD_YEAR> {
                         if let Some(cfd_case_20) = cfd::Baseline::<OTHER_YEAR>::find(cfd_case_21) {
                             let ds_20 = DomeSeeing::load(
                                 cfd::Baseline::<OTHER_YEAR>::path()
+                                    .ok()?
                                     .join(format!("{}", cfd_case_20)),
                             )
-                            .unwrap();
+                            .ok()?;
                             if let (Some(v_pssn), Some(h_pssn)) =
                                 (ds_20.pssn(Band::V), ds_20.pssn(Band::H))
                             {
@@ -109,13 +120,16 @@ impl<const CFD_YEAR: u32> DomeSeeingPart<CFD_YEAR> {
     }
 }
 impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for DomeSeeingPart<CFD_YEAR> {
+    type Error = DomeSeeingPartError;
     /// Chapter section
     fn chapter_section(
         &self,
         cfd_case: CfdCase<CFD_YEAR>,
         ri_pic_idx: Option<usize>,
-    ) -> Result<String, Box<dyn Error>> {
-        let path_to_case = Baseline::<CFD_YEAR>::path().join(&cfd_case.to_string());
+    ) -> Result<String> {
+        let path_to_case = Baseline::<CFD_YEAR>::path()
+            .map_err(|e| ReportError::Baseline(e))?
+            .join(&cfd_case.to_string());
         let pattern = path_to_case
             .join("scenes")
             .join("RI_tel_RI_tel*.png")
@@ -128,7 +142,8 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for DomeSeeingPart<CFD_YEAR> {
         } else {
             paths.last()
         }
-        .unwrap()?
+        .unwrap()
+        .map_err(|e| ReportError::Glob(e))?
         .with_extension("");
         Ok(format!(
             r#"
@@ -161,7 +176,7 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for DomeSeeingPart<CFD_YEAR> {
         &self,
         zenith_angle: cfd::ZenithAngle,
         cfd_cases_subset: Option<&[cfd::CfdCase<CFD_YEAR>]>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<()> {
         let report_path = Path::new("report");
         let part = format!("part{}.", self.part);
         let chapter_filename = match zenith_angle {
@@ -169,15 +184,17 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for DomeSeeingPart<CFD_YEAR> {
             cfd::ZenithAngle::Thirty => part + "chapter2.tex",
             cfd::ZenithAngle::Sixty => part + "chapter3.tex",
         };
-        let mut file = File::create(report_path.join(chapter_filename))?;
+        let path = report_path.join(chapter_filename);
+        let mut file =
+            File::create(&path).map_err(|e| ReportError::Creating(e, path.to_path_buf()))?;
         write!(
             file,
             r#"
 \chapter{{{}}}
 \begin{{longtable}}{{*{{4}}{{c}}|*{{3}}{{r}}|*{{3}}{{r}}}}\toprule
- \multicolumn{{4}}{{c|}}{{\textbf{{CFD Cases}}}} & \multicolumn{{3}}{{|c|}}{{\textbf{{CFD_YEAR}}}} & \multicolumn{{3}}{{|c}}{{\textbf{{2020}}}} \\\midrule
+ \multicolumn{{4}}{{c|}}{{\textbf{{CFD Cases}}}} & \multicolumn{{3}}{{|c|}}{{\textbf{{{CFD_YEAR}}}}} & \multicolumn{{3}}{{|c}}{{\textbf{{2021}}}} \\\midrule
   Zen. & Azi. & Cfg. & Wind & WFE & PSSn & PSSn & WFE & PSSn & PSSn \\
-  - & -    & -    &  -   & RMS & -  & - & RMS & - & -  \\
+        - & -    & -    &  -   & RMS & -  & - & RMS & - & -  \\
   $[deg]$  & $[deg.]$ & - & $[m/s]$ & $[nm]$& V & H & $[nm]$ & V & H \\\hline
  {}
 \bottomrule
@@ -204,9 +221,9 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for DomeSeeingPart<CFD_YEAR> {
                     true
                 })
                 .map(|cfd_case| self.chapter_section(cfd_case, None))
-                .collect::<Result<Vec<String>, Box<dyn Error>>>()?
+                .collect::<Result<Vec<String>>>()?
                 .join("\n")
-        )?;
+        ).map_err(|e| ReportError::Writing(e, path.to_path_buf()))?;
         Ok(())
     }
     fn part_name(&self) -> String {
@@ -214,14 +231,12 @@ impl<const CFD_YEAR: u32> super::Report<CFD_YEAR> for DomeSeeingPart<CFD_YEAR> {
     }
 }
 impl<const CFD_YEAR: u32> DomeSeeingPart<CFD_YEAR> {
-    pub fn special(
-        &self,
-        name: &str,
-        cfd_cases: Vec<CfdCase<CFD_YEAR>>,
-    ) -> Result<String, Box<dyn Error>> {
+    pub fn special(&self, name: &str, cfd_cases: Vec<CfdCase<CFD_YEAR>>) -> Result<String> {
         let report_path = Path::new("report");
         let chapter_filename = name.to_lowercase() + ".chapter.tex";
-        let mut file = File::create(report_path.join(&chapter_filename))?;
+        let path = report_path.join(&chapter_filename);
+        let mut file =
+            File::create(&path).map_err(|e| ReportError::Creating(e, path.to_path_buf()))?;
         let trouble_maker = CfdCase::new(
             cfd::ZenithAngle::Thirty,
             cfd::Azimuth::OneThirtyFive,
@@ -258,7 +273,7 @@ impl<const CFD_YEAR: u32> DomeSeeingPart<CFD_YEAR> {
             name,
             self.chapter_table(cfd_cases, Some((Some(trouble_maker), cut_len))),
             results.join("\n")
-        )?;
+        ).map_err(|e| ReportError::Writing(e, path.to_path_buf()))?;
         Ok(chapter_filename)
     }
 }

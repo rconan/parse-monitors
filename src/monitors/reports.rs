@@ -1,4 +1,4 @@
-use crate::{detrend_mut, Vector};
+use crate::{detrend_mut, MonitorsError, Vector};
 #[cfg(feature = "plot")]
 use plotters::prelude::*;
 use std::{
@@ -6,7 +6,7 @@ use std::{
     ops::{Add, Deref, DerefMut, Div},
     path::Path,
 };
-// use welch_sde::{Build, PowerSpectrum};
+use welch_sde::{Build, PowerSpectrum};
 
 mod loader;
 pub use loader::MonitorsLoader;

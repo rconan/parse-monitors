@@ -73,9 +73,11 @@ impl DomeSeeing {
     /// Load the dome seeing time series from a "domeseeing_PSSN.rs.pkl" file
     pub fn load<P>(path: P) -> Result<Self, DomeSeeingError>
     where
-        P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>,
+        P: AsRef<Path>,
     {
-        let mut file = File::open(Path::new(&path).join("domeseeing_PSSN.rs.pkl"))?;
+        let path = path.as_ref().join("domeseeing_PSSN.rs.pkl");
+        log::info!("Logging dome seeing OPD related data from {:?}", path);
+        let mut file = File::open(Path::new(&path))?;
         Ok(Self(pickle::from_reader(&mut file, Default::default())?))
     }
     /// Add another [Data] set to the record
@@ -163,8 +165,8 @@ impl DomeSeeing {
     /// Returns the PSSn
     pub fn pssn(&self, band: Band) -> Option<f64> {
         match band {
-            Band::V => self.iter().filter_map(|ds| ds.v_le_pssn).last(),
-            Band::H => self.iter().filter_map(|ds| ds.h_le_pssn).last(),
+            Band::V => self.iter().map(|ds| ds.v_se_pssn).last(),
+            Band::H => self.iter().map(|ds| ds.h_se_pssn).last(),
         }
     }
 }

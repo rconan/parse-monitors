@@ -68,7 +68,7 @@ const CFD_YEAR: u32 = 2025;
 fn main() -> anyhow::Result<()> {
     env_logger::init();
     let opt = Cli::parse();
-    let cfd_root = Baseline::<CFD_YEAR>::path();
+    let cfd_root = Baseline::<CFD_YEAR>::path()?;
     let data_paths: Vec<_> = Baseline::<CFD_YEAR>::from_env()
         .unwrap_or_default()
         .into_iter()
@@ -106,8 +106,8 @@ fn main() -> anyhow::Result<()> {
 
         let _: Vec<_> = data_paths
             .par_iter()
-            .skip(20)
-            .take(18)
+            .skip(38)
+            .take(2)
             .map(|arg| {
                 let path = Path::new(arg).join("report");
                 if !path.is_dir() {

@@ -14,6 +14,8 @@ use super::{Azimuth, CfdCase, Enclosure, WindSpeed, ZenithAngle};
 pub enum BaselineError {
     #[error(r#""CFD_CASE" env var is not set"#)]
     Env(#[from] VarError),
+    #[error(r#"neither "CFD_REPO", "CFD_2020_REPO", "CFD_2021_REPO" nor "CFD_2025_REPO" environment variable is set"#)]
+    Repo(#[source] VarError),
     #[error("{0}")]
     ReadFile(#[source] io::Error, String),
     #[error("CFD case error")]
@@ -102,12 +104,14 @@ pub trait BaselineTrait<const YEAR: u32>:
 {
     /// Returns the default path to the CFD cases repository
     // fn path() -> PathBuf;
-    /// Return the path from the "CFD_REPO" environment variable if it is set,
+    /// Return the path from the "CFD_<YEAR>_REPO" or "CFD_REPO" environment variable if any is set,
     /// otherwise returns the default path
-    fn path() -> PathBuf {
-        env::var("CFD_REPO")
+    fn path() -> Result<PathBuf> {
+        env::var(format!("CFD_{}_REPO", YEAR))
+            .or_else(|_| env::var("CFD_REPO"))
             .map(|p| Path::new(&p).to_path_buf())
-            .expect(r#""CFD_REPO" is not set"#)
+            .map_err(|e| BaselineError::Repo(e))
+        // .expect(r#""CFD_REPO" is not set"#)
     }
     /// Returns pairs of [WindSpeed] and [Enclosure] configuration for the given [ZenithAngle]
     fn configuration(zenith_angle: ZenithAngle) -> Vec<(WindSpeed, Enclosure)> {
@@ -154,7 +158,7 @@ pub trait BaselineTrait<const YEAR: u32>:
     }
     /// Finds the CFD case from `OTHER_YEAR` that matches a CFD baseline case in `YEAR`
     fn find<const OTHER_YEAR: u32>(cfd_case_21: CfdCase<OTHER_YEAR>) -> Option<CfdCase<YEAR>> {
-        Self::default().into_iter().find(|cfd_case_20| {
+        /* Self::default().into_iter().find(|cfd_case_20| {
             match (cfd_case_21.zenith.clone(), cfd_case_21.wind_speed.clone()) {
                 (ZenithAngle::Sixty, WindSpeed::Twelve | WindSpeed::Seventeen) => {
                     cfd_case_20.zenith == cfd_case_21.zenith
@@ -169,6 +173,18 @@ pub trait BaselineTrait<const YEAR: u32>:
                         && cfd_case_20.enclosure == cfd_case_21.enclosure
                 }
             }
+        }) */
+        let CfdCase {
+            zenith,
+            azimuth,
+            enclosure,
+            wind_speed,
+        } = cfd_case_21;
+        Some(CfdCase {
+            zenith,
+            azimuth,
+            enclosure,
+            wind_speed,
         })
     }
 }
