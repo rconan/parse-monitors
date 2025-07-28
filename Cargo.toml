@@ -121,7 +121,3 @@ rand = "0.8.4"
 
 [package.metadata.docs.rs]
 features = ["plot", "rstar"]
-
-[patch.crates-io]
-gmt_dos-clients_domeseeing = { path = "/home/ubuntu/projects/dos-actors/clients/domeseeing" }
-crseo = { path = "/home/ubuntu/projects/crseo" }

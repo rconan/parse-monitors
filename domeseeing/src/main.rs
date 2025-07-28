@@ -10,8 +10,8 @@ use parse_monitors::cfd::Baseline;
 fn main() -> anyhow::Result<()> {
     Baseline::<2025>::default()
         .into_iter()
-        .skip(20)
-        .take(18)
+        .skip(38)
+        .take(2)
         .map(|cfd_case| Path::new("/home/ubuntu/mnt/CASES/").join(&cfd_case.to_string()))
         .for_each(|path| task(&path).expect(&format!("{path:?} failed")));
 
@@ -27,8 +27,11 @@ fn task(cfd_path: &Path) -> anyhow::Result<()> {
     // println!("{ds}");
 
     let mut gmt = Gmt::builder().build()?;
-    let mut v_src = Source::builder().build()?;
-    let mut v_pssn = PSSnBuilder::<TelescopeError>::default().build()?;
+    let v_src = Source::builder().band("Vs");
+    let mut v_pssn = PSSnBuilder::<TelescopeError>::default()
+        .source(v_src.clone())
+        .build()?;
+    let mut v_src = v_src.build()?;
     let h_src = Source::builder().band("H");
     let mut h_pssn = PSSnBuilder::<TelescopeError>::default()
         .source(h_src.clone())

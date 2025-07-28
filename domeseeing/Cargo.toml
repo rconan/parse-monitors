@@ -5,8 +5,8 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
-crseo = "2.5.0"
-gmt_dos-clients_domeseeing = {version = "2.1.2", features = ["npyz"], default-features = false}
+crseo = "2.5.1"
+gmt_dos-clients_domeseeing = {version = "3.0.0", features = ["npyz"], default-features = false}
 gmt_dos-clients_io = "4.3.0"
 parse-monitors = { version = "0.3.0", path = ".." }
 serde-pickle.workspace = true
