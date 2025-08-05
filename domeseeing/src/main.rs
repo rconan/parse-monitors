@@ -10,8 +10,8 @@ use parse_monitors::cfd::Baseline;
 fn main() -> anyhow::Result<()> {
     Baseline::<2025>::default()
         .into_iter()
-        .skip(38)
-        .take(2)
+        .skip(20)
+        .take(5)
         .map(|cfd_case| Path::new("/home/ubuntu/mnt/CASES/").join(&cfd_case.to_string()))
         .for_each(|path| task(&path).expect(&format!("{path:?} failed")));
 
