@@ -1,25 +1,19 @@
 Here are the steps to build a CFD report:
 
      1. batch_force:
-          * cargo build --release --bin batch_force --features plot
-		  * sudo -E ./../target/release/batch_force --all
+          * cargo r -r --bin batch_force --features plot
 
-     2. group-force:
-          * cargo build --release --bin group-force --features plot
-		  * sudo -E ./../target/release/group-force
+     2. group-force (optional):
+          * cargo r -r --bin group-force --features plot
 
      3. opd_maps:
-          * cargo build --release --bin opd_maps --features plot
-		  * sudo -E ./../target/release/opd_maps
+          * cargo r -r --bin opd_maps --features plot
 
      4. pressure_maps:
-          * cargo build --release --bin pressure_maps --features plot
-		  * sudo -E ./../target/release/pressure_maps
+          * cargo r -r --bin pressure_maps --features plot
 
      5. dome-seeing:
-	* ls -1 | xargs -n1 -I {} sh -c "cd {} && [ -f domeseeing_PSSN.pickle ] && [ ! -f domeseeing_PSSN.rs.pkl ] && sudo /home/ubuntu/anaconda/bin/python /home/ubuntu/projects/parse-monitors/src/py2rs.py"
-          * cargo build --release --bin dome-seeing --features plot
-		  * sudo -E ./../target/release/dome-seeing
+          * cargo r -r --bin dome-seeing --features plot
 	 
 	 6. cfd_report:
 		  * cargo run --release --bin cfd_report -- --full 
