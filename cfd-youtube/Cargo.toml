@@ -8,5 +8,5 @@ anyhow = "1.0.66"
 aws-config = "0.51.0"
 aws-sdk-s3 = "0.21.0"
 google-youtube3 = "4.0.1"
-parse-monitors = { version = "0.2.1", path = "../" }
+parse-monitors = { version = "0.3.1", path = "../" }
 tokio = { version = "1.21.2", features = ["full"] }

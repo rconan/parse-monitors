@@ -8,14 +8,17 @@ use std::io::Cursor;
 
 // MP4 file name
 //  . Gradient of the index of refracton
-// const MP4_FILENAME: &str = "RI_tel_RI_tel";
+const MP4_FILENAME: &str = "RI_tel_RI_tel";
 //  . Vorticity
-const MP4_FILENAME: &str = "vort_tel_vort_tel";
+// const MP4_FILENAME: &str = "vort_tel_vort_tel";
 // Playlist ID
 //  . dome seeing
 // const PLAYLIST_ID: &str = "PLTrfhf7NjCR1x_RnJBJi65Ycv4nYpoaK1";
 //  . wind loading
-const PLAYLIST_ID: &str = "PLTrfhf7NjCR186TzL_9hCuQLKvlSVg5QQ";
+const PLAYLIST_ID: &str = "PLTrfhf7NjCR0DqiBP_XcvI-nzQbq3PO1L";
+const AWS_REGION: &str = "sa-east-1";
+const CFD_YEAR: u32 = 2025;
+const S3_BUCKET: &str = "maua.cfd.2025";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -42,23 +45,22 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let config = aws_config::from_env()
-        .region(s3::Region::new("us-east-2"))
+        .region(s3::Region::new(AWS_REGION))
         .load()
         .await;
     let client = s3::Client::new(&config);
 
-    for i in 56..60 {
-        let cfd_case = cfd::Baseline::<2021>::default()
-            .into_iter()
-            .skip(i) // failed
-            .next()
-            .unwrap();
+    for cfd_case in cfd::Baseline::<CFD_YEAR>::default()
+        .into_iter()
+        .skip(5)
+        .take(5)
+    {
         let key = format!("CASES/{}/scenes/{}.mp4", &cfd_case, MP4_FILENAME);
-        println!("#{i:02}: {key}");
+        println!("{key}");
 
         let stream = client
             .get_object()
-            .bucket("gmto.cfd.2022")
+            .bucket(S3_BUCKET)
             .key(key)
             .send()
             .await?;
