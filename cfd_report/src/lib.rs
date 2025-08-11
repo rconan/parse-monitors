@@ -1,3 +1,5 @@
+use std::{error::Error, fmt::Display, io, path::PathBuf};
+
 pub mod batch_force;
 pub mod dome_seeing;
 pub mod opd_maps;
@@ -22,4 +24,25 @@ pub struct ForcesCli {
     pub lgsa: bool,
     pub platforms_cables: bool,
     pub detrend: bool,
+}
+
+#[derive(Debug)]
+pub struct ReportPathError {
+    path: PathBuf,
+    source: io::Error,
+}
+impl ReportPathError {
+    pub fn new(path: PathBuf, source: io::Error) -> Self {
+        Self { path, source }
+    }
+}
+impl Display for ReportPathError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "failed to create report folder: {:?}", self.path)
+    }
+}
+impl Error for ReportPathError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&self.source)
+    }
 }

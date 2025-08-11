@@ -1,6 +1,6 @@
-use std::{fs, io};
+use std::fs;
 
-use cfd_report::{ForcesCli, batch_force, dome_seeing, opd_maps, pressure_maps};
+use cfd_report::{ForcesCli, ReportPathError, batch_force, dome_seeing, opd_maps, pressure_maps};
 use clap::{Parser, Subcommand};
 use parse_monitors::{
     CFD_YEAR,
@@ -130,10 +130,11 @@ fn main() -> anyhow::Result<()> {
         .map(|cfd_case| {
             let path_to_report = cfd_root.join(cfd_case.to_string()).join("report");
             Ok(if !path_to_report.exists() {
-                fs::create_dir(path_to_report)?;
+                fs::create_dir(&path_to_report)
+                    .map_err(|e| ReportPathError::new(path_to_report, e))?;
             })
         })
-        .collect::<io::Result<Vec<()>>>()?;
+        .collect::<Result<Vec<()>, ReportPathError>>()?;
     match cli.commands {
         Commands::All => {
             batch_force::task(&cfd_cases, Default::default())?;
