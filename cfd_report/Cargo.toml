@@ -1,0 +1,16 @@
+[package]
+name = "cfd_report"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+complot.workspace = true
+env_logger.workspace = true
+geotrans.workspace = true
+glob.workspace = true
+log.workspace = true
+npyz.workspace = true
+parse-monitors = { version = "0.3.1", path = ".." , features = ["plot"]}
+rayon.workspace = true
