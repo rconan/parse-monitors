@@ -1,24 +1,31 @@
 use std::fs;
 
-use cfd_report::{ForcesCli, ReportPathError, batch_force, dome_seeing, opd_maps, pressure_maps};
+use cfd_report::{
+    ForcesCli, PREVIOUS_YEAR, ReportError, ReportOptions, ReportPathError, batch_force,
+    dome_seeing, opd_maps, pressure_maps, report,
+};
 use clap::{Parser, Subcommand};
 use parse_monitors::{
     CFD_YEAR,
     cfd::{self, Baseline, BaselineTrait},
 };
 
-const PREVIOUS_YEAR: u32 = 2021;
-
 #[derive(Parser)]
 #[command(
     name = "CFD_REPORT",
-    about = "Generates the plots for the CFD baseline reports",
+    about = "Generates plots & Latex files for the CFD baseline reports",
     after_help = r#"
-cfd_report processes the CFD database in order to generate images and plots for the CFD reports.
+    cfd_report processes the CFD database in order to generate images and plots for the CFD reports and writes the Latex files of the reports in the `/path/to/CFD/case/report` folder.
 Paths to the databases need to be provided for both the current and the previous years with:
  - export CFD_<current year>_REPO=/path/to/current/year/database
  - export CFD_<previous year>_REPO=/path/to/previous/year/database
-For example, all the illustrations for the year 2025 will be created with:
+For example, the full report, including all the plots, for the year 2025 will be created with:
+```
+export CFD_2025_REPO=/home/ubuntu/mnt
+export CFD_2021_REPO=/home/ubuntu/cfd
+cargo r -r -- full
+```
+But, all the illustrations and not the report for the year 2025 will be created with:
 ```
 export CFD_2025_REPO=/home/ubuntu/mnt
 export CFD_2021_REPO=/home/ubuntu/cfd
@@ -39,6 +46,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// generates the CFD report plots & Latex files
+    #[command(subcommand)]
+    Report(ReportOptions),
     /// generates all CFD plots
     All,
     /// generates CFD forces & moments plots
@@ -103,7 +113,7 @@ enum Commands {
     DomeSeeing,
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), ReportError> {
     env_logger::init();
     let cli = Cli::parse();
     let cfd_cases = match (cli.skip, cli.take) {
@@ -136,6 +146,7 @@ fn main() -> anyhow::Result<()> {
         })
         .collect::<Result<Vec<()>, ReportPathError>>()?;
     match cli.commands {
+        Commands::Report(opt) => report::taks(&cfd_cases, opt)?,
         Commands::All => {
             batch_force::task(&cfd_cases, Default::default())?;
             opd_maps::task(&cfd_cases)?;

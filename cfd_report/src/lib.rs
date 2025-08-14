@@ -1,9 +1,15 @@
-use std::{error::Error, fmt::Display, io, path::PathBuf};
+use clap::Subcommand;
 
 pub mod batch_force;
 pub mod dome_seeing;
+mod error;
 pub mod opd_maps;
 pub mod pressure_maps;
+pub mod report;
+
+pub use error::{ReportError, ReportPathError};
+
+pub const PREVIOUS_YEAR: u32 = 2021;
 
 #[derive(Default, Debug, Clone)]
 pub struct ForcesCli {
@@ -26,23 +32,14 @@ pub struct ForcesCli {
     pub detrend: bool,
 }
 
-#[derive(Debug)]
-pub struct ReportPathError {
-    path: PathBuf,
-    source: io::Error,
-}
-impl ReportPathError {
-    pub fn new(path: PathBuf, source: io::Error) -> Self {
-        Self { path, source }
-    }
-}
-impl Display for ReportPathError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "failed to create report folder: {:?}", self.path)
-    }
-}
-impl Error for ReportPathError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&self.source)
-    }
+#[derive(Debug, Clone, Subcommand)]
+pub enum ReportOptions {
+    /// generates the full report: windloads, dome seeing and HTC
+    Full,
+    /// generates only the dome seeing part of the report
+    DomeSeeing,
+    /// generates only the windloads part of the report
+    WindLoads,
+    /// generates only the HTC part of the report
+    HTC,
 }

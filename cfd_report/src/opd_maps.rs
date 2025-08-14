@@ -4,11 +4,14 @@
 
 use glob::glob;
 use npyz::npz::NpzArchive;
-use parse_monitors::cfd::{self, BaselineTrait, CfdCase};
+use parse_monitors::{
+    cfd::{self, BaselineTrait, CfdCase},
+    report::ReportError,
+};
 use rayon::prelude::*;
 use std::time::Instant;
 
-pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>]) -> anyhow::Result<()> {
+pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>]) -> Result<(), ReportError> {
     let pattern = "optvol_optvol*.npz";
 
     cfd_cases.into_par_iter().for_each(|cfd_case| {

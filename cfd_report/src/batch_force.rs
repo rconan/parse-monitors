@@ -10,9 +10,9 @@ use parse_monitors::{
 };
 use rayon::prelude::*;
 
-use crate::ForcesCli;
+use crate::{ForcesCli, ReportError};
 
-pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>], opt: ForcesCli) -> anyhow::Result<()> {
+pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>], opt: ForcesCli) -> Result<(),ReportError> {
     let cfd_root = Baseline::<Y>::path()?;
     let data_paths: Vec<_> = cfd_cases
         .into_iter()

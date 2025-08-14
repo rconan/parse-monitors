@@ -1,4 +1,4 @@
-use std::{fmt, num::ParseIntError, path::Path};
+use std::{fmt, num::ParseIntError};
 use strum_macros::EnumIter;
 
 #[derive(Debug, thiserror::Error)]
