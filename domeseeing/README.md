@@ -19,6 +19,6 @@ cargo r -r
 
 ```shell
 export GMT_MODES_PATH=~/ceo/
-export CFD_REPO=/home/ubuntu/mnt/
+export CFD_REPO=/home/ubuntu/mnt/CASES
 cargo r -r
 ```

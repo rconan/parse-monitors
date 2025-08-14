@@ -1,19 +1,48 @@
 use std::{fs::File, path::Path, time::Instant};
 
+use clap::Parser;
 use crseo::{
     Builder, FromBuilder, Gmt, PSSnEstimates, Source,
     pssn::{PSSnBuilder, TelescopeError},
 };
 use gmt_dos_clients_domeseeing::DomeSeeing;
-use parse_monitors::cfd::Baseline;
+use parse_monitors::{
+    CFD_YEAR,
+    cfd::{self, CfdCase},
+};
+
+#[derive(Debug, Parser)]
+#[command(
+    name = "DOME SEEING",
+    about = "Computes PSSn from dome seeing OPD maps"
+)]
+struct Cli {
+    /// skip that many CFD cases
+    #[arg(short, long)]
+    skip: Option<usize>,
+    /// process only that many CFD cases
+    #[arg(short, long)]
+    take: Option<usize>,
+}
 
 fn main() -> anyhow::Result<()> {
-    Baseline::<2025>::default()
-        .into_iter()
-        .skip(20)
-        .take(5)
-        .map(|cfd_case| Path::new("/home/ubuntu/mnt/CASES/").join(&cfd_case.to_string()))
-        .for_each(|path| task(&path).expect(&format!("{path:?} failed")));
+    let cli = Cli::parse();
+    match (cli.skip, cli.take) {
+        (None, None) => Box::new(cfd::Baseline::<CFD_YEAR>::default().into_iter())
+            as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
+        (None, Some(t)) => Box::new(cfd::Baseline::<CFD_YEAR>::default().into_iter().take(t))
+            as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
+        (Some(s), None) => Box::new(cfd::Baseline::<CFD_YEAR>::default().into_iter().skip(s))
+            as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
+        (Some(s), Some(t)) => Box::new(
+            cfd::Baseline::<CFD_YEAR>::default()
+                .into_iter()
+                .skip(s)
+                .take(t),
+        ) as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
+    }
+    .map(|cfd_case| Path::new("/home/ubuntu/mnt/CASES/").join(&cfd_case.to_string()))
+    .for_each(|path| task(&path).expect(&format!("{path:?} failed")));
 
     Ok(())
 }
