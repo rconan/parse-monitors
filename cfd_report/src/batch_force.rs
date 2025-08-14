@@ -12,7 +12,7 @@ use rayon::prelude::*;
 
 use crate::{ForcesCli, ReportError};
 
-pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>], opt: ForcesCli) -> Result<(),ReportError> {
+pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>], opt: ForcesCli) -> Result<(), ReportError> {
     let cfd_root = Baseline::<Y>::path()?;
     let data_paths: Vec<_> = cfd_cases
         .into_iter()
@@ -50,8 +50,6 @@ pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>], opt: ForcesCli) -> Result<()
 
         let _: Vec<_> = data_paths
             .par_iter()
-            .skip(38)
-            .take(2)
             .map(|arg| {
                 let path = Path::new(arg).join("report");
                 if !path.is_dir() {

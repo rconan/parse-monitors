@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use clap::Subcommand;
 
 pub mod batch_force;
@@ -8,8 +10,11 @@ pub mod pressure_maps;
 pub mod report;
 
 pub use error::{ReportError, ReportPathError};
+use indicatif::MultiProgress;
 
 pub const PREVIOUS_YEAR: u32 = 2021;
+
+static PROGRESS: LazyLock<MultiProgress> = LazyLock::new(|| MultiProgress::new());
 
 #[derive(Default, Debug, Clone)]
 pub struct ForcesCli {
