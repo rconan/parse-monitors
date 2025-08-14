@@ -24,8 +24,8 @@ pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>], opt: ForcesCli) -> Result<()
                 .to_string()
         })
         .collect();
-    let n_cases = data_paths.len();
-    println!("Found {} CFD cases", n_cases);
+    // let n_cases = data_paths.len();
+    // println!("Found {} CFD cases", n_cases);
 
     let parts = vec![
         (opt.crings || opt.all).then(|| Some(("c-ring_parts", "Cring"))),
@@ -46,7 +46,7 @@ pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>], opt: ForcesCli) -> Result<()
 
     for part in parts.into_iter().filter_map(|x| x) {
         let (name, filter) = part.unwrap();
-        println!("Part: {}", name);
+        // println!("Part: {}", name);
 
         let _: Vec<_> = data_paths
             .par_iter()

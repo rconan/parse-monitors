@@ -9,13 +9,12 @@ use parse_monitors::{
     report::ReportError,
 };
 use rayon::prelude::*;
-use std::time::Instant;
 
 pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>]) -> Result<(), ReportError> {
     let pattern = "optvol_optvol*.npz";
 
     cfd_cases.into_par_iter().for_each(|cfd_case| {
-        let now = Instant::now();
+        // let now = Instant::now();
         let case_path = cfd::Baseline::<Y>::path()
             .expect("undefined path")
             .join(cfd_case.to_string());
@@ -44,7 +43,7 @@ pub fn task<const Y: u32>(cfd_cases: &[CfdCase<Y>]) -> Result<(), ReportError> {
         )
             .into();
 
-        println!("{:?}: {:>8}s", file, now.elapsed().as_secs());
+        // println!("{:?}: {:>8}s", file, now.elapsed().as_secs());
     });
     Ok(())
 }

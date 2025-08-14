@@ -8,7 +8,7 @@ use parse_monitors::{
     pressure::{MirrorProperties, Pressure},
 };
 use rayon::prelude::*;
-use std::{path::Path, time::Instant};
+use std::path::Path;
 
 use crate::{ReportError, error::PressureMapsError};
 
@@ -55,7 +55,7 @@ where
     Pressure<M12>: MirrorProperties,
 {
     cfd_cases.into_par_iter().for_each(|cfd_case| {
-        let now = Instant::now();
+        // let now = Instant::now();
         let case_path = cfd::Baseline::<{ Y }>::path()
             .expect("undefined path to CFD repository")
             .join(cfd_case.to_string());
@@ -70,12 +70,12 @@ where
             pressures.pressure_map(case_path);
         });
 
-        println!(
-            "{:<32}{}: {:>8}s",
-            cfd_case,
-            files.last().unwrap(),
-            now.elapsed().as_secs()
-        );
+        // println!(
+        //     "{:<32}{}: {:>8}s",
+        //     cfd_case,
+        //     files.last().unwrap(),
+        //     now.elapsed().as_secs()
+        // );
     });
     Ok(())
 }

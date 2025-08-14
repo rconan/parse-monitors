@@ -20,6 +20,7 @@ fn domeseeing<const Y: u32>(
     parts_base: u8,
     h: &mut Vec<JoinHandle<Result>>,
 ) -> Result {
+    println!("Building the dome seeing part of the report ...");
     dome_seeing::taks::<PREVIOUS_YEAR, _>(&cfd_cases)?;
     opd_maps::task(&cfd_cases)?;
     let cases: Arc<Option<Vec<cfd::CfdCase<Y>>>> = Arc::new(Some(cfd_cases.to_vec()));
@@ -31,6 +32,7 @@ fn domeseeing<const Y: u32>(
     Ok(())
 }
 fn htc<const Y: u32>(cfd_cases: &[CfdCase<Y>], parts_base: u8, h: &mut Vec<JoinHandle<Result>>) {
+    println!("Building the HTC part of the report ...");
     let cases: Arc<Option<Vec<cfd::CfdCase<Y>>>> = Arc::new(Some(cfd_cases.to_vec()));
     h.push(thread::spawn(move || {
         report::HTC::new(3 + parts_base, 400f64)
@@ -47,6 +49,7 @@ where
     geotrans::M1: Config<CfdCase = cfd::CfdCase<Y>> + Default,
     geotrans::M2: Config<CfdCase = cfd::CfdCase<Y>> + Default,
 {
+    println!("Building the wind loads part of the report ...");
     batch_force::task(&cfd_cases, ForcesCli::all())?;
     pressure_maps::task::<geotrans::M1, _>(&cfd_cases)?;
     pressure_maps::task::<geotrans::M2, _>(&cfd_cases)?;
@@ -67,7 +70,6 @@ pub fn taks(cfd_cases: &[CfdCase<{ CFD_YEAR }>], opt: ReportOptions) -> Result {
 
     let mut tjh = vec![];
     let now = Instant::now();
-    println!("Building the different parts of the report ...");
     match opt {
         ReportOptions::Full => {
             domeseeing(&cfd_cases, parts_base, &mut tjh)?;
