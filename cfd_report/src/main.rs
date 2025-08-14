@@ -1,8 +1,8 @@
 use std::fs;
 
 use cfd_report::{
-    ForcesCli, PREVIOUS_YEAR, ReportError, ReportOptions, ReportPathError, batch_force,
-    dome_seeing, opd_maps, pressure_maps, report,
+    ForcesCli, PREVIOUS_YEAR, ReportOptions, ReportPathError, batch_force, dome_seeing, opd_maps,
+    pressure_maps, report,
 };
 use clap::{Parser, Subcommand};
 use parse_monitors::{
@@ -21,14 +21,14 @@ Paths to the databases need to be provided for both the current and the previous
  - export CFD_<previous year>_REPO=/path/to/previous/year/database
 For example, the full report, including all the plots, for the year 2025 will be created with:
 ```
-export CFD_2025_REPO=/home/ubuntu/mnt
-export CFD_2021_REPO=/home/ubuntu/cfd
+export CFD_2025_REPO=/home/ubuntu/mnt/CASES
+export CFD_2021_REPO=/home/ubuntu/cfd/CASES
 cargo r -r -- full
 ```
 But, all the illustrations and not the report for the year 2025 will be created with:
 ```
-export CFD_2025_REPO=/home/ubuntu/mnt
-export CFD_2021_REPO=/home/ubuntu/cfd
+export CFD_2025_REPO=/home/ubuntu/mnt/CASES
+export CFD_2021_REPO=/home/ubuntu/cfd/CASES
 cargo r -r -- all
 ```
 "#
@@ -113,7 +113,7 @@ enum Commands {
     DomeSeeing,
 }
 
-fn main() -> Result<(), ReportError> {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
     let cli = Cli::parse();
     let cfd_cases = match (cli.skip, cli.take) {

@@ -5,7 +5,9 @@
 
 // use indicatif::ParallelProgressIterator;
 use parse_monitors::{
-    cfd::{self, BaselineTrait, CfdCase}, report::ReportError, Band, DomeSeeing
+    Band, DomeSeeing,
+    cfd::{self, BaselineTrait, CfdCase},
+    report::ReportError,
 };
 use rayon::prelude::*;
 use std::env;
@@ -36,9 +38,7 @@ fn make_figure(data: Vec<Vec<(f64, Vec<f64>)>>, labels: Vec<&str>, filename: &st
     let _: complot::Combo = From::<complot::Complot>::from((data_iter, kinds, Some(config)));
 }
 // MAIN
-pub fn taks<const R: u32, const Y: u32>(cfd_cases: &[CfdCase<Y>]) -> Result<(),ReportError> {
-    env_logger::init();
-
+pub fn taks<const R: u32, const Y: u32>(cfd_cases: &[CfdCase<Y>]) -> Result<(), ReportError> {
     let cfd_cases_21 = cfd_cases.to_vec();
     let root = cfd::Baseline::<Y>::path()?;
     let legends = format!("{Y}");

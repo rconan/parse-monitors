@@ -9,7 +9,8 @@ use std::thread::{self, JoinHandle};
 
 use crate::pressure_maps::Config;
 use crate::{
-    PREVIOUS_YEAR, ReportError, ReportOptions, batch_force, dome_seeing, opd_maps, pressure_maps,
+    ForcesCli, PREVIOUS_YEAR, ReportError, ReportOptions, batch_force, dome_seeing, opd_maps,
+    pressure_maps,
 };
 
 type Result = std::result::Result<(), ReportError>;
@@ -46,7 +47,7 @@ where
     geotrans::M1: Config<CfdCase = cfd::CfdCase<Y>> + Default,
     geotrans::M2: Config<CfdCase = cfd::CfdCase<Y>> + Default,
 {
-    batch_force::task(&cfd_cases, Default::default())?;
+    batch_force::task(&cfd_cases, ForcesCli::all())?;
     pressure_maps::task::<geotrans::M1, _>(&cfd_cases)?;
     pressure_maps::task::<geotrans::M2, _>(&cfd_cases)?;
     let cases: Arc<Option<Vec<cfd::CfdCase<Y>>>> = Arc::new(Some(cfd_cases.to_vec()));

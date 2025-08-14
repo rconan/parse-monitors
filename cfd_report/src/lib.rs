@@ -31,6 +31,13 @@ pub struct ForcesCli {
     pub platforms_cables: bool,
     pub detrend: bool,
 }
+impl ForcesCli {
+    pub fn all() -> Self {
+        let mut this = Self::default();
+        this.all = true;
+        this
+    }
+}
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum ReportOptions {
