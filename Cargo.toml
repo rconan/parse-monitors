@@ -13,7 +13,7 @@ keywords = ["telescope", "astronomy"]
 default-run = "parse-monitors"
 
 [workspace]
-members = ["domeseeing", "gmacs", "htc-analysis", "cfd-youtube", "cfd_report"]
+members = ["domeseeing", "gmacs", "htc-analysis", "cfd-youtube", "cfd_report", "windloads"]
 
 
 [workspace.dependencies]
