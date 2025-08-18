@@ -13,7 +13,7 @@ keywords = ["telescope", "astronomy"]
 default-run = "parse-monitors"
 
 [workspace]
-members = ["domeseeing", "gmacs", "htc-analysis", "cfd-youtube", "cfd_report", "windloads"]
+members = ["domeseeing", "gmacs", "htc-analysis", "cfd-youtube", "cfd_report", "windloads", "psf"]
 
 
 [workspace.dependencies]
@@ -31,6 +31,8 @@ glob = "0.3.2"
 npyz = { version = "0.8.1", features = ["npz"] }
 complot = { version = "0.3.3" }
 geotrans = { version = "^0.2.0" }
+crseo = "2.5.1"
+gmt_dos-clients_domeseeing = {version = "3.0", features = ["npyz"], default-features = false}
 
 [dependencies]
 bzip2 = { version = "0.5.2", optional = true }

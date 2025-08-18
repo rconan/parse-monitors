@@ -1,13 +1,16 @@
 [package]
-name = "domeseeing"
+name = "psf"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
-clap.workspace = true
 crseo.workspace = true
+env_logger.workspace = true
 gmt_dos-clients_domeseeing.workspace = true 
-gmt_dos-clients_io = "4.3.0"
-parse-monitors = { version = "0.3.0", path = ".." }
+parse-monitors = { version = "0.3.1", path = ".." }
 serde-pickle.workspace = true
+image = "0.24"
+colorous = "1.0"
+indicatif.workspace = true
+clap.workspace = true
