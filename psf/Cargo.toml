@@ -14,3 +14,4 @@ image = "0.24"
 colorous = "1.0"
 indicatif.workspace = true
 clap.workspace = true
+gmt-lom = { version = "2.4.2", features = ["apache"] }

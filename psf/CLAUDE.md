@@ -4,67 +4,74 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Rust workspace for parsing and analyzing GMT (Giant Magellan Telescope) Computational Fluid Dynamics (CFD) data. The main library `parse-monitors` provides APIs for querying and processing GMT CFD Baseline databases with specialized tools for dome seeing analysis, pressure monitoring, and optical performance evaluation.
+This is the `psf` crate within the GMT (Giant Magellan Telescope) CFD analysis workspace. It generates Point Spread Function (PSF) visualizations using dome seeing turbulence data from CFD simulations combined with CRSEO optical modeling.
+
+The parent workspace `parse-monitors` provides APIs for querying and processing GMT CFD Baseline databases with specialized tools for dome seeing analysis, pressure monitoring, and optical performance evaluation.
 
 ## Environment Setup
 
 Required environment variables:
-- `CFD_REPO`: Path to the CFD database root directory
+- `CFD_REPO`: Path to the CFD database root directory containing baseline cases
 - `GMT_MODES_PATH`: Path to CEO mirror modes (for dome seeing analysis)
 
 ## Common Commands
 
-### Building and Running
-- `cargo build` - Build all workspace members
-- `cargo build --release` - Release build with optimizations
-- `cargo run` - Run the default binary (parse-monitors)
-- `cargo run --bin <binary_name>` - Run a specific binary
-- `cargo check` - Quick syntax and type checking
-- `cargo test` - Run all tests
+### PSF Crate Specific
+- `cargo run` - Generate short exposure PSF frames (default: 100 frames)  
+- `cargo run -- --exposure short` - Generate individual PSF frames affected by turbulence
+- `cargo run -- --exposure long` - Generate long exposure PSF (accumulated over 100 turbulence samples)
+- `cargo build --release` - Release build with optimizations for faster PSF generation
 
-### Specific Workspace Members
-- `cargo run -p psf` - Run PSF (Point Spread Function) analysis
-- `cargo run -p domeseeing` - Run dome seeing ray tracing
-- `cargo run -p cfd_report` - Generate CFD reports
-- `cargo run -p windloads` - Analyze wind loads
+### Workspace Commands
+- `cargo test` - Run all tests (including monitors loading test)
+- `cargo check` - Quick syntax and type checking
+- `cargo run -p parse-monitors` - Run main library binary
+- `cargo run --bin <binary_name>` - Run specific workspace binary
 
 ### Features
-The library uses feature flags for different CFD years:
+The workspace uses feature flags for different CFD years:
 - `--features "2020"` - Use 2020 baseline data
 - `--features "2021"` - Use 2021 baseline data  
 - `--features "2025"` - Use 2025 baseline data (default)
-- `--features "plot"` - Enable plotting capabilities
+- `--features "plot"` - Enable plotting capabilities (required for most binaries)
 
 ## Code Architecture
 
-### Core Modules
-- `cfd/` - CFD database models and case definitions (Baseline, CfdCase, year-specific implementations)
-- `monitors/` - Force and moment monitoring data structures and loaders
-- `pressure/` - Pressure analysis for mirrors and telescope components
-- `domeseeing/` - Dome seeing turbulence analysis and ray tracing
-- `temperature/` - Temperature field analysis
-- `report/` - Report generation utilities
+### PSF Crate Structure
+- `src/main.rs` - PSF generation application with CRSEO integration
+- Uses `CfdCase<CFD_YEAR>::colloquial(30, 0, "os", 7)` for standard 30° zenith, 0° azimuth, open sky, 7 m/s case
+- Integrates `DomeSeeing` turbulence data with GMT optical model via CRSEO
+- Generates frames with CUBEHELIX colormap normalization
 
-### Key Types
-- `CfdCase<YEAR>` - Represents specific CFD simulation cases with zenith angle, azimuth, enclosure type, and wind speed
-- `Baseline<YEAR>` - CFD database baseline for a specific year with iteration capabilities
-- `Monitors`/`MonitorsLoader` - Load and process force/moment monitoring data
-- `DomeSeeing` - Ray tracing through turbulence volumes for optical performance
-- `Mirror` - Mirror-specific pressure and force analysis
+### Key Types and Workflow
+- `CfdCase<YEAR>` - Represents CFD simulation cases with zenith angle, azimuth, enclosure type, and wind speed
+- `Baseline<YEAR>` - CFD database baseline for a specific year with iteration capabilities  
+- `DomeSeeing` - Loads OPD turbulence data from CFD cases for ray tracing
+- `Gmt` - CRSEO GMT telescope model for optical propagation
+- `Source` - V-band source for PSF generation
+- `Imaging`/`Detector` - Image detector with configurable pixel count and oversampling
 
-### Workspace Structure
-- `parse-monitors` - Main library and CLI tools
-- `psf/` - Point spread function analysis using CRSEO
+### Output Files
+- `psf.png` - Reference PSF without turbulence
+- `frames/frame_XXXXXX.png` - Individual turbulence-affected PSF frames  
+- `long_exposure_psf.png` - Accumulated PSF over multiple turbulence realizations
+
+### Parent Workspace Structure
+- `parse-monitors/` - Main library and CLI tools
 - `domeseeing/` - Standalone dome seeing analysis
 - `cfd_report/` - Report generation tools
 - `windloads/` - Wind loading analysis
 - `asm/` - Adaptive Secondary Mirror analysis
-- `gmacs/` - GMACS instrument specific analysis
-- `htc-analysis/` - Heat transfer coefficient analysis
 - `pressure-lambda/` - AWS Lambda pressure processing
 
 ## Data Processing Notes
 
-The library handles compressed CFD data files (monitors.csv.bz2) and various data formats including pressure tables, temperature fields, and optical path difference maps. Most analysis requires setting the CFD_REPO environment variable to point to the database location.
+PSF generation uses compressed CFD data files (monitors.csv.bz2) containing dome seeing turbulence volumes. The `DomeSeeing` iterator yields Optical Path Difference (OPD) maps that are applied to the GMT pupil for realistic atmospheric turbulence simulation.
 
-Feature-gated compilation allows targeting specific CFD baseline years while maintaining a unified API. The workspace includes numerous specialized binaries for different analysis tasks, most requiring the "plot" feature for visualization capabilities.
+Frame processing includes:
+- Global min/max normalization across all frames for consistent visualization
+- CUBEHELIX colormap application for scientific visualization
+- Progress bars for long-running computations
+- Configurable detector size (default: 200x200 pixels with 4x oversampling)
+
+Feature-gated compilation allows targeting specific CFD baseline years (2020, 2021, 2025) while maintaining a unified API.

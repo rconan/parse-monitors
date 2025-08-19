@@ -1,9 +1,10 @@
-use std::{fs::create_dir_all, path::Path, time::Instant};
+use std::{env, fs::create_dir_all, iter, path::Path, time::Instant};
 
 use clap::{Parser, ValueEnum};
 use colorous;
 use crseo::{Builder, FromBuilder, Gmt, Imaging, Source, imaging::Detector};
 use gmt_dos_clients_domeseeing::DomeSeeing;
+use gmt_lom::RigidBodyMotions;
 use image::save_buffer;
 use indicatif::{ProgressBar, ProgressStyle};
 use parse_monitors::{
@@ -27,6 +28,18 @@ struct Args {
     /// Exposure type: short or long
     #[arg(long, value_enum, default_value_t = Exposure::Short)]
     exposure: Exposure,
+
+    /// Enable dome seeing turbulence effects
+    #[arg(long)]
+    domeseeing: bool,
+
+    /// Enable wind loads effects
+    #[arg(long)]
+    windloads: bool,
+
+    /// Enable atmospheric turbulence effects
+    #[arg(long)]
+    atmosphere: bool,
 }
 
 /// Normalize frame data to 0.0-1.0 range and apply CUBEHELIX colormap
@@ -122,10 +135,48 @@ fn main() -> anyhow::Result<()> {
         N_SAMPLE
     );
 
-    // Setup CFD case and dome seeing
+    // CFD case
     let cfd_case = CfdCase::<CFD_YEAR>::colloquial(30, 0, "os", 7)?;
-    let cfd_path = Baseline::<CFD_YEAR>::path()?.join(cfd_case.to_string());
-    let ds = DomeSeeing::builder(&cfd_path).build()?;
+    // dome seeing
+    let ds = args.domeseeing.then_some({
+        let cfd_path = Baseline::<CFD_YEAR>::path()?.join(cfd_case.to_string());
+        DomeSeeing::builder(&cfd_path).build()?
+    });
+    // wind loads
+    let m12_rbms = args.windloads.then_some({
+        let rbms_path = Path::new(&env::var("FEM_REPO")?)
+            .join("cfd")
+            .join(cfd_case.to_string())
+            .join("m1_m2_rbms.parquet");
+        println!("loads M1 & M1 RBMs from {rbms_path:?}");
+        RigidBodyMotions::from_parquet(
+            rbms_path,
+            Some("M1RigidBodyMotions"),
+            Some("M2RigidBodyMotions"),
+        )?
+        .into_data()
+    });
+    // dbg!(m12_rbmsc.shape());
+
+    // dome seeing OPD iterator `N_SAMPLE` @ 5Hz
+    let ds_iter: Box<dyn Iterator<Item = Option<Vec<f64>>>> = if let Some(ds) = ds {
+        Box::new(ds.map(|opd| Some(opd)).take(N_SAMPLE))
+    } else {
+        Box::new(iter::repeat_n(None, N_SAMPLE))
+    };
+    // M1 & M2 RBMs iterator `N_SAMPLE` @ 20Hz/4
+    let m12_rbms_iter: Box<dyn Iterator<Item = Option<Vec<f64>>>> =
+        if let Some(m12_rbms) = &m12_rbms {
+            Box::new(
+                m12_rbms
+                    .column_iter()
+                    .step_by(4)
+                    .map(|x| Some(x.as_slice().to_vec()))
+                    .take(N_SAMPLE),
+            )
+        } else {
+            Box::new(iter::repeat_n(None, N_SAMPLE))
+        };
 
     // Setup GMT optics and imaging
     let mut gmt = Gmt::builder().build()?;
@@ -166,23 +217,33 @@ fn main() -> anyhow::Result<()> {
     );
     process_pb.set_message("Processing PSF frames");
 
+    // ray tracing through the GMT
+    let ray_trace = |((v_src, gmt), (opd, rbms)): (
+        (&mut Source, &mut Gmt),
+        (Option<Vec<f64>>, Option<Vec<f64>>),
+    )| {
+        if let Some((m1_rbm, m2_rbm)) = rbms
+            .as_ref()
+            .map(|x| x.split_at(42))
+            .map(|(m1_rbm, m2_rbm)| (Some(m1_rbm), Some(m2_rbm)))
+        {
+            gmt.update42(m1_rbm, m2_rbm, None, None);
+        }
+
+        v_src.through(gmt).xpupil();
+        if let Some(opd) = opd {
+            v_src.add(opd.as_slice());
+        }
+    };
+
     match args.exposure {
         Exposure::Short => {
-            for (frame_count, opd) in ds.enumerate() {
+            for data in ds_iter.zip(m12_rbms_iter) {
                 imgr.reset();
-                v_src
-                    .through(&mut gmt)
-                    .xpupil()
-                    .add(opd.as_slice())
-                    .through(&mut imgr);
-                let frame: Vec<f32> = imgr.frame().into();
-
-                all_frames.push(frame);
+                ray_trace(((&mut v_src, &mut gmt), data));
+                v_src.through(&mut imgr);
+                all_frames.push(imgr.frame().into());
                 process_pb.inc(1);
-
-                if frame_count + 1 >= N_SAMPLE {
-                    break;
-                }
             }
 
             process_pb.finish_with_message("PSF processing complete");
@@ -204,18 +265,10 @@ fn main() -> anyhow::Result<()> {
         }
         Exposure::Long => {
             imgr.reset();
-            for (frame_count, opd) in ds.enumerate() {
-                v_src
-                    .through(&mut gmt)
-                    .xpupil()
-                    .add(opd.as_slice())
-                    .through(&mut imgr);
-
+            for data in ds_iter.zip(m12_rbms_iter) {
+                ray_trace(((&mut v_src, &mut gmt), data));
+                v_src.through(&mut imgr);
                 process_pb.inc(1);
-
-                if frame_count + 1 >= N_SAMPLE {
-                    break;
-                }
             }
 
             process_pb.finish_with_message("PSF processing complete");
