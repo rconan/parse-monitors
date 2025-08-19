@@ -18,6 +18,7 @@ fn main() -> anyhow::Result<()> {
                     &cfd_case.to_pretty_string(),
                     &cfd_case.to_string(),
                     cfd::Baseline::<2021>::path()
+                        .unwrap()
                         .join(&cfd_case.to_string())
                         .join("m2_pressure-stats_std_within")
                 )
@@ -40,6 +41,7 @@ fn main() -> anyhow::Result<()> {
                     &cfd_case.to_pretty_string(),
                     &cfd_case.to_string(),
                     cfd::Baseline::<2021>::path()
+                        .unwrap()
                         .join(&cfd_case.to_string())
                         .join("m2_temperature-stats_std_within")
                 )

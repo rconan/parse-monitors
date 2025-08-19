@@ -14,7 +14,9 @@ fn main() {
     let results: Vec<_> = cfd_cases_21
         .into_par_iter()
         .map(|cfd_case_21| {
-            let path_to_case = cfd::Baseline::<2021>::path().join(format!("{}", cfd_case_21));
+            let path_to_case = cfd::Baseline::<2021>::path()
+                .unwrap()
+                .join(format!("{}", cfd_case_21));
             let ds_21 = DomeSeeing::load(path_to_case.clone()).unwrap();
             if let (Some(v_pssn), Some(h_pssn)) = (ds_21.pssn(Band::V), ds_21.pssn(Band::H)) {
                 let wfe_rms =

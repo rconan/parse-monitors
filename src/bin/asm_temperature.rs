@@ -1,7 +1,9 @@
 //use asm::{pressure, refraction_index};
 use geotrans::{Segment, SegmentTrait, Transform, M2};
 use parse_monitors::{
-    cfd, cfd::BaselineTrait, temperature::Temperature, TEMPERATURE_SAMPLING_FREQUENCY,
+    cfd::{self, BaselineTrait},
+    temperature::Temperature,
+    CFD_YEAR, TEMPERATURE_SAMPLING_FREQUENCY,
 };
 use rayon::prelude::*;
 use std::{env, iter::once, path::Path, time::Instant};
@@ -16,14 +18,14 @@ fn main() -> anyhow::Result<()> {
         .parse::<usize>()
         .expect("AWS_BATCH_JOB_ARRAY_INDEX parsing failed");
 
-    let cfd_case = cfd::Baseline::<2021>::default()
+    let cfd_case = cfd::Baseline::<{ CFD_YEAR }>::default()
         .into_iter()
         .nth(job_idx)
         .unwrap();
 
     let now = Instant::now();
-    let case_path = cfd::Baseline::<2021>::path().join(cfd_case.to_string());
-    let files: Vec<_> = cfd::CfdDataFile::<2021>::TemperatureField
+    let case_path = cfd::Baseline::<{ CFD_YEAR }>::path()?.join(cfd_case.to_string());
+    let files: Vec<_> = cfd::CfdDataFile::<{ CFD_YEAR }>::TemperatureField
         .glob(cfd_case)
         .unwrap()
         .into_iter()
@@ -35,7 +37,7 @@ fn main() -> anyhow::Result<()> {
     } else {
         files.len() - n_sample
     };
-    let pattern = cfd::CfdDataFile::<2021>::TemperatureField.pattern();
+    let pattern = cfd::CfdDataFile::<{ CFD_YEAR }>::TemperatureField.pattern();
 
     let records: anyhow::Result<Vec<_>> = files
         .into_par_iter()

@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
             r#"\midrule\multicolumn{{13}}{{l}}{{{}}}\\\hline"#,
             cfd_case.to_pretty_string()
         ));
-        let data_path = cfd::Baseline::<2021>::path().join(cfd_case.to_string());
+        let data_path = cfd::Baseline::<2021>::path().unwrap().join(cfd_case.to_string());
 	let report_path = data_path.join("report");
 	if !report_path.is_dir() {
             create_dir(&report_path).unwrap()

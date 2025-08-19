@@ -5,18 +5,22 @@
 
 use glob::glob;
 //use indicatif::ParallelProgressIterator;
-use parse_monitors::{cfd, cfd::BaselineTrait, pressure::Pressure};
+use parse_monitors::{
+    cfd::{self, BaselineTrait},
+    pressure::Pressure,
+    CFD_YEAR,
+};
 use rayon::prelude::*;
 use std::{error::Error, path::Path, time::Instant};
 
 trait Config {
-    fn configure(cfd_case: cfd::CfdCase<2021>) -> anyhow::Result<(String, Vec<String>)>;
+    fn configure(cfd_case: cfd::CfdCase<{ CFD_YEAR }>) -> anyhow::Result<(String, Vec<String>)>;
 }
 impl Config for geotrans::M1 {
-    fn configure(cfd_case: cfd::CfdCase<2021>) -> anyhow::Result<(String, Vec<String>)> {
+    fn configure(cfd_case: cfd::CfdCase<{ CFD_YEAR }>) -> anyhow::Result<(String, Vec<String>)> {
         Ok((
             "M1p.csv.z".to_string(),
-            cfd::CfdDataFile::<2021>::M1Pressure
+            cfd::CfdDataFile::<{ CFD_YEAR }>::M1Pressure
                 .glob(cfd_case)?
                 .into_iter()
                 .map(|p| p.to_str().unwrap().to_string())
@@ -25,10 +29,10 @@ impl Config for geotrans::M1 {
     }
 }
 impl Config for geotrans::M2 {
-    fn configure(cfd_case: cfd::CfdCase<2021>) -> anyhow::Result<(String, Vec<String>)> {
+    fn configure(cfd_case: cfd::CfdCase<{ CFD_YEAR }>) -> anyhow::Result<(String, Vec<String>)> {
         Ok((
             "M2p.csv.z".to_string(),
-            cfd::CfdDataFile::<2021>::M2Pressure
+            cfd::CfdDataFile::<{ CFD_YEAR }>::M2Pressure
                 .glob(cfd_case)?
                 .into_iter()
                 .map(|p| p.to_str().unwrap().to_string())
@@ -39,7 +43,7 @@ impl Config for geotrans::M2 {
 
 fn main() -> Result<(), Box<dyn Error>> {
     type M12 = geotrans::M1;
-    cfd::Baseline::<2021>::default()
+    cfd::Baseline::<{ CFD_YEAR }>::default()
         //.extras()
         .into_iter()
         /*
@@ -53,14 +57,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                    })
         */
         //        .skip(1)
-        //.collect::<Vec<cfd::CfdCase<2021>>>()
+        //.collect::<Vec<cfd::CfdCase<{CFD_YEAR}>>>()
         //.into_par_iter()
         .nth(7)
         .into_iter()
         .for_each(|cfd_case| {
             println!("{cfd_case}");
             let now = Instant::now();
-            let case_path = cfd::Baseline::<2021>::path().join(cfd_case.to_string());
+            let case_path = cfd::Baseline::<{ CFD_YEAR }>::path()
+                .unwrap()
+                .join(cfd_case.to_string());
             let (_geometry, files) = M12::configure(cfd_case).unwrap();
             //let n_files = files.len();
 

@@ -1,3 +1,4 @@
+use parse_monitors::CFD_YEAR;
 //use chrono::Local;
 use parse_monitors::{cfd, report, report::Report};
 use std::error::Error; //, fs::File, io::Write};
@@ -14,13 +15,11 @@ struct Opt {
     stats_duration: f64,
 }
 
-const CFD_YEAR: u32 = 2021;
-
 fn main() -> Result<(), Box<dyn Error>> {
     let opt = Opt::from_args();
     let now = Instant::now();
     println!("Building the report ...");
-    report::WindLoads::new(0, opt.stats_duration)
+    report::WindLoads::<{ CFD_YEAR }>::new(0, opt.stats_duration)
         .exclude_monitors("floor|enclosure|screen|shutter|M1level")
         .keep_last(400)
         .cfd_case(cfd::CfdCase::colloquial(30, 135, "nos", 7)?)

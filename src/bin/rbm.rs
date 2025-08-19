@@ -7,7 +7,7 @@ use std::{fs::File, io::Write};
 fn main() -> anyhow::Result<()> {
     for (k, cfd_case) in Baseline::<CFD_YEAR>::default().into_iter().enumerate() {
         println!("CFD CASE #{:02}: {}", k, cfd_case);
-        let path_to_case = Baseline::<CFD_YEAR>::path().join(&cfd_case.to_string());
+        let path_to_case = Baseline::<CFD_YEAR>::path()?.join(&cfd_case.to_string());
         let rbm_tables = {
             let table = lom::Table::from_parquet(path_to_case.join("windloading.parquet"))?;
             let mut lom = lom::LOM::builder()

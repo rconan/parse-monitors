@@ -1,5 +1,5 @@
 use colorous;
-use parse_monitors::{cfd, pressure};
+use parse_monitors::{cfd, pressure, CFD_YEAR};
 use plotters::element::Cubiod;
 use plotters::prelude::*;
 use std::time::Instant;
@@ -7,7 +7,7 @@ use std::time::Instant;
 fn main() -> anyhow::Result<()> {
     let case = cfd::CfdCase::colloquial(30, 0, "os", 7)?;
     println!("{}", case);
-    let paths = cfd::CfdDataFile::<2021>::TelescopePressure.glob(case)?;
+    let paths = cfd::CfdDataFile::<{ CFD_YEAR }>::TelescopePressure.glob(case)?;
     let data_file = paths.last().unwrap();
     println!("{:?}", data_file);
     let now = Instant::now();

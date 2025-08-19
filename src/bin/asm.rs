@@ -1,6 +1,10 @@
 //use asm::{pressure, refraction_index};
 //use indicatif::ParallelProgressIterator;
-use parse_monitors::{cfd, cfd::BaselineTrait, pressure::Pressure, FORCE_SAMPLING_FREQUENCY};
+use parse_monitors::{
+    cfd::{self, BaselineTrait},
+    pressure::Pressure,
+    CFD_YEAR, FORCE_SAMPLING_FREQUENCY,
+};
 use rayon::prelude::*;
 use std::{env, iter::once, path::Path, time::Instant};
 
@@ -14,7 +18,7 @@ fn main() -> anyhow::Result<()> {
         .parse::<usize>()
         .expect("AWS_BATCH_JOB_ARRAY_INDEX parsing failed");
 
-    let cfd_case = cfd::Baseline::<2021>::default()
+    let cfd_case = cfd::Baseline::<{ CFD_YEAR }>::default()
         .into_iter()
         .nth(job_idx)
         .unwrap();
@@ -25,8 +29,8 @@ fn main() -> anyhow::Result<()> {
     let pressure_stats = "m2-es_pressure-stats.csv";
 
     let now = Instant::now();
-    let case_path = cfd::Baseline::<2021>::path().join(cfd_case.to_string());
-    let files: Vec<_> = cfd::CfdDataFile::<2021>::M2Pressure
+    let case_path = cfd::Baseline::<{ CFD_YEAR }>::path()?.join(cfd_case.to_string());
+    let files: Vec<_> = cfd::CfdDataFile::<{ CFD_YEAR }>::M2Pressure
         .glob(cfd_case)
         .unwrap()
         .into_iter()
