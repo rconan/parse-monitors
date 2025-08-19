@@ -5,11 +5,19 @@
 export MOUNT_MODEL=MOUNT_FDR_1kHz
 export FEM_REPO=$HOME/mnt/20250506_1715_zen_30_M1_202110_FSM_202305_Mount_202305_pier_202411_M1_actDamping/
 export CFD_REPO=$HOME/maua/CASES
+export CUDACXX=/usr/local/cuda/bin/nvcc
 cargo r -r
 ```
 */
 
-use std::{collections::HashMap, env, fs, path::Path};
+use std::{
+    collections::HashMap,
+    env,
+    error::Error,
+    fmt::Display,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use clap::Parser;
 use gmt_dos_actors::{
@@ -84,11 +92,28 @@ async fn main() -> anyhow::Result<()> {
         let Ok(res) = res else {
             return res?;
         };
-        res?;
+        if let Err(e) = res {
+            println!("failed with {e:?}");
+        }
     }
 
     Ok(())
 }
+
+#[derive(Debug)]
+pub enum WindLoadsError {
+    Exist { case: String, path: PathBuf },
+}
+impl Display for WindLoadsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WindLoadsError::Exist { case, path } => {
+                write!(f, " {case}: aborted because {path:?} already exits")
+            }
+        }
+    }
+}
+impl Error for WindLoadsError {}
 
 async fn task<const Y: u32>(cfd_case: CfdCase<Y>) -> anyhow::Result<()> {
     unsafe {
@@ -129,19 +154,26 @@ async fn task<const Y: u32>(cfd_case: CfdCase<Y>) -> anyhow::Result<()> {
             .to_string_lossy();
         let mut metadata = HashMap::new();
         metadata.insert("GMT FEM".to_string(), fem_tag.clone().into_owned());
-        let data_path = Path::new(&cfd_case.to_string()).to_path_buf();
-        let full_data_path = Path::new(env::var("DATA_REPO").as_ref().unwrap()).join(&data_path);
+
+        let path_to_fem_cfd = Path::new(env::var("DATA_REPO").as_ref().unwrap()).to_path_buf();
+        let cfd_path = Path::new(&cfd_case.to_string()).to_path_buf();
+        let full_data_path = path_to_fem_cfd.join(&cfd_path);
+        let path_to_file = cfd_path.join("m1_m2_rbms.parquet");
+
+        if path_to_fem_cfd.join(&path_to_file).exists() {
+            return Err(WindLoadsError::Exist {
+                case: cfd_case.to_string(),
+                path: path_to_file,
+            }
+            .into());
+        }
+
         if !full_data_path.exists() {
             fs::create_dir(full_data_path)?;
         }
+
         let mut rbms_logger: Terminator<Arrow> = Arrow::builder(n_step)
-            .filename(
-                data_path
-                    .join("m1_m2_rbms.parquet")
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-            )
+            .filename(path_to_file.to_str().unwrap().to_string())
             .metadata(metadata)
             .build()
             .into();
