@@ -203,6 +203,10 @@ pub fn plot_monitor<S: AsRef<std::path::Path> + std::convert::AsRef<std::ffi::Os
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
+    use crate::cfd::{Baseline, BaselineTrait, CfdCase};
+
     use super::*;
     /*
        use nalgebra as na;
@@ -226,6 +230,18 @@ mod tests {
            println!("Moment: {:?}", x.cross(&force_v));
        }
     */
+    #[test]
+    fn monitors() -> anyhow::Result<()> {
+        let cfd_case = CfdCase::<2025>::colloquial(30, 0, "os", 7)?;
+        let path = Baseline::<2025>::path()?.join(cfd_case.to_string());
+        println!("{path:?}");
+        let mon = Monitors::loader::<PathBuf, 2025>(path).load()?;
+        println!(
+            "Monitors F&M key #: {:}",
+            mon.forces_and_moments.keys().collect::<Vec<_>>().len()
+        );
+        Ok(())
+    }
     #[test]
     fn cfd_2020() {
         let monitors = MonitorsLoader::<2020>::default()
