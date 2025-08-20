@@ -17,10 +17,21 @@ Required environment variables:
 ## Common Commands
 
 ### PSF Crate Specific
-- `cargo run` - Generate short exposure PSF frames (default: 100 frames)  
+- `cargo run` - Generate short exposure PSF frames (default: 100 frames, 30° zenith, 0° azimuth, 7 m/s wind)
 - `cargo run -- --exposure short` - Generate individual PSF frames affected by turbulence
 - `cargo run -- --exposure long` - Generate long exposure PSF (accumulated over 100 turbulence samples)
+- `cargo run -- --zenith-angle 60 --azimuth-angle 90 --wind-speed 12` - Custom CFD case configuration
+- `cargo run -- --domeseeing --windloads` - Enable dome seeing and wind loads effects
 - `cargo build --release` - Release build with optimizations for faster PSF generation
+
+### CFD Configuration Arguments
+- `--zenith-angle`: Telescope zenith angle (0, 30, or 60 degrees) [default: 30]
+- `--azimuth-angle`: Telescope azimuth angle (0, 45, 90, 135, or 180 degrees) [default: 0]
+- `--wind-speed`: Wind speed (2, 7, 12, or 17 m/s) [default: 7]
+- Enclosure configuration is automatically determined:
+  - `os` (open sky): wind speed ≤ 7 m/s
+  - `cd` (closed dome): wind speed > 7 m/s and zenith angle < 60°
+  - `cs` (closed sky): wind speed > 7 m/s and zenith angle ≥ 60°
 
 ### Workspace Commands
 - `cargo test` - Run all tests (including monitors loading test)
@@ -73,6 +84,8 @@ Frame processing includes:
 - CUBEHELIX colormap application for scientific visualization
 - Dashed white circle overlay showing atmospheric seeing diameter with 50% transparency
 - Dotted white circle overlay showing GMT segment diffraction limit diameter with 50% transparency
+- PSSN (Point Spread Function Strehl) text overlay in top left corner showing wavelength and 5-digit precision value
+- Frame number display for animated PSFs in format "frame 000"
 - Progress bars for long-running computations
 - Configurable detector size (default: 1000x1000 pixels with 4x oversampling)
 

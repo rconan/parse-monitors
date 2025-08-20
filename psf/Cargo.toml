@@ -12,6 +12,7 @@ parse-monitors = { version = "0.3.1", path = ".." }
 serde-pickle.workspace = true
 image = "0.24"
 imageproc = "0.23"
+rusttype = "0.9"
 colorous = "1.0"
 indicatif.workspace = true
 clap.workspace = true

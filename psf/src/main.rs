@@ -2,11 +2,17 @@ use std::{env, fs::create_dir_all, iter, path::Path, time::Instant};
 
 use clap::{Parser, ValueEnum};
 use colorous;
-use crseo::{Atmosphere, Builder, FromBuilder, Gmt, Imaging, Source, imaging::Detector};
+use crseo::{
+    Atmosphere, Builder, FromBuilder, Gmt, Imaging, PSSn, PSSnEstimates, Source,
+    imaging::Detector,
+    pssn::{PSSnBuilder, TelescopeError},
+};
 use gmt_dos_clients_domeseeing::DomeSeeing;
 use gmt_lom::RigidBodyMotions;
 use image::{ImageBuffer, Rgb, RgbImage};
+use imageproc::drawing::draw_text_mut;
 use indicatif::{ProgressBar, ProgressStyle};
+use rusttype::{Font, Scale};
 use parse_monitors::{
     CFD_YEAR,
     cfd::{Baseline, BaselineTrait, CfdCase},
@@ -20,6 +26,60 @@ const DETECTOR_SIZE: usize = 1000;
 enum Exposure {
     Short,
     Long,
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+enum ZenithAngle {
+    #[value(name = "0")]
+    Zero = 0,
+    #[value(name = "30")]
+    Thirty = 30,
+    #[value(name = "60")]
+    Sixty = 60,
+}
+
+impl From<ZenithAngle> for u32 {
+    fn from(zen: ZenithAngle) -> u32 {
+        zen as u32
+    }
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+enum AzimuthAngle {
+    #[value(name = "0")]
+    Zero = 0,
+    #[value(name = "45")]
+    FortyFive = 45,
+    #[value(name = "90")]
+    Ninety = 90,
+    #[value(name = "135")]
+    OneThirtyFive = 135,
+    #[value(name = "180")]
+    OneEighty = 180,
+}
+
+impl From<AzimuthAngle> for u32 {
+    fn from(az: AzimuthAngle) -> u32 {
+        az as u32
+    }
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+enum WindSpeed {
+    #[value(name = "2")]
+    Two = 2,
+    #[value(name = "7")]
+    Seven = 7,
+    #[value(name = "12")]
+    Twelve = 12,
+    #[value(name = "17")]
+    Seventeen = 17,
+}
+
+impl From<WindSpeed> for u32 {
+    fn from(ws: WindSpeed) -> u32 {
+        ws as u32
+    }
 }
 
 #[derive(Parser)]
@@ -38,9 +98,58 @@ struct Args {
     #[arg(long)]
     windloads: bool,
 
-    /// Enable atmospheric turbulence effects
-    #[arg(long)]
-    atmosphere: bool,
+    /// Zenith angle in degrees (0, 30, or 60)
+    #[arg(long, value_enum, default_value_t = ZenithAngle::Thirty)]
+    zenith_angle: ZenithAngle,
+
+    /// Azimuth angle in degrees (0, 45, 90, 135, or 180)
+    #[arg(long, value_enum, default_value_t = AzimuthAngle::Zero)]
+    azimuth_angle: AzimuthAngle,
+
+    /// Wind speed in m/s (2, 7, 12, or 17)
+    #[arg(long, value_enum, default_value_t = WindSpeed::Seven)]
+    wind_speed: WindSpeed,
+    // Enable atmospheric turbulence effects
+    // #[arg(long)]
+    // atmosphere: bool,
+}
+
+/// Determine enclosure configuration based on wind speed and zenith angle
+fn get_enclosure_config(wind_speed: u32, zenith_angle: u32) -> &'static str {
+    if wind_speed <= 7 {
+        "os" // open sky for wind <= 7 m/s
+    } else if zenith_angle < 60 {
+        "cd" // closed dome for wind > 7 m/s and zenith < 60°
+    } else {
+        "cs" // closed sky for wind > 7 m/s and zenith >= 60°
+    }
+}
+
+/// Draw PSSN text overlay in the top left corner of the image
+fn draw_pssn_text(image: &mut RgbImage, pssn_value: f64, wavelength_nm: f64, frame_number: Option<usize>) -> anyhow::Result<()> {
+    // Use system default font (typically DejaVu Sans on Linux)
+    let font_data: &[u8] = include_bytes!("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
+    let font = Font::try_from_bytes(font_data).ok_or_else(|| anyhow::anyhow!("Failed to load font"))?;
+    
+    let scale = Scale::uniform(24.0); // 24 pixel font
+    let white = Rgb([255u8, 255u8, 255u8]);
+    
+    // Position in top left corner with some padding
+    let x = 10i32;
+    let mut y = 30i32;
+    
+    // Draw PSSN text
+    let pssn_text = format!("PSSN@{:.0}nm: {:.5}", wavelength_nm, pssn_value);
+    draw_text_mut(image, white, x, y, scale, &font, &pssn_text);
+    
+    // Draw frame number if provided
+    if let Some(frame_num) = frame_number {
+        y += 30; // Move down for next line
+        let frame_text = format!("frame {:03}", frame_num);
+        draw_text_mut(image, white, x, y, scale, &font, &frame_text);
+    }
+    
+    Ok(())
 }
 
 /// Draw a dashed circle on an RGB image with 50% transparency
@@ -122,7 +231,7 @@ fn frame_to_rgb(frame: &[f32], min_val: f32, max_val: f32) -> Vec<u8> {
         .collect()
 }
 
-/// Save a single frame as a PNG image with CUBEHELIX colormap and circle overlays
+/// Save a single frame as a PNG image with CUBEHELIX colormap, circle overlays, and PSSN text
 fn save_frame_as_png(
     frame: &[f32],
     filename: &str,
@@ -130,6 +239,9 @@ fn save_frame_as_png(
     max_val: f32,
     seeing_radius_pixels: Option<f32>,
     segment_diff_lim_radius_pixels: Option<f32>,
+    pssn_value: Option<f64>,
+    wavelength_nm: Option<f64>,
+    frame_number: Option<usize>,
 ) -> anyhow::Result<()> {
     let rgb_data = frame_to_rgb(frame, min_val, max_val);
     let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::from_raw(
@@ -149,6 +261,11 @@ fn save_frame_as_png(
     // Draw GMT segment diffraction limit circle (dotted) if radius is provided
     if let Some(radius) = segment_diff_lim_radius_pixels {
         draw_dotted_segment_circle(&mut image, center, radius as i32);
+    }
+    
+    // Draw PSSN text if values are provided
+    if let (Some(pssn), Some(wl)) = (pssn_value, wavelength_nm) {
+        draw_pssn_text(&mut image, pssn, wl, frame_number)?;
     }
 
     image.save(filename)?;
@@ -176,6 +293,8 @@ fn save_all_frames(
     frames_dir: &Path,
     seeing_radius_pixels: Option<f32>,
     segment_diff_lim_radius_pixels: Option<f32>,
+    pssn_values: &[f64],
+    wavelength_nm: f64,
 ) -> anyhow::Result<()> {
     let (global_min, global_max) = find_global_extrema(frames);
 
@@ -191,6 +310,7 @@ fn save_all_frames(
 
     for (i, frame) in frames.iter().enumerate() {
         let filename = frames_dir.join(format!("frame_{:06}.png", i));
+        let pssn_value = pssn_values.get(i).copied();
         save_frame_as_png(
             frame,
             filename.to_str().unwrap(),
@@ -198,6 +318,9 @@ fn save_all_frames(
             global_max,
             seeing_radius_pixels,
             segment_diff_lim_radius_pixels,
+            pssn_value,
+            Some(wavelength_nm),
+            Some(i), // Pass frame number for animated frames
         )?;
         save_pb.inc(1);
     }
@@ -207,7 +330,12 @@ fn save_all_frames(
 }
 
 // ray tracing through the GMT
-fn ray_trace(v_src: &mut Source, gmt: &mut Gmt, (opd, rbms): (Option<Vec<f64>>, Option<Vec<f64>>)) {
+fn ray_trace(
+    v_src: &mut Source,
+    gmt: &mut Gmt,
+    v_pssn: &mut PSSn<TelescopeError>,
+    (opd, rbms): (Option<Vec<f64>>, Option<Vec<f64>>),
+) {
     // updating M1 & M2 rigid body motions
     if let Some((m1_rbm, m2_rbm)) = rbms
         .as_ref()
@@ -222,6 +350,7 @@ fn ray_trace(v_src: &mut Source, gmt: &mut Gmt, (opd, rbms): (Option<Vec<f64>>, 
     if let Some(opd) = opd {
         v_src.add(opd.as_slice());
     }
+    v_src.through(v_pssn);
 }
 
 fn main() -> anyhow::Result<()> {
@@ -241,7 +370,15 @@ fn main() -> anyhow::Result<()> {
 
     // Setup GMT optics and imaging
     let mut gmt = Gmt::builder().build()?;
-    let mut v_src = Source::builder().band("Vs").build()?;
+    let v_src = Source::builder().band("Vs");
+    let mut v_pssn = PSSnBuilder::<TelescopeError>::default()
+        .source(v_src.clone())
+        .build()?;
+    let mut v_src = v_src.build()?;
+    
+    // Get wavelength in nanometers for PSSN display
+    let wavelength_nm = v_src.wavelength() * 1e9; // Convert meters to nanometers
+    
     let mut imgr = Imaging::builder()
         .detector(
             Detector::default()
@@ -288,11 +425,25 @@ fn main() -> anyhow::Result<()> {
         frame0_max,
         Some(seeing_radius_pixels as f32),
         Some(segment_diff_lim_radius_pixels as f32),
+        None, // No PSSN for reference frame
+        None,
+        None, // No frame number for reference frame
     )?;
     println!("Saved frame0 as psf.png");
 
-    // CFD case
-    let cfd_case = CfdCase::<CFD_YEAR>::colloquial(30, 0, "os", 7)?;
+    // CFD case - extract values from arguments
+    let zenith = u32::from(args.zenith_angle);
+    let azimuth = u32::from(args.azimuth_angle);
+    let wind_speed = u32::from(args.wind_speed);
+    let enclosure = get_enclosure_config(wind_speed, zenith);
+
+    println!("CFD Configuration:");
+    println!("  Zenith angle: {}°", zenith);
+    println!("  Azimuth angle: {}°", azimuth);
+    println!("  Wind speed: {} m/s", wind_speed);
+    println!("  Enclosure: {}", enclosure);
+
+    let cfd_case = CfdCase::<CFD_YEAR>::colloquial(zenith, azimuth, enclosure, wind_speed)?;
     // dome seeing
     let ds = if args.domeseeing {
         let cfd_path = Baseline::<CFD_YEAR>::path()?.join(cfd_case.to_string());
@@ -356,6 +507,7 @@ fn main() -> anyhow::Result<()> {
     // Process turbulence-affected frames
     let now = Instant::now();
     let mut all_frames = Vec::new();
+    let mut all_pssns = Vec::new();
 
     // Create progress bar for frame processing
     let process_pb = ProgressBar::new(N_SAMPLE as u64);
@@ -371,8 +523,9 @@ fn main() -> anyhow::Result<()> {
         Exposure::Short => {
             for data in ds_iter.zip(m12_rbms_iter) {
                 imgr.reset();
-                ray_trace(&mut v_src, &mut gmt, data);
+                ray_trace(&mut v_src, &mut gmt, &mut v_pssn, data);
                 v_src.through(&mut imgr);
+                all_pssns.push(v_pssn.estimates()[0]);
                 all_frames.push(imgr.frame().into());
                 process_pb.inc(1);
             }
@@ -386,6 +539,8 @@ fn main() -> anyhow::Result<()> {
                 frames_dir,
                 Some(seeing_radius_pixels as f32),
                 Some(segment_diff_lim_radius_pixels as f32),
+                &all_pssns,
+                wavelength_nm,
             )?;
 
             println!();
@@ -402,12 +557,13 @@ fn main() -> anyhow::Result<()> {
         Exposure::Long => {
             imgr.reset();
             for data in ds_iter.zip(m12_rbms_iter) {
-                ray_trace(&mut v_src, &mut gmt, data);
+                ray_trace(&mut v_src, &mut gmt, &mut v_pssn, data);
                 v_src.through(&mut imgr);
                 process_pb.inc(1);
             }
 
             process_pb.finish_with_message("PSF processing complete");
+            let pssn = v_pssn.estimates()[0];
             let frame: Vec<f32> = imgr.frame().into();
             let (frame_min, frame_max) = find_global_extrema(&[frame.clone()]);
             save_frame_as_png(
@@ -417,6 +573,9 @@ fn main() -> anyhow::Result<()> {
                 frame_max,
                 Some(seeing_radius_pixels as f32),
                 Some(segment_diff_lim_radius_pixels as f32),
+                Some(pssn),
+                Some(wavelength_nm),
+                None, // No frame number for long exposure
             )?;
             println!("Saved frame as psf.png");
 
