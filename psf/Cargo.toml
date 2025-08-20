@@ -11,7 +11,9 @@ gmt_dos-clients_domeseeing.workspace = true
 parse-monitors = { version = "0.3.1", path = ".." }
 serde-pickle.workspace = true
 image = "0.24"
+imageproc = "0.23"
 colorous = "1.0"
 indicatif.workspace = true
 clap.workspace = true
 gmt-lom = { version = "2.4.2", features = ["apache"] }
+skyangle = "0.3.1"

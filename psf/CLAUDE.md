@@ -71,7 +71,8 @@ PSF generation uses compressed CFD data files (monitors.csv.bz2) containing dome
 Frame processing includes:
 - Global min/max normalization across all frames for consistent visualization
 - CUBEHELIX colormap application for scientific visualization
+- Dashed white circle overlay showing atmospheric seeing diameter with 50% transparency
 - Progress bars for long-running computations
-- Configurable detector size (default: 200x200 pixels with 4x oversampling)
+- Configurable detector size (default: 1000x1000 pixels with 4x oversampling)
 
 Feature-gated compilation allows targeting specific CFD baseline years (2020, 2021, 2025) while maintaining a unified API.
