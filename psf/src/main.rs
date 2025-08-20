@@ -10,7 +10,7 @@ use crseo::{
 use gmt_dos_clients_domeseeing::DomeSeeing;
 use gmt_lom::RigidBodyMotions;
 use image::{ImageBuffer, Rgb, RgbImage};
-use imageproc::drawing::draw_text_mut;
+use imageproc::drawing::{draw_text_mut, draw_hollow_circle_mut};
 use indicatif::{ProgressBar, ProgressStyle};
 use rusttype::{Font, Scale};
 use parse_monitors::{
@@ -152,63 +152,6 @@ fn draw_pssn_text(image: &mut RgbImage, pssn_value: f64, wavelength_nm: f64, fra
     Ok(())
 }
 
-/// Draw a dashed circle on an RGB image with 50% transparency
-fn draw_dashed_seeing_circle(image: &mut RgbImage, center: (i32, i32), radius: i32) {
-    let white = Rgb([255u8, 255u8, 255u8]);
-    let dash_length = 8;
-    let gap_length = 6;
-
-    // Calculate circle circumference and number of dashes
-    let circumference = (2.0 * std::f32::consts::PI * radius as f32) as i32;
-    let pattern_length = dash_length + gap_length;
-
-    for i in 0..circumference {
-        let angle = 2.0 * std::f32::consts::PI * i as f32 / circumference as f32;
-        let x = center.0 + (radius as f32 * angle.cos()) as i32;
-        let y = center.1 + (radius as f32 * angle.sin()) as i32;
-
-        // Check if we're in a dash or gap
-        let position_in_pattern = i % pattern_length;
-        if position_in_pattern < dash_length {
-            if x >= 0 && x < image.width() as i32 && y >= 0 && y < image.height() as i32 {
-                let pixel = image.get_pixel_mut(x as u32, y as u32);
-                // Apply 50% transparency blend
-                pixel[0] = ((pixel[0] as u16 + white[0] as u16) / 2) as u8;
-                pixel[1] = ((pixel[1] as u16 + white[1] as u16) / 2) as u8;
-                pixel[2] = ((pixel[2] as u16 + white[2] as u16) / 2) as u8;
-            }
-        }
-    }
-}
-
-/// Draw a dotted circle on an RGB image with 50% transparency (for GMT segment diffraction limit)
-fn draw_dotted_segment_circle(image: &mut RgbImage, center: (i32, i32), radius: i32) {
-    let white = Rgb([255u8, 255u8, 255u8]);
-    let dot_size = 2; // 2 pixels per dot
-    let gap_length = 4; // 4 pixels gap between dots
-
-    // Calculate circle circumference and number of dots
-    let circumference = (2.0 * std::f32::consts::PI * radius as f32) as i32;
-    let pattern_length = dot_size + gap_length;
-
-    for i in 0..circumference {
-        let angle = 2.0 * std::f32::consts::PI * i as f32 / circumference as f32;
-        let x = center.0 + (radius as f32 * angle.cos()) as i32;
-        let y = center.1 + (radius as f32 * angle.sin()) as i32;
-
-        // Check if we're in a dot or gap
-        let position_in_pattern = i % pattern_length;
-        if position_in_pattern < dot_size {
-            if x >= 0 && x < image.width() as i32 && y >= 0 && y < image.height() as i32 {
-                let pixel = image.get_pixel_mut(x as u32, y as u32);
-                // Apply 50% transparency blend
-                pixel[0] = ((pixel[0] as u16 + white[0] as u16) / 2) as u8;
-                pixel[1] = ((pixel[1] as u16 + white[1] as u16) / 2) as u8;
-                pixel[2] = ((pixel[2] as u16 + white[2] as u16) / 2) as u8;
-            }
-        }
-    }
-}
 
 /// Normalize frame data to 0.0-1.0 range and apply CUBEHELIX colormap
 fn frame_to_rgb(frame: &[f32], min_val: f32, max_val: f32) -> Vec<u8> {
@@ -253,14 +196,16 @@ fn save_frame_as_png(
 
     let center = (DETECTOR_SIZE as i32 / 2, DETECTOR_SIZE as i32 / 2);
 
-    // Draw seeing circle (dashed) if radius is provided
+    // Draw seeing circle (hollow) if radius is provided
     if let Some(radius) = seeing_radius_pixels {
-        draw_dashed_seeing_circle(&mut image, center, radius as i32);
+        let white = Rgb([255u8, 255u8, 255u8]);
+        draw_hollow_circle_mut(&mut image, center, radius as i32, white);
     }
 
-    // Draw GMT segment diffraction limit circle (dotted) if radius is provided
+    // Draw GMT segment diffraction limit circle (hollow) if radius is provided
     if let Some(radius) = segment_diff_lim_radius_pixels {
-        draw_dotted_segment_circle(&mut image, center, radius as i32);
+        let white = Rgb([255u8, 255u8, 255u8]);
+        draw_hollow_circle_mut(&mut image, center, radius as i32, white);
     }
     
     // Draw PSSN text if values are provided

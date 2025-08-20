@@ -82,8 +82,8 @@ PSF generation uses compressed CFD data files (monitors.csv.bz2) containing dome
 Frame processing includes:
 - Global min/max normalization across all frames for consistent visualization
 - CUBEHELIX colormap application for scientific visualization
-- Dashed white circle overlay showing atmospheric seeing diameter with 50% transparency
-- Dotted white circle overlay showing GMT segment diffraction limit diameter with 50% transparency
+- White hollow circle overlay showing atmospheric seeing diameter
+- White hollow circle overlay showing GMT segment diffraction limit diameter
 - PSSN (Point Spread Function Strehl) text overlay in top left corner showing wavelength and 5-digit precision value
 - Frame number display for animated PSFs in format "frame 000"
 - Progress bars for long-running computations
