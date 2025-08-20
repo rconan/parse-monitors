@@ -48,19 +48,48 @@ fn draw_dashed_seeing_circle(image: &mut RgbImage, center: (i32, i32), radius: i
     let white = Rgb([255u8, 255u8, 255u8]);
     let dash_length = 8;
     let gap_length = 6;
-    
+
     // Calculate circle circumference and number of dashes
     let circumference = (2.0 * std::f32::consts::PI * radius as f32) as i32;
     let pattern_length = dash_length + gap_length;
-    
+
     for i in 0..circumference {
         let angle = 2.0 * std::f32::consts::PI * i as f32 / circumference as f32;
         let x = center.0 + (radius as f32 * angle.cos()) as i32;
         let y = center.1 + (radius as f32 * angle.sin()) as i32;
-        
+
         // Check if we're in a dash or gap
         let position_in_pattern = i % pattern_length;
         if position_in_pattern < dash_length {
+            if x >= 0 && x < image.width() as i32 && y >= 0 && y < image.height() as i32 {
+                let pixel = image.get_pixel_mut(x as u32, y as u32);
+                // Apply 50% transparency blend
+                pixel[0] = ((pixel[0] as u16 + white[0] as u16) / 2) as u8;
+                pixel[1] = ((pixel[1] as u16 + white[1] as u16) / 2) as u8;
+                pixel[2] = ((pixel[2] as u16 + white[2] as u16) / 2) as u8;
+            }
+        }
+    }
+}
+
+/// Draw a dotted circle on an RGB image with 50% transparency (for GMT segment diffraction limit)
+fn draw_dotted_segment_circle(image: &mut RgbImage, center: (i32, i32), radius: i32) {
+    let white = Rgb([255u8, 255u8, 255u8]);
+    let dot_size = 2; // 2 pixels per dot
+    let gap_length = 4; // 4 pixels gap between dots
+
+    // Calculate circle circumference and number of dots
+    let circumference = (2.0 * std::f32::consts::PI * radius as f32) as i32;
+    let pattern_length = dot_size + gap_length;
+
+    for i in 0..circumference {
+        let angle = 2.0 * std::f32::consts::PI * i as f32 / circumference as f32;
+        let x = center.0 + (radius as f32 * angle.cos()) as i32;
+        let y = center.1 + (radius as f32 * angle.sin()) as i32;
+
+        // Check if we're in a dot or gap
+        let position_in_pattern = i % pattern_length;
+        if position_in_pattern < dot_size {
             if x >= 0 && x < image.width() as i32 && y >= 0 && y < image.height() as i32 {
                 let pixel = image.get_pixel_mut(x as u32, y as u32);
                 // Apply 50% transparency blend
@@ -93,27 +122,35 @@ fn frame_to_rgb(frame: &[f32], min_val: f32, max_val: f32) -> Vec<u8> {
         .collect()
 }
 
-/// Save a single frame as a PNG image with CUBEHELIX colormap and seeing circle overlay
+/// Save a single frame as a PNG image with CUBEHELIX colormap and circle overlays
 fn save_frame_as_png(
     frame: &[f32],
     filename: &str,
     min_val: f32,
     max_val: f32,
     seeing_radius_pixels: Option<f32>,
+    segment_diff_lim_radius_pixels: Option<f32>,
 ) -> anyhow::Result<()> {
     let rgb_data = frame_to_rgb(frame, min_val, max_val);
     let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::from_raw(
         DETECTOR_SIZE as u32,
         DETECTOR_SIZE as u32,
         rgb_data,
-    ).ok_or_else(|| anyhow::anyhow!("Failed to create image buffer"))?;
-    
-    // Draw seeing circle if radius is provided
+    )
+    .ok_or_else(|| anyhow::anyhow!("Failed to create image buffer"))?;
+
+    let center = (DETECTOR_SIZE as i32 / 2, DETECTOR_SIZE as i32 / 2);
+
+    // Draw seeing circle (dashed) if radius is provided
     if let Some(radius) = seeing_radius_pixels {
-        let center = (DETECTOR_SIZE as i32 / 2, DETECTOR_SIZE as i32 / 2);
         draw_dashed_seeing_circle(&mut image, center, radius as i32);
     }
-    
+
+    // Draw GMT segment diffraction limit circle (dotted) if radius is provided
+    if let Some(radius) = segment_diff_lim_radius_pixels {
+        draw_dotted_segment_circle(&mut image, center, radius as i32);
+    }
+
     image.save(filename)?;
     Ok(())
 }
@@ -134,7 +171,12 @@ fn find_global_extrema(frames: &[Vec<f32>]) -> (f32, f32) {
 }
 
 /// Process all frames and save them as PNG images
-fn save_all_frames(frames: &[Vec<f32>], frames_dir: &Path, seeing_radius_pixels: Option<f32>) -> anyhow::Result<()> {
+fn save_all_frames(
+    frames: &[Vec<f32>],
+    frames_dir: &Path,
+    seeing_radius_pixels: Option<f32>,
+    segment_diff_lim_radius_pixels: Option<f32>,
+) -> anyhow::Result<()> {
     let (global_min, global_max) = find_global_extrema(frames);
 
     // Create progress bar for saving frames
@@ -149,7 +191,14 @@ fn save_all_frames(frames: &[Vec<f32>], frames_dir: &Path, seeing_radius_pixels:
 
     for (i, frame) in frames.iter().enumerate() {
         let filename = frames_dir.join(format!("frame_{:06}.png", i));
-        save_frame_as_png(frame, filename.to_str().unwrap(), global_min, global_max, seeing_radius_pixels)?;
+        save_frame_as_png(
+            frame,
+            filename.to_str().unwrap(),
+            global_min,
+            global_max,
+            seeing_radius_pixels,
+            segment_diff_lim_radius_pixels,
+        )?;
         save_pb.inc(1);
     }
 
@@ -218,10 +267,13 @@ fn main() -> anyhow::Result<()> {
     let atm = Atmosphere::builder().build()?;
     let seeing = (0.98 * v_src.wavelength() / atm.r0()).to_mas();
     println!("Atmosphere seeing: {:.0}mas", seeing);
-    
+
     // Calculate seeing radius in pixels (diameter = 2 * radius, so radius = seeing / 2 / px)
     let seeing_radius_pixels = (seeing / 2.0) / px as f64;
+    // Calculate GMT segment diff lim radius in pixels
+    let segment_diff_lim_radius_pixels = (gmt_segment_diff_lim / 2.0) / px as f64;
     // println!("Seeing radius in pixels: {:.1}px", seeing_radius_pixels);
+    // println!("GMT segment diff lim radius in pixels: {:.1}px", segment_diff_lim_radius_pixels);
 
     // Generate reference frame (no turbulence)
     v_src.through(&mut gmt).xpupil().through(&mut imgr);
@@ -229,7 +281,14 @@ fn main() -> anyhow::Result<()> {
 
     // Save reference frame with its own normalization
     let (frame0_min, frame0_max) = find_global_extrema(&[frame0.clone()]);
-    save_frame_as_png(&frame0, "psf.png", frame0_min, frame0_max, Some(seeing_radius_pixels as f32))?;
+    save_frame_as_png(
+        &frame0,
+        "psf.png",
+        frame0_min,
+        frame0_max,
+        Some(seeing_radius_pixels as f32),
+        Some(segment_diff_lim_radius_pixels as f32),
+    )?;
     println!("Saved frame0 as psf.png");
 
     // CFD case
@@ -322,7 +381,12 @@ fn main() -> anyhow::Result<()> {
             let frame_count = all_frames.len();
 
             // Save all turbulence frames with consistent normalization
-            save_all_frames(&all_frames, frames_dir, Some(seeing_radius_pixels as f32))?;
+            save_all_frames(
+                &all_frames,
+                frames_dir,
+                Some(seeing_radius_pixels as f32),
+                Some(segment_diff_lim_radius_pixels as f32),
+            )?;
 
             println!();
             println!(
@@ -346,7 +410,14 @@ fn main() -> anyhow::Result<()> {
             process_pb.finish_with_message("PSF processing complete");
             let frame: Vec<f32> = imgr.frame().into();
             let (frame_min, frame_max) = find_global_extrema(&[frame.clone()]);
-            save_frame_as_png(&frame, "long_exposure_psf.png", frame_min, frame_max, Some(seeing_radius_pixels as f32))?;
+            save_frame_as_png(
+                &frame,
+                "long_exposure_psf.png",
+                frame_min,
+                frame_max,
+                Some(seeing_radius_pixels as f32),
+                Some(segment_diff_lim_radius_pixels as f32),
+            )?;
             println!("Saved frame as psf.png");
 
             println!();
