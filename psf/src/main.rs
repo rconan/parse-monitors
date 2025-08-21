@@ -86,10 +86,6 @@ impl From<WindSpeed> for u32 {
 #[command(name = "psf")]
 #[command(about = "Generate PSF frames from GMT CFD dome seeing data")]
 struct Args {
-    /// Exposure type: short or long
-    #[arg(long, value_enum, default_value_t = Exposure::Short)]
-    exposure: Exposure,
-
     /// Enable dome seeing turbulence effects
     #[arg(long)]
     domeseeing: bool,
@@ -109,9 +105,6 @@ struct Args {
     /// Wind speed in m/s (2, 7, 12, or 17)
     #[arg(long, value_enum, default_value_t = WindSpeed::Seven)]
     wind_speed: WindSpeed,
-    // Enable atmospheric turbulence effects
-    // #[arg(long)]
-    // atmosphere: bool,
 }
 
 /// Determine enclosure configuration based on wind speed and zenith angle
@@ -338,15 +331,6 @@ fn main() -> anyhow::Result<()> {
     // Parse command line arguments
     let args = Args::parse();
 
-    println!(
-        "🎯 Using {} exposure ({} frames)",
-        match args.exposure {
-            Exposure::Short => "short",
-            Exposure::Long => "long",
-        },
-        N_SAMPLE
-    );
-
     // Setup GMT optics and imaging
     let mut gmt = Gmt::builder().build()?;
     let v_src = Source::builder().band("Vs");
@@ -510,78 +494,64 @@ fn main() -> anyhow::Result<()> {
     );
     process_pb.set_message("Processing PSF frames");
 
-    match args.exposure {
-        Exposure::Short => {
-            for data in ds_iter.zip(m12_rbms_iter) {
-                imgr.reset();
-                ray_trace(&mut v_src, &mut gmt, &mut v_pssn, data);
-                v_src.through(&mut imgr);
-                all_pssns.push(v_pssn.estimates()[0]);
-                all_frames.push(imgr.frame().into());
-                process_pb.inc(1);
-            }
-
-            process_pb.finish_with_message("PSF processing complete");
-            let frame_count = all_frames.len();
-
-            // Save all turbulence frames with consistent normalization
-            save_all_frames(
-                &all_frames,
-                frames_dir,
-                Some(seeing_radius_pixels as f32),
-                Some(segment_diff_lim_radius_pixels as f32),
-                &all_pssns,
-                wavelength_nm,
-                Some(&cfd_case_str),
-                turbulence_effects,
-            )?;
-
-            println!();
-            println!(
-                "✅ Processing completed in {:.2}s",
-                now.elapsed().as_secs_f64()
-            );
-            println!("📁 Saved {} frames to ./frames/ directory", frame_count);
-            println!("🖼️  Reference PSF saved as psf.png");
-            println!();
-            println!("🎬 To create an animated GIF at 5Hz, run:");
-            println!("   convert -delay 20 -loop 0 frames/frame_*.png psf_animation.gif");
-        }
-        Exposure::Long => {
-            imgr.reset();
-            for data in ds_iter.zip(m12_rbms_iter) {
-                ray_trace(&mut v_src, &mut gmt, &mut v_pssn, data);
-                v_src.through(&mut imgr);
-                process_pb.inc(1);
-            }
-
-            process_pb.finish_with_message("PSF processing complete");
-            let pssn = v_pssn.estimates()[0];
-            let frame: Vec<f32> = imgr.frame().into();
-            let (frame_min, frame_max) = find_global_extrema(&[frame.clone()]);
-            save_frame_as_png(
-                &frame,
-                "long_exposure_psf.png",
-                frame_min,
-                frame_max,
-                Some(seeing_radius_pixels as f32),
-                Some(segment_diff_lim_radius_pixels as f32),
-                Some(pssn),
-                Some(wavelength_nm),
-                None, // No frame number for long exposure
-                Some(&cfd_case_str),
-                turbulence_effects,
-            )?;
-            println!("Saved frame as psf.png");
-
-            println!();
-            println!(
-                "✅ Processing completed in {:.2}s",
-                now.elapsed().as_secs_f64()
-            );
-            println!("🖼️  Reference PSF saved as psf.png");
-            println!("🖼️  Long exposure PSF saved as long_exposure_psf.png");
-        }
+    for data in ds_iter.zip(m12_rbms_iter) {
+        imgr.reset();
+        ray_trace(&mut v_src, &mut gmt, &mut v_pssn, data);
+        v_src.through(&mut imgr);
+        all_pssns.push(v_pssn.estimates()[0]);
+        all_frames.push(imgr.frame().into());
+        process_pb.inc(1);
     }
+
+    process_pb.finish_with_message("PSF processing complete");
+    let frame_count = all_frames.len();
+
+    // Save all turbulence frames with consistent normalization
+    save_all_frames(
+        &all_frames,
+        frames_dir,
+        Some(seeing_radius_pixels as f32),
+        Some(segment_diff_lim_radius_pixels as f32),
+        &all_pssns,
+        wavelength_nm,
+        Some(&cfd_case_str),
+        turbulence_effects,
+    )?;
+
+    let summed_frame = all_frames
+        .into_iter()
+        .fold(vec![0f32; DETECTOR_SIZE.pow(2)], |mut s, f| {
+            s.iter_mut().zip(f.into_iter()).for_each(|(s, f)| {
+                *s += f;
+            });
+            s
+        });
+    let (frame_min, frame_max) = find_global_extrema(&[summed_frame.clone()]);
+    save_frame_as_png(
+        &summed_frame,
+        "long_exposure_psf.png",
+        frame_min,
+        frame_max,
+        Some(seeing_radius_pixels as f32),
+        Some(segment_diff_lim_radius_pixels as f32),
+        all_pssns.last().copied(),
+        Some(wavelength_nm),
+        None, // No frame number for long exposure
+        Some(&cfd_case_str),
+        turbulence_effects,
+    )?;
+
+    println!();
+    println!(
+        "✅ Processing completed in {:.2}s",
+        now.elapsed().as_secs_f64()
+    );
+    println!("📁 Saved {} frames to ./frames/ directory", frame_count);
+    println!("🖼️  Reference PSF saved as psf.png");
+    println!("🖼️  Long exposure PSF saved as long_exposure_psf.png");
+    println!();
+    println!("🎬 To create an animated GIF at 5Hz, run:");
+    println!("   convert -delay 20 -loop 0 frames/frame_*.png psf_animation.gif");
+
     Ok(())
 }
