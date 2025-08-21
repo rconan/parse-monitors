@@ -1,15 +1,46 @@
+/*!
+# PSF Configuration
+
+This module provides the [`Config`] type for configuring PSF rendering parameters
+and metadata overlays for scientific visualization.
+
+## Features
+
+- Configurable seeing and diffraction limit circle overlays
+- Text overlays for CFD case information and turbulence effects
+- PSSN value display with wavelength information
+- Frame numbering for animated sequences
+- Builder pattern for flexible configuration
+*/
+
 use std::rc::Rc;
 
 use image::{Rgb, RgbImage};
 use imageproc::drawing::draw_text_mut;
 use rusttype::{Font, Scale};
 
+/// Errors that can occur during PSF configuration operations
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
+    /// Font loading failed
     #[error("Failed to load font")]
     Font,
 }
 
+/// Configuration for PSF rendering including visualization parameters and metadata
+/// 
+/// This type uses interior mutability through [`Rc`] to enable shared configuration
+/// across multiple PSF instances while supporting builder-pattern modifications.
+/// 
+/// # Example
+/// 
+/// ```rust,no_run
+/// use psf::Config;
+/// 
+/// let config = Config::new(50.0, 25.0, 500.0)
+///     .cfd_case("30deg_0deg_os_7ms")  
+///     .turbulence_effects("dome seeing + wind loads");
+/// ```
 #[derive(Debug, Default)]
 pub struct Config {
     pub(crate) seeing_radius_pixels: f32,
@@ -19,6 +50,17 @@ pub struct Config {
     pub(crate) turbulence_effects: Option<String>,
 }
 impl Config {
+    /// Create a new PSF configuration with core visualization parameters
+    /// 
+    /// # Parameters
+    /// 
+    /// - `seeing_radius_pixels` - Atmospheric seeing radius in detector pixels for circle overlay
+    /// - `segment_diff_lim_radius_pixels` - GMT segment diffraction limit radius in pixels for circle overlay  
+    /// - `wavelength_nm` - Observation wavelength in nanometers for PSSN display
+    /// 
+    /// # Returns
+    /// 
+    /// Reference-counted configuration instance for shared usage across PSF objects
     pub fn new(
         seeing_radius_pixels: f32,
         segment_diff_lim_radius_pixels: f32,
@@ -31,6 +73,16 @@ impl Config {
             ..Default::default()
         })
     }
+    
+    /// Add CFD case information to be displayed in text overlay
+    /// 
+    /// # Parameters
+    /// 
+    /// - `value` - CFD case description (e.g., "30deg_0deg_os_7ms")
+    /// 
+    /// # Returns
+    /// 
+    /// New configuration instance with CFD case metadata
     pub fn cfd_case(self: Rc<Self>, value: impl ToString) -> Rc<Self> {
         let &Self {
             seeing_radius_pixels,
@@ -47,6 +99,16 @@ impl Config {
             turbulence_effects: turbulence_effects.clone(),
         })
     }
+    
+    /// Add turbulence effects description to be displayed in text overlay
+    /// 
+    /// # Parameters
+    /// 
+    /// - `value` - Description of turbulence effects (e.g., "dome seeing + wind loads")
+    /// 
+    /// # Returns
+    /// 
+    /// New configuration instance with turbulence effects metadata
     pub fn turbulence_effects(self: Rc<Self>, value: impl ToString) -> Rc<Self> {
         let &Self {
             seeing_radius_pixels,
@@ -63,7 +125,23 @@ impl Config {
             turbulence_effects: Some(value.to_string()),
         })
     }
-    /// Draw PSSN text overlay in the top left corner of the image
+    /// Draw PSSN and metadata text overlays in the top left corner of the image
+    /// 
+    /// Renders white text overlays including:
+    /// - CFD case information (if configured)
+    /// - Turbulence effects description (if configured) 
+    /// - PSSN value with wavelength
+    /// - Frame number (if provided)
+    /// 
+    /// # Parameters
+    /// 
+    /// - `image` - Mutable reference to RGB image to modify
+    /// - `pssn_value` - Point Spread Function Strehl Number value to display
+    /// - `frame_number` - Optional frame number for animated sequences
+    /// 
+    /// # Returns
+    /// 
+    /// Result indicating success or font loading error
     pub fn draw_pssn_text(
         &self,
         image: &mut RgbImage,

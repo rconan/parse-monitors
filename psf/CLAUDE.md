@@ -49,12 +49,19 @@ The workspace uses feature flags for different CFD years:
 ## Code Architecture
 
 ### PSF Crate Structure
-- `src/main.rs` - PSF generation application with CRSEO integration
+- `src/main.rs` - PSF generation CLI application with CRSEO integration
+- `src/lib.rs` - Library interface exposing `Config`, `PSF`, and `PSFs` types with `DETECTOR_SIZE` constant (760x760)
+- `src/config.rs` - Configuration module with `Config` type for PSF rendering settings and text overlays
+- `src/psfs.rs` - PSF collection module with `PSFs` container and global normalization utilities
+- `src/psfs/psf.rs` - Individual PSF module with `PSF` type for single frame operations
 - Uses `CfdCase<CFD_YEAR>::colloquial(30, 0, "os", 7)` for standard 30° zenith, 0° azimuth, open sky, 7 m/s case
 - Integrates `DomeSeeing` turbulence data with GMT optical model via CRSEO
 - Generates frames with CUBEHELIX colormap normalization
 
 ### Key Types and Workflow
+- `Config` - Configuration container for PSF rendering settings including seeing radius, diffraction limit, wavelength, and metadata overlays
+- `PSF` - Individual PSF frame with associated metadata (PSSN value, frame number) and rendering capabilities
+- `PSFs` - Collection of PSF frames with global normalization and batch processing functionality
 - `CfdCase<YEAR>` - Represents CFD simulation cases with zenith angle, azimuth, enclosure type, and wind speed
 - `Baseline<YEAR>` - CFD database baseline for a specific year with iteration capabilities  
 - `DomeSeeing` - Loads OPD turbulence data from CFD cases for ray tracing
@@ -84,9 +91,12 @@ Frame processing includes:
 - CUBEHELIX colormap application for scientific visualization
 - White hollow circle overlay showing atmospheric seeing diameter
 - White hollow circle overlay showing GMT segment diffraction limit diameter
-- PSSN (Point Spread Function Strehl) text overlay in top left corner showing wavelength and 5-digit precision value
-- Frame number display for animated PSFs in format "frame 000"
+- Text overlays in top left corner with configurable metadata:
+  - CFD case information (if specified)
+  - Turbulence effects description (if specified)
+  - PSSN (Point Spread Function Strehl) with wavelength and 5-digit precision value
+  - Frame number display for animated PSFs in format "frame 000"
 - Progress bars for long-running computations
-- Configurable detector size (default: 1000x1000 pixels with 4x oversampling)
+- Configurable detector size (default: 760x760 pixels)
 
 Feature-gated compilation allows targeting specific CFD baseline years (2020, 2021, 2025) while maintaining a unified API.
