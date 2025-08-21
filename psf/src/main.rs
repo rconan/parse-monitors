@@ -10,17 +10,17 @@ use crseo::{
 use gmt_dos_clients_domeseeing::DomeSeeing;
 use gmt_lom::RigidBodyMotions;
 use image::{ImageBuffer, Rgb, RgbImage};
-use imageproc::drawing::{draw_text_mut, draw_hollow_circle_mut};
+use imageproc::drawing::{draw_hollow_circle_mut, draw_text_mut};
 use indicatif::{ProgressBar, ProgressStyle};
-use rusttype::{Font, Scale};
 use parse_monitors::{
     CFD_YEAR,
     cfd::{Baseline, BaselineTrait, CfdCase},
 };
+use rusttype::{Font, Scale};
 use skyangle::Conversion;
 
 const N_SAMPLE: usize = 100;
-const DETECTOR_SIZE: usize = 1000;
+const DETECTOR_SIZE: usize = 800;
 
 #[derive(Debug, Clone, ValueEnum)]
 enum Exposure {
@@ -126,32 +126,53 @@ fn get_enclosure_config(wind_speed: u32, zenith_angle: u32) -> &'static str {
 }
 
 /// Draw PSSN text overlay in the top left corner of the image
-fn draw_pssn_text(image: &mut RgbImage, pssn_value: f64, wavelength_nm: f64, frame_number: Option<usize>) -> anyhow::Result<()> {
+fn draw_pssn_text(
+    image: &mut RgbImage,
+    pssn_value: f64,
+    wavelength_nm: f64,
+    frame_number: Option<usize>,
+    cfd_case: Option<&str>,
+    turbulence_effects: Option<&str>,
+) -> anyhow::Result<()> {
     // Use system default font (typically DejaVu Sans on Linux)
     let font_data: &[u8] = include_bytes!("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
-    let font = Font::try_from_bytes(font_data).ok_or_else(|| anyhow::anyhow!("Failed to load font"))?;
-    
+    let font =
+        Font::try_from_bytes(font_data).ok_or_else(|| anyhow::anyhow!("Failed to load font"))?;
+
     let scale = Scale::uniform(24.0); // 24 pixel font
     let white = Rgb([255u8, 255u8, 255u8]);
-    
+
     // Position in top left corner with some padding
-    let x = 10i32;
-    let mut y = 30i32;
-    
+    let x = 5i32;
+    let mut y = 5i32;
+
+    // Draw CFD case if provided
+    if let Some(case) = cfd_case {
+        let cfd_text = format!("CFD: {}", case);
+        draw_text_mut(image, white, x, y, scale, &font, &cfd_text);
+        y += 30;
+    }
+
+    // Draw turbulence effects if provided
+    if let Some(effects) = turbulence_effects {
+        let effects_text = format!("Effects: {}", effects);
+        draw_text_mut(image, white, x, y, scale, &font, &effects_text);
+        y += 30;
+    }
+
     // Draw PSSN text
     let pssn_text = format!("PSSN@{:.0}nm: {:.5}", wavelength_nm, pssn_value);
     draw_text_mut(image, white, x, y, scale, &font, &pssn_text);
-    
+
     // Draw frame number if provided
     if let Some(frame_num) = frame_number {
         y += 30; // Move down for next line
         let frame_text = format!("frame {:03}", frame_num);
         draw_text_mut(image, white, x, y, scale, &font, &frame_text);
     }
-    
+
     Ok(())
 }
-
 
 /// Normalize frame data to 0.0-1.0 range and apply CUBEHELIX colormap
 fn frame_to_rgb(frame: &[f32], min_val: f32, max_val: f32) -> Vec<u8> {
@@ -185,6 +206,8 @@ fn save_frame_as_png(
     pssn_value: Option<f64>,
     wavelength_nm: Option<f64>,
     frame_number: Option<usize>,
+    cfd_case: Option<&str>,
+    turbulence_effects: Option<&str>,
 ) -> anyhow::Result<()> {
     let rgb_data = frame_to_rgb(frame, min_val, max_val);
     let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::from_raw(
@@ -207,10 +230,17 @@ fn save_frame_as_png(
         let white = Rgb([255u8, 255u8, 255u8]);
         draw_hollow_circle_mut(&mut image, center, radius as i32, white);
     }
-    
+
     // Draw PSSN text if values are provided
     if let (Some(pssn), Some(wl)) = (pssn_value, wavelength_nm) {
-        draw_pssn_text(&mut image, pssn, wl, frame_number)?;
+        draw_pssn_text(
+            &mut image,
+            pssn,
+            wl,
+            frame_number,
+            cfd_case,
+            turbulence_effects,
+        )?;
     }
 
     image.save(filename)?;
@@ -240,6 +270,8 @@ fn save_all_frames(
     segment_diff_lim_radius_pixels: Option<f32>,
     pssn_values: &[f64],
     wavelength_nm: f64,
+    cfd_case: Option<&str>,
+    turbulence_effects: Option<&str>,
 ) -> anyhow::Result<()> {
     let (global_min, global_max) = find_global_extrema(frames);
 
@@ -266,6 +298,8 @@ fn save_all_frames(
             pssn_value,
             Some(wavelength_nm),
             Some(i), // Pass frame number for animated frames
+            cfd_case,
+            turbulence_effects,
         )?;
         save_pb.inc(1);
     }
@@ -320,10 +354,10 @@ fn main() -> anyhow::Result<()> {
         .source(v_src.clone())
         .build()?;
     let mut v_src = v_src.build()?;
-    
+
     // Get wavelength in nanometers for PSSN display
     let wavelength_nm = v_src.wavelength() * 1e9; // Convert meters to nanometers
-    
+
     let mut imgr = Imaging::builder()
         .detector(
             Detector::default()
@@ -373,6 +407,8 @@ fn main() -> anyhow::Result<()> {
         None, // No PSSN for reference frame
         None,
         None, // No frame number for reference frame
+        None, // No CFD case for reference frame
+        None, // No turbulence effects for reference frame
     )?;
     println!("Saved frame0 as psf.png");
 
@@ -389,6 +425,8 @@ fn main() -> anyhow::Result<()> {
     println!("  Enclosure: {}", enclosure);
 
     let cfd_case = CfdCase::<CFD_YEAR>::colloquial(zenith, azimuth, enclosure, wind_speed)?;
+    let cfd_case_str = cfd_case.to_string();
+
     // dome seeing
     let ds = if args.domeseeing {
         let cfd_path = Baseline::<CFD_YEAR>::path()?.join(cfd_case.to_string());
@@ -413,6 +451,14 @@ fn main() -> anyhow::Result<()> {
         )
     } else {
         None
+    };
+
+    // Generate turbulence effects string
+    let turbulence_effects = match (ds.is_some(), m12_rbms.is_some()) {
+        (true, true) => Some("Dome Seeing + Wind Loads"),
+        (true, false) => Some("Dome Seeing"),
+        (false, true) => Some("Wind Loads"),
+        (false, false) => None,
     };
 
     // any transients dome seeing or wind loads?
@@ -486,6 +532,8 @@ fn main() -> anyhow::Result<()> {
                 Some(segment_diff_lim_radius_pixels as f32),
                 &all_pssns,
                 wavelength_nm,
+                Some(&cfd_case_str),
+                turbulence_effects,
             )?;
 
             println!();
@@ -521,6 +569,8 @@ fn main() -> anyhow::Result<()> {
                 Some(pssn),
                 Some(wavelength_nm),
                 None, // No frame number for long exposure
+                Some(&cfd_case_str),
+                turbulence_effects,
             )?;
             println!("Saved frame as psf.png");
 
