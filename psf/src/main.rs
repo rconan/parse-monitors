@@ -1,7 +1,18 @@
+/*!
+#  CFD Dome Seeing & Wind Loads PSFs
+
+```shell
+export CUDACXX=/usr/local/cuda/bin/nvcc
+export FEM_REPO=~/mnt/20250506_1715_zen_30_M1_202110_FSM_202305_Mount_202305_pier_202411_M1_actDamping/
+export CFD_REPO=~/maua/CASES/
+export GMT_MODES_PATH=~/Dropbox/AWS/CEO/gmtMirrors/
+cargo r -r -- --help
+```
+*/
+
 use std::{env, fs::create_dir_all, iter, path::Path, time::Instant};
 
 use clap::{Parser, ValueEnum};
-use colorous;
 use crseo::{
     Atmosphere, Builder, FromBuilder, Gmt, Imaging, PSSn, PSSnEstimates, Source,
     imaging::Detector,
@@ -9,18 +20,15 @@ use crseo::{
 };
 use gmt_dos_clients_domeseeing::DomeSeeing;
 use gmt_lom::RigidBodyMotions;
-use image::{ImageBuffer, Rgb, RgbImage};
-use imageproc::drawing::{draw_hollow_circle_mut, draw_text_mut};
 use indicatif::{ProgressBar, ProgressStyle};
 use parse_monitors::{
     CFD_YEAR,
     cfd::{Baseline, BaselineTrait, CfdCase},
 };
-use rusttype::{Font, Scale};
+use psf::{Config, DETECTOR_SIZE, PSF, PSFs};
 use skyangle::Conversion;
 
 const N_SAMPLE: usize = 100;
-const DETECTOR_SIZE: usize = 800;
 
 #[derive(Debug, Clone, ValueEnum)]
 enum Exposure {
@@ -118,189 +126,6 @@ fn get_enclosure_config(wind_speed: u32, zenith_angle: u32) -> &'static str {
     }
 }
 
-/// Draw PSSN text overlay in the top left corner of the image
-fn draw_pssn_text(
-    image: &mut RgbImage,
-    pssn_value: f64,
-    wavelength_nm: f64,
-    frame_number: Option<usize>,
-    cfd_case: Option<&str>,
-    turbulence_effects: Option<&str>,
-) -> anyhow::Result<()> {
-    // Use system default font (typically DejaVu Sans on Linux)
-    let font_data: &[u8] = include_bytes!("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
-    let font =
-        Font::try_from_bytes(font_data).ok_or_else(|| anyhow::anyhow!("Failed to load font"))?;
-
-    let scale = Scale::uniform(24.0); // 24 pixel font
-    let white = Rgb([255u8, 255u8, 255u8]);
-
-    // Position in top left corner with some padding
-    let x = 5i32;
-    let mut y = 5i32;
-
-    // Draw CFD case if provided
-    if let Some(case) = cfd_case {
-        let cfd_text = format!("CFD: {}", case);
-        draw_text_mut(image, white, x, y, scale, &font, &cfd_text);
-        y += 30;
-    }
-
-    // Draw turbulence effects if provided
-    if let Some(effects) = turbulence_effects {
-        let effects_text = format!("Effects: {}", effects);
-        draw_text_mut(image, white, x, y, scale, &font, &effects_text);
-        y += 30;
-    }
-
-    // Draw PSSN text
-    let pssn_text = format!("PSSN@{:.0}nm: {:.5}", wavelength_nm, pssn_value);
-    draw_text_mut(image, white, x, y, scale, &font, &pssn_text);
-
-    // Draw frame number if provided
-    if let Some(frame_num) = frame_number {
-        y += 30; // Move down for next line
-        let frame_text = format!("frame {:03}", frame_num);
-        draw_text_mut(image, white, x, y, scale, &font, &frame_text);
-    }
-
-    Ok(())
-}
-
-/// Normalize frame data to 0.0-1.0 range and apply CUBEHELIX colormap
-fn frame_to_rgb(frame: &[f32], min_val: f32, max_val: f32) -> Vec<u8> {
-    let range = max_val - min_val;
-    let normalized: Vec<f64> = if range > 0.0 {
-        frame
-            .iter()
-            .map(|&x| ((x - min_val) / range) as f64)
-            .collect()
-    } else {
-        vec![0.5f64; frame.len()]
-    };
-
-    normalized
-        .iter()
-        .flat_map(|&value| {
-            let color = colorous::CUBEHELIX.eval_continuous(value);
-            [color.r, color.g, color.b]
-        })
-        .collect()
-}
-
-/// Save a single frame as a PNG image with CUBEHELIX colormap, circle overlays, and PSSN text
-fn save_frame_as_png(
-    frame: &[f32],
-    filename: &str,
-    min_val: f32,
-    max_val: f32,
-    seeing_radius_pixels: Option<f32>,
-    segment_diff_lim_radius_pixels: Option<f32>,
-    pssn_value: Option<f64>,
-    wavelength_nm: Option<f64>,
-    frame_number: Option<usize>,
-    cfd_case: Option<&str>,
-    turbulence_effects: Option<&str>,
-) -> anyhow::Result<()> {
-    let rgb_data = frame_to_rgb(frame, min_val, max_val);
-    let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::from_raw(
-        DETECTOR_SIZE as u32,
-        DETECTOR_SIZE as u32,
-        rgb_data,
-    )
-    .ok_or_else(|| anyhow::anyhow!("Failed to create image buffer"))?;
-
-    let center = (DETECTOR_SIZE as i32 / 2, DETECTOR_SIZE as i32 / 2);
-
-    // Draw seeing circle (hollow) if radius is provided
-    if let Some(radius) = seeing_radius_pixels {
-        let white = Rgb([255u8, 255u8, 255u8]);
-        draw_hollow_circle_mut(&mut image, center, radius as i32, white);
-    }
-
-    // Draw GMT segment diffraction limit circle (hollow) if radius is provided
-    if let Some(radius) = segment_diff_lim_radius_pixels {
-        let white = Rgb([255u8, 255u8, 255u8]);
-        draw_hollow_circle_mut(&mut image, center, radius as i32, white);
-    }
-
-    // Draw PSSN text if values are provided
-    if let (Some(pssn), Some(wl)) = (pssn_value, wavelength_nm) {
-        draw_pssn_text(
-            &mut image,
-            pssn,
-            wl,
-            frame_number,
-            cfd_case,
-            turbulence_effects,
-        )?;
-    }
-
-    image.save(filename)?;
-    Ok(())
-}
-
-/// Find global min and max values across all frames
-fn find_global_extrema(frames: &[Vec<f32>]) -> (f32, f32) {
-    let global_max = frames
-        .iter()
-        .flat_map(|frame| frame.iter())
-        .copied()
-        .fold(f32::NEG_INFINITY, f32::max);
-    let global_min = frames
-        .iter()
-        .flat_map(|frame| frame.iter())
-        .copied()
-        .fold(f32::INFINITY, f32::min);
-    (global_min, global_max)
-}
-
-/// Process all frames and save them as PNG images
-fn save_all_frames(
-    frames: &[Vec<f32>],
-    frames_dir: &Path,
-    seeing_radius_pixels: Option<f32>,
-    segment_diff_lim_radius_pixels: Option<f32>,
-    pssn_values: &[f64],
-    wavelength_nm: f64,
-    cfd_case: Option<&str>,
-    turbulence_effects: Option<&str>,
-) -> anyhow::Result<()> {
-    let (global_min, global_max) = find_global_extrema(frames);
-
-    // Create progress bar for saving frames
-    let save_pb = ProgressBar::new(frames.len() as u64);
-    save_pb.set_style(
-        ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) {msg}")
-            .unwrap()
-            .progress_chars("#>-"),
-    );
-    save_pb.set_message("Saving frames");
-
-    for (i, frame) in frames.iter().enumerate() {
-        let filename = frames_dir.join(format!("frame_{:06}.png", i));
-        let pssn_value = pssn_values.get(i).copied();
-        save_frame_as_png(
-            frame,
-            filename.to_str().unwrap(),
-            global_min,
-            global_max,
-            seeing_radius_pixels,
-            segment_diff_lim_radius_pixels,
-            pssn_value,
-            Some(wavelength_nm),
-            Some(i), // Pass frame number for animated frames
-            cfd_case,
-            turbulence_effects,
-        )?;
-        save_pb.inc(1);
-    }
-
-    save_pb.finish_with_message("All frames saved");
-    Ok(())
-}
-
 // ray tracing through the GMT
 fn ray_trace(
     v_src: &mut Source,
@@ -358,43 +183,40 @@ fn main() -> anyhow::Result<()> {
         imgr.field_of_view(&v_src).to_arcsec()
     );
     let gmt_diff_lim = (1.22 * v_src.wavelength() / 25.5).to_mas();
-    let gmt_segment_diff_lim = (1.22 * v_src.wavelength() / 8.365).to_mas();
+    let gmt_segment_diff_lim = (1.22 * v_src.wavelength() / 8.365).to_mas() as f32;
     println!("GMT diffraction limited FWHM: {:.0}mas", gmt_diff_lim);
     println!(
         "GMT segment diffraction limited FWHM: {:.0}mas",
         gmt_segment_diff_lim
     );
     let atm = Atmosphere::builder().build()?;
-    let seeing = (0.98 * v_src.wavelength() / atm.r0()).to_mas();
+    let seeing = (0.98 * v_src.wavelength() / atm.r0()).to_mas() as f32;
     println!("Atmosphere seeing: {:.0}mas", seeing);
 
     // Calculate seeing radius in pixels (diameter = 2 * radius, so radius = seeing / 2 / px)
-    let seeing_radius_pixels = (seeing / 2.0) / px as f64;
+    let seeing_radius_pixels = (seeing / 2.0) / px;
     // Calculate GMT segment diff lim radius in pixels
-    let segment_diff_lim_radius_pixels = (gmt_segment_diff_lim / 2.0) / px as f64;
+    let segment_diff_lim_radius_pixels = (gmt_segment_diff_lim / 2.0) / px;
     // println!("Seeing radius in pixels: {:.1}px", seeing_radius_pixels);
     // println!("GMT segment diff lim radius in pixels: {:.1}px", segment_diff_lim_radius_pixels);
+    let config = Config::new(
+        seeing_radius_pixels,
+        segment_diff_lim_radius_pixels,
+        wavelength_nm,
+    );
 
     // Generate reference frame (no turbulence)
     v_src.through(&mut gmt).xpupil().through(&mut imgr);
     let frame0: Vec<f32> = imgr.frame().into();
 
     // Save reference frame with its own normalization
-    let (frame0_min, frame0_max) = find_global_extrema(&[frame0.clone()]);
-    save_frame_as_png(
-        &frame0,
-        "psf.png",
-        frame0_min,
-        frame0_max,
-        Some(seeing_radius_pixels as f32),
-        Some(segment_diff_lim_radius_pixels as f32),
-        None, // No PSSN for reference frame
-        None,
-        None, // No frame number for reference frame
-        None, // No CFD case for reference frame
-        None, // No turbulence effects for reference frame
-    )?;
+    PSF::new(&config, frame0).save("psf.png")?;
     println!("Saved frame0 as psf.png");
+
+    // any transients dome seeing or wind loads?
+    if !args.domeseeing && !args.windloads {
+        return Ok(());
+    }
 
     // CFD case - extract values from arguments
     let zenith = u32::from(args.zenith_angle);
@@ -409,7 +231,8 @@ fn main() -> anyhow::Result<()> {
     println!("  Enclosure: {}", enclosure);
 
     let cfd_case = CfdCase::<CFD_YEAR>::colloquial(zenith, azimuth, enclosure, wind_speed)?;
-    let cfd_case_str = cfd_case.to_string();
+    let config = config.cfd_case(cfd_case);
+    // let cfd_case_str = cfd_case.to_string();
 
     // dome seeing
     let ds = if args.domeseeing {
@@ -444,11 +267,11 @@ fn main() -> anyhow::Result<()> {
         (false, true) => Some("Wind Loads"),
         (false, false) => None,
     };
-
-    // any transients dome seeing or wind loads?
-    if ds.is_none() && m12_rbms.is_none() {
-        return Ok(());
-    }
+    let config = if let Some(value) = turbulence_effects {
+        config.turbulence_effects(value)
+    } else {
+        config
+    };
 
     // dome seeing OPD iterator `N_SAMPLE` @ 5Hz
     let ds_iter: Box<dyn Iterator<Item = Option<Vec<f64>>>> = if let Some(ds) = ds {
@@ -481,8 +304,9 @@ fn main() -> anyhow::Result<()> {
 
     // Process turbulence-affected frames
     let now = Instant::now();
-    let mut all_frames = Vec::new();
-    let mut all_pssns = Vec::new();
+    // let mut all_frames = Vec::new();
+    // let mut all_pssns = Vec::new();
+    let mut psfs = PSFs::new(&config);
 
     // Create progress bar for frame processing
     let process_pb = ProgressBar::new(N_SAMPLE as u64);
@@ -498,48 +322,18 @@ fn main() -> anyhow::Result<()> {
         imgr.reset();
         ray_trace(&mut v_src, &mut gmt, &mut v_pssn, data);
         v_src.through(&mut imgr);
-        all_pssns.push(v_pssn.estimates()[0]);
-        all_frames.push(imgr.frame().into());
+        psfs.push(imgr.frame().into(), v_pssn.estimates()[0]);
+        // all_pssns.push(v_pssn.estimates()[0]);
+        // all_frames.push();
         process_pb.inc(1);
     }
 
     process_pb.finish_with_message("PSF processing complete");
-    let frame_count = all_frames.len();
+    let frame_count = psfs.len();
 
     // Save all turbulence frames with consistent normalization
-    save_all_frames(
-        &all_frames,
-        frames_dir,
-        Some(seeing_radius_pixels as f32),
-        Some(segment_diff_lim_radius_pixels as f32),
-        &all_pssns,
-        wavelength_nm,
-        Some(&cfd_case_str),
-        turbulence_effects,
-    )?;
-
-    let summed_frame = all_frames
-        .into_iter()
-        .fold(vec![0f32; DETECTOR_SIZE.pow(2)], |mut s, f| {
-            s.iter_mut().zip(f.into_iter()).for_each(|(s, f)| {
-                *s += f;
-            });
-            s
-        });
-    let (frame_min, frame_max) = find_global_extrema(&[summed_frame.clone()]);
-    save_frame_as_png(
-        &summed_frame,
-        "long_exposure_psf.png",
-        frame_min,
-        frame_max,
-        Some(seeing_radius_pixels as f32),
-        Some(segment_diff_lim_radius_pixels as f32),
-        all_pssns.last().copied(),
-        Some(wavelength_nm),
-        None, // No frame number for long exposure
-        Some(&cfd_case_str),
-        turbulence_effects,
-    )?;
+    psfs.save_all_frames()?;
+    psfs.sum().save("long_exposure_psf.png")?;
 
     println!();
     println!(

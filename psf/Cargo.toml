@@ -18,3 +18,4 @@ indicatif.workspace = true
 clap.workspace = true
 gmt-lom = { version = "2.4.2", features = ["apache"] }
 skyangle = "0.3.1"
+thiserror = "2.0.16"
