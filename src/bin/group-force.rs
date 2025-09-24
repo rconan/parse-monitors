@@ -6,6 +6,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+const CFD_YEAR: u32 = 2025;
+
 fn main() -> anyhow::Result<()> {
     let stats = |x: &[Vector]| -> Option<(Vec<f64>, Vec<f64>)> {
         let n = x.len() as f64;
@@ -41,7 +43,7 @@ fn main() -> anyhow::Result<()> {
         r#"Platform \& Trays"#,
     ];
 
-    let (latex,graphics): (Vec<_>,Vec<_>) = cfd::Baseline::<2021>::default().into_iter().collect::<Vec<cfd::CfdCase<2021>>>().into_par_iter().map(|cfd_case| {
+    let (latex,graphics): (Vec<_>,Vec<_>) = cfd::Baseline::<CFD_YEAR>::default().into_iter().collect::<Vec<cfd::CfdCase<CFD_YEAR>>>().into_par_iter().map(|cfd_case| {
         println!("{cfd_case}");
 	let mut latex = vec![];
         let mut appendix_graphics= vec![format!(
@@ -54,7 +56,7 @@ fn main() -> anyhow::Result<()> {
             r#"\midrule\multicolumn{{13}}{{l}}{{{}}}\\\hline"#,
             cfd_case.to_pretty_string()
         ));
-        let data_path = cfd::Baseline::<2021>::path().unwrap().join(cfd_case.to_string());
+        let data_path = cfd::Baseline::<CFD_YEAR>::path().unwrap().join(cfd_case.to_string());
 	let report_path = data_path.join("report");
 	if !report_path.is_dir() {
             create_dir(&report_path).unwrap()
@@ -81,7 +83,7 @@ fn main() -> anyhow::Result<()> {
             groups.push("M1level");
 
             /*let mon = if cfd_case == cfd::CfdCase::colloquial(30, 135, "nos", 7).unwrap() {
-                Monitors::loader::<PathBuf, 2021>(data_path.clone())
+                Monitors::loader::<PathBuf, CFD_YEAR>(data_path.clone())
                     .exclude_filter(groups.join("|"))
                     //.header_filter("M1")
                     .header_filter(group)
@@ -90,7 +92,7 @@ fn main() -> anyhow::Result<()> {
                     .end_time(340.)
                     .load().unwrap()
             } else {*/
-                let mut mon = Monitors::loader::<PathBuf, 2021>(data_path.clone())
+                let mut mon = Monitors::loader::<PathBuf, CFD_YEAR>(data_path.clone())
                     .exclude_filter(groups.join("|"))
                     //.header_filter("M1")
                     .header_filter(group)

@@ -31,3 +31,5 @@ report/mount.chapter*
 *.csv.z
 *.2025
 *.html
+*.mat
+/vortex-shedding
