@@ -7,10 +7,15 @@ edition = "2024"
 anyhow.workspace = true
 clap.workspace = true
 crseo.workspace = true
-gmt_dos-clients_domeseeing.workspace = true 
+gmt_dos-clients_domeseeing.workspace = true
 gmt_dos-clients_io = "4.3.0"
 indicatif.workspace = true
-parse-monitors = { version = "0.3.0", path = ".." }
+parse-monitors = { version = "0.3.0", path = "..", default-features = false }
 serde = { workspace = true, features = ["derive"] }
 serde-pickle.workspace = true
 zernike = "0.2.1"
+
+[features]
+default = ["2025"]
+2025 = ["parse-monitors/default"]
+2021 = ["parse-monitors/2021"]

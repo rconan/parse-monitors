@@ -17,7 +17,7 @@ impl CfdDataFile<2021> {
     }
     pub fn glob(self, cfd_case: CfdCase<2021>) -> Result<Vec<PathBuf>> {
         use CfdDataFile::*;
-        let cfd_path = Baseline::<2021>::path().join(cfd_case.to_string());
+        let cfd_path = Baseline::<2021>::path()?.join(cfd_case.to_string());
         let paths = match self {
             M1Pressure => glob::glob(
                 cfd_path
