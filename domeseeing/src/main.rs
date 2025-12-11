@@ -23,27 +23,35 @@ struct Cli {
     /// process only that many CFD cases
     #[arg(short, long)]
     take: Option<usize>,
+    /// path to the CFD case
+    #[arg(long)]
+    case: Option<Vec<String>>,
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    match (cli.skip, cli.take) {
-        (None, None) => Box::new(cfd::Baseline::<CFD_YEAR>::default().into_iter())
-            as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
-        (None, Some(t)) => Box::new(cfd::Baseline::<CFD_YEAR>::default().into_iter().take(t))
-            as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
-        (Some(s), None) => Box::new(cfd::Baseline::<CFD_YEAR>::default().into_iter().skip(s))
-            as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
-        (Some(s), Some(t)) => Box::new(
-            cfd::Baseline::<CFD_YEAR>::default()
-                .into_iter()
-                .skip(s)
-                .take(t),
-        ) as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
+    if let Some(path) = &cli.case {
+        path.iter()
+            .map(|p| Path::new(p))
+            .for_each(|path| task(&path).expect(&format!("{path:?} failed")));
+    } else {
+        match (cli.skip, cli.take) {
+            (None, None) => Box::new(cfd::Baseline::<CFD_YEAR>::default().into_iter())
+                as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
+            (None, Some(t)) => Box::new(cfd::Baseline::<CFD_YEAR>::default().into_iter().take(t))
+                as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
+            (Some(s), None) => Box::new(cfd::Baseline::<CFD_YEAR>::default().into_iter().skip(s))
+                as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
+            (Some(s), Some(t)) => Box::new(
+                cfd::Baseline::<CFD_YEAR>::default()
+                    .into_iter()
+                    .skip(s)
+                    .take(t),
+            ) as Box<dyn Iterator<Item = CfdCase<{ CFD_YEAR }>>>,
+        }
+        .map(|cfd_case| Path::new("/home/ubuntu/mnt/CASES/").join(&cfd_case.to_string()))
+        .for_each(|path| task(&path).expect(&format!("{path:?} failed")));
     }
-    .map(|cfd_case| Path::new("/home/ubuntu/mnt/CASES/").join(&cfd_case.to_string()))
-    .for_each(|path| task(&path).expect(&format!("{path:?} failed")));
-
     Ok(())
 }
 fn task(cfd_path: &Path) -> anyhow::Result<()> {
