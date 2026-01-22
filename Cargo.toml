@@ -30,20 +30,18 @@ rayon = "1.10.0"
 serde-pickle = "1.2.0"
 polars = { version = "0.47.1", features = ["decompress"] }
 rstar = { version = "0.12.2" }
-indicatif = { version = "0.17.11", features = ["rayon"] }
+indicatif = { version = "0.18.0", features = ["rayon"] }
 serde = { version = "1.0.219", features = ["derive"] }
-anyhow = "1.0.98"
-clap = { version = "4.5.39", features = ["derive"] }
+anyhow = "1.0.99"
+clap = { version = "4.5.45", features = ["derive"] }
 env_logger = "0.11.8"
 log = "0.4.27"
 glob = "0.3.2"
 npyz = { version = "0.8.1", features = ["npz"] }
 complot = { version = "0.3.3" }
 geotrans = { version = "^0.2.0" }
-crseo = "2.5.1"
-gmt_dos-clients_domeseeing = { version = "3.0", features = [
-  "npyz",
-], default-features = false }
+crseo = "2.5.2"
+gmt_dos-clients_domeseeing = { version = "3.2", default-features = false }
 
 [dependencies]
 bzip2 = { version = "0.5.2", optional = true }
@@ -78,6 +76,9 @@ glob.workspace = true
 npyz.workspace = true
 complot = { workspace = true, optional = true }
 geotrans.workspace = true
+gmt_dos-clients_domeseeing = { workspace = true, features = [
+  "npyz",
+], default-features = false }
 
 [features]
 default = ["2025"]

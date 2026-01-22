@@ -33,3 +33,4 @@ report/mount.chapter*
 *.html
 *.mat
 /vortex-shedding
+*.env
