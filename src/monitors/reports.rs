@@ -1,4 +1,4 @@
-use crate::{detrend_mut, MonitorsError, Vector};
+use crate::{detrend_mut, Vector};
 #[cfg(feature = "plot")]
 use plotters::prelude::*;
 use std::{
@@ -6,6 +6,7 @@ use std::{
     ops::{Add, Deref, DerefMut, Div},
     path::Path,
 };
+#[cfg(feature = "plot")]
 use welch_sde::{Build, PowerSpectrum};
 
 mod loader;
@@ -721,7 +722,7 @@ impl Monitors {
     #[cfg(feature = "plot")]
     pub fn plot_forces(&self, filename: Option<&str>) -> Result<()> {
         if self.forces_and_moments.is_empty() {
-            return Err(MonitorsError::PlotForces(
+            return Err(super::MonitorsError::PlotForces(
                 filename.unwrap_or("FORCES.png").to_string(),
             ));
         }

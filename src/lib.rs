@@ -263,6 +263,79 @@ mod tests {
             monitors.total_forces_and_moments.len()
         );
     }
+    #[test]
+    fn cfd_2025() {
+        let monitors = MonitorsLoader::<2025>::default()
+            .data_path("/home/rconan/mnt/CASES/zen30az000_OS_7ms")
+            .header_filter("Total".to_string())
+            .load()
+            .unwrap();
+        println!(
+            "Time: {:.3?}s",
+            (monitors.time[0], monitors.time.last().unwrap())
+        );
+        println!("Force entries #: {}", monitors.forces_and_moments.len());
+        monitors
+            .forces_and_moments
+            .keys()
+            .for_each(|k| println!("Key: {}", k));
+        println!(
+            "Total force entries #: {}",
+            monitors.total_forces_and_moments.len()
+        );
+    }
+    #[cfg(feature = "object_store")]
+    #[tokio::test]
+    async fn async_cfd_2025() {
+        let store = object_store::local::LocalFileSystem::new();
+        let monitors = MonitorsLoader::<2025>::default()
+            .data_path("/home/rconan/mnt/CASES/zen30az000_OS_7ms")
+            .header_filter("Total".to_string())
+            .load_from_store(store)
+            .await
+            .unwrap();
+        println!(
+            "Time: {:.3?}s",
+            (monitors.time[0], monitors.time.last().unwrap())
+        );
+        println!("Force entries #: {}", monitors.forces_and_moments.len());
+        monitors
+            .forces_and_moments
+            .keys()
+            .for_each(|k| println!("Key: {}", k));
+        println!(
+            "Total force entries #: {}",
+            monitors.total_forces_and_moments.len()
+        );
+    }
+    #[cfg(feature = "object_store")]
+    #[tokio::test]
+    async fn async_s3_cfd_2025() {
+        let store = object_store::aws::AmazonS3Builder::from_env()
+            .with_region("us-east-1")
+            .with_bucket_name("gmto.cfd.2025")
+            .build()
+            .unwrap();
+        let monitors = MonitorsLoader::<2025>::default()
+            .data_path("CASES/zen30az000_OS_7ms")
+            .header_filter("Total".to_string())
+            .load_from_store(store)
+            .await
+            .unwrap();
+        println!(
+            "Time: {:.3?}s",
+            (monitors.time[0], monitors.time.last().unwrap())
+        );
+        println!("Force entries #: {}", monitors.forces_and_moments.len());
+        monitors
+            .forces_and_moments
+            .keys()
+            .for_each(|k| println!("Key: {}", k));
+        println!(
+            "Total force entries #: {}",
+            monitors.total_forces_and_moments.len()
+        );
+    }
     /*
         #[test]
         fn load_mirror_table() {

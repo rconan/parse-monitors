@@ -40,10 +40,28 @@ impl<const Y: u32> MonitorsLoader<Y> {
             .map_err(|e| MonitorsError::Io(e, data_path))?;
         Ok(contents)
     }
+    #[cfg(feature = "object_store")]
+    pub async fn load_from_store(self, store: impl object_store::ObjectStore) -> Result<Monitors> {
+        use object_store::ObjectStoreExt;
+        use std::io::Cursor;
+        use std::path::PathBuf;
+        let data_path = Path::new(&self.path).with_extension("csv.z");
+        let location = object_store::path::Path::from(data_path.to_str().unwrap());
+        let bytes = store.get(&location).await?.bytes().await?;
+        let cursor = Cursor::new(bytes);
+        let mut gz = flate2::bufread::GzDecoder::new(cursor);
+        let mut contents = String::new();
+        gz.read_to_string(&mut contents)
+            .map_err(|e| MonitorsError::Io(e, PathBuf::from(location.to_string())))?;
+        self.load_from_bytes(contents.into_bytes())
+    }
     pub fn load(self) -> Result<Monitors> {
-        let now = Instant::now();
         let contents = self.decompress()?;
-        let mut rdr = csv::Reader::from_reader(contents.as_bytes());
+        self.load_from_bytes(contents.into_bytes())
+    }
+    pub fn load_from_bytes(self, bytes: Vec<u8>) -> Result<Monitors> {
+        let now = Instant::now();
+        let mut rdr = csv::Reader::from_reader(bytes.as_slice());
 
         let headers: Vec<_> = {
             let headers = rdr.headers()?;

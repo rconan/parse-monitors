@@ -26,4 +26,7 @@ pub enum MonitorsError {
     #[cfg(feature = "plot")]
     #[error("failed to plot forces: {0}")]
     PlotForces(String),
+    #[cfg(feature = "object_store")]
+    #[error("failed to upload object from store")]
+    Object(#[from] object_store::Error),
 }
