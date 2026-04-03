@@ -6,19 +6,17 @@ Ray tracing through the GMT CFD dome seeing turbulence volume and PSSn estimatio
 
 ```bash
 export GMT_MODES_PATH=/path/to/ceo-mirror-modes/
-export CFD_REPO=/path/to/CFD/repository/root
 ```
 
 # Usage
 
 ```shell
-cargo r -r
+cargo r -r --bin domeseeing -- --help
 ```
 
-## Example
+## Example on AWS
 
 ```shell
-export GMT_MODES_PATH=~/ceo/
-export CFD_REPO=/home/ubuntu/mnt/CASES
-cargo r -r
+export GMT_MODES_PATH=~/CEO/gmtMirrors
+cargo r -r --bin domeseeing -- --case /home/ubuntu/cfd/CASES/<cfd-case>
 ```
