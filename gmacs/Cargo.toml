@@ -12,5 +12,5 @@ polars.workspace = true
 serde.workspace = true
 rstar.workspace = true
 indicatif.workspace = true
-parse-monitors = { version = "0.3.0", path = "..", features = ["rstar"] }
+parse-monitors = { version = "0.4.0", path = "..", features = ["rstar"] }
 anyhow.workspace = true

@@ -13,5 +13,5 @@ glob.workspace = true
 indicatif.workspace = true
 log.workspace = true
 npyz.workspace = true
-parse-monitors = { version = "0.3.1", path = ".." , features = ["plot"]}
+parse-monitors = { version = "0.4.0", path = ".." , features = ["plot"]}
 rayon.workspace = true

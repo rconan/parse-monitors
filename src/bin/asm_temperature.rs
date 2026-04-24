@@ -73,7 +73,7 @@ fn main() -> anyhow::Result<()> {
                     .filter(|(((x, y), z), _)| {
                         let u = [*x, *y, *z];
                         (1..=7).fold(false, |s, sid| {
-                            let v = u.fro(Segment::<M2>::new(sid)).unwrap();
+                            let v = u.fro(Segment::<M2>::new(sid).unwrap());
                             let r = v[0].hypot(v[1]);
                             let m = r >= 0.5 && r < 0.55;
                             s || m

@@ -7,19 +7,19 @@ edition = "2024"
 anyhow.workspace = true
 clap.workspace = true
 env_logger.workspace = true
-gmt-fem = "5.2.0"
+gmt-fem = "5.2.1"
 gmt_dos-actors = { version = "12.0.0", features = ["filing"] }
 gmt_dos-clients_arrow = "2.2.0"
-gmt_dos-clients_fem = { version = "5.1.2", features = ["cuda"] }
+gmt_dos-clients_fem = { version = "5.3.0", features = ["cuda"] }
 gmt_dos-clients_io = "4.3.0"
 gmt_dos-clients_servos = { version = "3.0.2", features = ["cuda"] }
-gmt_dos-clients_windloads = { version = "3.0.2", features = ["cfd2025"] }
+gmt_dos-clients_windloads = { version = "3.0.3", features = ["cfd2025"] }
 interface = { version = "1.5.0", package = "gmt_dos-actors-clients_interface", features = [
   "filing",
 ] }
 log.workspace = true
-parse-monitors = { version = "0.3.1", path = ".." }
-tokio = { version = "1.47.1", features = ["full"] }
+parse-monitors = { version = "0.4.0", path = ".." }
+tokio = { version = "1.52.1", features = ["full"] }
 
 [features]
 default = ["api"]

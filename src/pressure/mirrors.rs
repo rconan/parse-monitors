@@ -50,7 +50,7 @@ impl PartialOrd for GeometryRecord {
 #[derive(Default)]
 pub struct Pressure<M>
 where
-    M: Default,
+    M: Default + geotrans::Gmt,
     Segment<M>: SegmentTrait,
 {
     // the segment surface pressure [Pa]
@@ -96,7 +96,7 @@ impl MirrorProperties for Pressure<M2> {
 }
 impl<M> Pressure<M>
 where
-    M: Default,
+    M: Default + geotrans::Gmt,
     Segment<M>: SegmentTrait,
     Pressure<M>: MirrorProperties,
 {
@@ -267,14 +267,16 @@ where
     pub fn to_local(&mut self, sid: usize) -> Result<&mut Self> {
         self.xyz
             .iter_mut()
-            .map(|v| v.fro(Segment::<M>::new(sid as i32)))
+            .map(|v| Segment::<M>::new(sid as i32).map(|segment| v.fro(segment)))
             .collect::<std::result::Result<Vec<()>, geotrans::Error>>()?;
         Ok(self)
     }
     /// Transforms the coordinates into the OSS
     pub fn from_local(&mut self, sid: usize) -> &mut Self {
         self.xyz.iter_mut().for_each(|v| {
-            v.to(Segment::<M>::new(sid as i32)).unwrap();
+            Segment::<M>::new(sid as i32)
+                .map(|segment| v.to(segment))
+                .unwrap();
         });
         self
     }
@@ -288,7 +290,11 @@ where
         let xr = self.exo_radius();
         self.xyz
             .iter()
-            .map(move |v| v.fro(Segment::<M>::new(sid as i32)).unwrap())
+            .map(move |v| {
+                Segment::<M>::new(sid as i32)
+                    .map(|segment| v.fro(segment))
+                    .unwrap()
+            })
             .map(|v| v[0].hypot(v[1]))
             .map(move |r| r >= r_in.unwrap_or_default() && r < r_out.unwrap_or(xr))
     }

@@ -10,10 +10,10 @@ crseo.workspace = true
 gmt_dos-clients_domeseeing.workspace = true
 gmt_dos-clients_io = "4.3.0"
 indicatif.workspace = true
-parse-monitors = { version = "0.3.0", path = "..", default-features = false }
+parse-monitors = { version = "0.4.0", path = "..", default-features = false }
 serde = { workspace = true, features = ["derive"] }
 serde-pickle.workspace = true
-zernike = "0.2.1"
+zernike = "0.2.2"
 
 [features]
 default = ["2025"]
