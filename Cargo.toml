@@ -41,7 +41,7 @@ npyz = { version = "0.9.0", features = ["npz"] }
 complot = { version = "0.3.5" }
 geotrans = { version = "^1.2.0" }
 crseo = "2.5.3"
-gmt_dos-clients_domeseeing = { version = "3.2", default-features = false }
+gmt_dos-clients_domeseeing = { version = "4.0", default-features = false }
 
 [dependencies]
 bzip2 = { version = "0.6.1", optional = true }
