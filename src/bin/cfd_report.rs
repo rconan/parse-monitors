@@ -34,8 +34,6 @@ fn main() -> anyhow::Result<()> {
     let cases: Arc<Option<Vec<cfd::CfdCase<CFD_YEAR>>>> = Arc::new(Some(
         cfd::Baseline::<CFD_YEAR>::default()
             .into_iter()
-            .skip(20)
-            .take(20)
             .collect(),
     ));
     let parts_base = 0;

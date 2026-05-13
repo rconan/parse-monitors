@@ -60,23 +60,25 @@ impl<const CFD_YEAR: u32> DomeSeeingPart<CFD_YEAR> {
                     Some((
                         (cfd_case_21, wfe_rms, v_pssn, h_pssn),
                         if let Some(cfd_case_20) = cfd::Baseline::<OTHER_YEAR>::find(cfd_case_21) {
-                            let ds_20 = DomeSeeing::load(
+                            DomeSeeing::load(
                                 cfd::Baseline::<OTHER_YEAR>::path()
                                     .ok()?
                                     .join(format!("{}", cfd_case_20)),
                             )
-                            .ok()?;
-                            if let (Some(v_pssn), Some(h_pssn)) =
-                                (ds_20.pssn(Band::V), ds_20.pssn(Band::H))
-                            {
-                                let wfe_rms = 1e9
-                                    * (ds_20.wfe_rms().map(|x| x * x).sum::<f64>()
-                                        / ds_20.len() as f64)
-                                        .sqrt();
-                                Some((cfd_case_20, wfe_rms, v_pssn, h_pssn))
-                            } else {
-                                None
-                            }
+                            .ok()
+                            .and_then(|ds_20| {
+                                if let (Some(v_pssn), Some(h_pssn)) =
+                                    (ds_20.pssn(Band::V), ds_20.pssn(Band::H))
+                                {
+                                    let wfe_rms = 1e9
+                                        * (ds_20.wfe_rms().map(|x| x * x).sum::<f64>()
+                                            / ds_20.len() as f64)
+                                            .sqrt();
+                                    Some((cfd_case_20, wfe_rms, v_pssn, h_pssn))
+                                } else {
+                                    None
+                                }
+                            })
                         } else {
                             None
                         },
