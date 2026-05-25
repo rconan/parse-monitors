@@ -6,20 +6,21 @@ edition = "2024"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+dotenvy = "0.15.7"
 env_logger.workspace = true
-gmt-fem = "5.2.1"
-gmt_dos-actors = { version = "12.0.0", features = ["filing"] }
-gmt_dos-clients_arrow = "2.2.0"
-gmt_dos-clients_fem = { version = "5.3.0", features = ["cuda"] }
-gmt_dos-clients_io = "4.3.0"
-gmt_dos-clients_servos = { version = "3.0.2", features = ["cuda"] }
-gmt_dos-clients_windloads = { version = "3.0.3", features = ["cfd2025"] }
-interface = { version = "1.5.0", package = "gmt_dos-actors-clients_interface", features = [
+gmt-fem = "5.2.2"
+gmt_dos-actors = { version = "12.1.0", features = ["filing"] }
+gmt_dos-clients_arrow = "2.3.0"
+gmt_dos-clients_fem = { version = "5.3.1", features = ["cuda"] }
+gmt_dos-clients_io = "4.3.1"
+gmt_dos-clients_servos = { version = "3.1.0", features = ["cuda"] }
+gmt_dos-clients_windloads = { version = "3.1.0", features = ["cfd2025"] }
+interface = { version = "1.5.1", package = "gmt_dos-actors-clients_interface", features = [
   "filing",
 ] }
 log.workspace = true
 parse-monitors = { version = "0.4.0", path = ".." }
-tokio = { version = "1.52.1", features = ["full"] }
+tokio = { version = "1.52.3", features = ["full"] }
 
 [features]
 default = ["api"]

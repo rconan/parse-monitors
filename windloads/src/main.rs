@@ -1,13 +1,5 @@
 /*!
 # GMT FEM Wind Loading
-
-```shell
-export MOUNT_MODEL=MOUNT_FDR_1kHz
-export FEM_REPO=$HOME/mnt/20250506_1715_zen_30_M1_202110_FSM_202305_Mount_202305_pier_202411_M1_actDamping/
-export CFD_REPO=$HOME/maua/CASES
-export CUDACXX=/usr/local/cuda/bin/nvcc
-cargo r -r
-```
 */
 
 use std::{
@@ -64,6 +56,7 @@ struct Cli {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
+    dotenvy::dotenv()?;
     let cli = Cli::parse();
 
     {
@@ -140,7 +133,7 @@ async fn task<const Y: u32>(cfd_case: CfdCase<Y>) -> anyhow::Result<()> {
 
     let gmt_servos: Sys<GmtServoMechanisms<ACTUATOR_RATE, 1>> =
         GmtServoMechanisms::<ACTUATOR_RATE, 1>::new(sim_sampling_frequency as f64, fem.unwrap())
-            .wind_loads(WindLoads::new())
+            .wind_loads(WindLoads::default())
             .try_into()?;
 
     if cfg!(feature = "api") {
