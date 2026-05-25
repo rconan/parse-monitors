@@ -122,7 +122,7 @@ pub trait BaselineTrait<const YEAR: u32>:
                 (WindSpeed::Twelve, Enclosure::ClosedDeployed),
                 (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
             ],
-            2021 | 2025 => match zenith_angle {
+            2021 => match zenith_angle {
                 ZenithAngle::Sixty => vec![
                     (WindSpeed::Two, Enclosure::OpenStowed),
                     (WindSpeed::Seven, Enclosure::OpenStowed),
@@ -138,6 +138,32 @@ pub trait BaselineTrait<const YEAR: u32>:
                     (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
                 ],
             },
+            2025 => match zenith_angle {
+                ZenithAngle::Zero => vec![
+                    (WindSpeed::Zero, Enclosure::OpenStowed),
+                    (WindSpeed::Two, Enclosure::OpenStowed),
+                    (WindSpeed::Seven, Enclosure::OpenStowed),
+                    //(WindSpeed::Seven, Enclosure::ClosedDeployed),
+                    (WindSpeed::Twelve, Enclosure::ClosedDeployed),
+                    (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
+                ],
+                ZenithAngle::Thirty => vec![
+                    (WindSpeed::Zero, Enclosure::OpenStowed),
+                    (WindSpeed::Two, Enclosure::OpenStowed),
+                    (WindSpeed::Seven, Enclosure::OpenStowed),
+                    //(WindSpeed::Seven, Enclosure::ClosedDeployed),
+                    (WindSpeed::Twelve, Enclosure::ClosedDeployed),
+                    (WindSpeed::Seventeen, Enclosure::ClosedDeployed),
+                ],
+                ZenithAngle::Sixty => vec![
+                    (WindSpeed::Zero, Enclosure::OpenStowed),
+                    (WindSpeed::Two, Enclosure::OpenStowed),
+                    (WindSpeed::Seven, Enclosure::OpenStowed),
+                    //(WindSpeed::Seven, Enclosure::ClosedStowed),
+                    (WindSpeed::Twelve, Enclosure::ClosedStowed),
+                    (WindSpeed::Seventeen, Enclosure::ClosedStowed),
+                ],
+            },
             _ => vec![],
         }
     }
@@ -145,13 +171,25 @@ pub trait BaselineTrait<const YEAR: u32>:
     fn at_zenith(zenith_angle: ZenithAngle) -> Self {
         let mut cfd_cases = vec![];
         for (wind_speed, enclosure) in Self::configuration(zenith_angle.clone()) {
-            for azimuth in Azimuth::iter() {
-                cfd_cases.push(CfdCase::<YEAR>::new(
-                    zenith_angle.clone(),
-                    azimuth,
-                    enclosure.clone(),
-                    wind_speed.clone(),
-                ));
+            match wind_speed {
+                WindSpeed::Zero => {
+                    cfd_cases.push(CfdCase::<YEAR>::new(
+                        zenith_angle.clone(),
+                        Azimuth::Zero,
+                        enclosure.clone(),
+                        wind_speed.clone(),
+                    ));
+                }
+                _ => {
+                    for azimuth in Azimuth::iter() {
+                        cfd_cases.push(CfdCase::<YEAR>::new(
+                            zenith_angle.clone(),
+                            azimuth,
+                            enclosure.clone(),
+                            wind_speed.clone(),
+                        ));
+                    }
+                }
             }
         }
         cfd_cases.into()

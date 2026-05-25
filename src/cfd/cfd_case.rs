@@ -9,7 +9,7 @@ pub enum CfdCaseError {
     Azimuth(u32),
     #[error(r#"enclosure {0} is not recognized, expected "os", "cd" or "cs""#)]
     Enclosure(String),
-    #[error(r#"wind speed {0} is not recognized, expected 2, 7, 12m 17 or 22 m/s"#)]
+    #[error(r#"wind speed {0} is not recognized, expected 0, 2, 7, 12, 17 or 22 m/s"#)]
     WindSpeed(u32),
     #[error("invalid CFD case name regex")]
     Regex(#[from] regex::Error),
@@ -175,6 +175,7 @@ impl fmt::Display for Enclosure {
 /// CFD wind speed
 #[derive(EnumIter, Copy, PartialEq, Clone, Debug)]
 pub enum WindSpeed {
+    Zero,
     Two,
     Seven,
     Twelve,
@@ -186,6 +187,7 @@ impl WindSpeed {
     fn new(wind_speed: u32) -> Result<Self> {
         use WindSpeed::*;
         match wind_speed {
+            0 => Ok(Zero),
             2 => Ok(Two),
             7 => Ok(Seven),
             12 => Ok(Twelve),
@@ -199,6 +201,7 @@ impl fmt::Display for WindSpeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use WindSpeed::*;
         match self {
+            Zero => write!(f, "0"),
             Two => write!(f, "2"),
             Seven => write!(f, "7"),
             Twelve => write!(f, "12"),
@@ -211,6 +214,7 @@ impl From<WindSpeed> for f64 {
     fn from(wind_speed: WindSpeed) -> Self {
         use WindSpeed::*;
         (match wind_speed {
+            Zero => 0,
             Two => 2,
             Seven => 7,
             Twelve => 12,
